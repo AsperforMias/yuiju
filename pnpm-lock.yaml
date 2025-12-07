@@ -23,6 +23,9 @@ importers:
       dotenv:
         specifier: ^16.6.1
         version: 16.6.1
+      lodash-es:
+        specifier: ^4.17.21
+        version: 4.17.21
       mongoose:
         specifier: ^8.20.0
         version: 8.20.0(socks@2.8.7)
@@ -61,12 +64,6 @@ importers:
         specifier: ^4.0.13
         version: 4.0.13(@opentelemetry/api@1.9.0)(@types/node@24.10.1)(tsx@4.20.6)
 
-  packages/action:
-    dependencies:
-      mistreevous:
-        specifier: ^4.3.1
-        version: 4.3.1
-
   packages/message:
     dependencies:
       '@yuiju/source':
@@ -86,6 +83,18 @@ importers:
         version: link:../utils
 
   packages/utils: {}
+
+  packages/world:
+    dependencies:
+      '@yuiju/source':
+        specifier: workspace:*
+        version: link:../source
+      '@yuiju/utils':
+        specifier: workspace:*
+        version: link:../utils
+      mistreevous:
+        specifier: ^4.3.1
+        version: 4.3.1
 
 packages:
 
@@ -1352,6 +1361,9 @@ packages:
         optional: true
       openai:
         optional: true
+
+  lodash-es@4.17.21:
+    resolution: {integrity: sha512-mKnC+QJ9pWVzv+C4/U3rRsHapFfHvQFoFB92e52xeyGMcX6/OlIl78je1u8vePzYZSkkogMPJ2yjxxsb89cxyw==}
 
   logform@2.7.0:
     resolution: {integrity: sha512-TFYA4jnP7PVbmlBIfhlSe+WKxs9dklXMTEGcBCIvLhE/Tn3H6Gk1norupVW7m5Cnd4bLcr08AytbyV/xj7f/kQ==}
@@ -3500,6 +3512,8 @@ snapshots:
     optionalDependencies:
       '@opentelemetry/api': 1.9.0
       openai: 4.104.0(encoding@0.1.13)(ws@8.18.3)(zod@3.25.76)
+
+  lodash-es@4.17.21: {}
 
   logform@2.7.0:
     dependencies:

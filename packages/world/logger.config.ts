@@ -13,14 +13,13 @@ const __dir = dirname(fileURLToPath(import.meta.url));
 
 const isProd = process.env.NODE_ENV === 'production';
 const level = process.env.LOG_LEVEL || (isProd ? 'info' : 'debug');
-const format = process.env.LOG_FORMAT || (isProd ? 'json' : 'text');
 const logDir = process.env.LOG_DIR || resolve(__dir, 'logs');
 
 export default {
   service: '@yuiju/action',
   env: process.env.NODE_ENV || 'development',
   level,
-  format, // 'json' | 'text'
+  format: 'text',
   consoleEnabled: true,
   fileEnabled: true,
   logDir,
@@ -32,4 +31,3 @@ export default {
   },
   redactKeys: ['password', 'token', 'cookie', 'authorization'],
 };
-

@@ -114,8 +114,6 @@ function createWinstonLogger() {
   });
 }
 
-const baseLogger: any = createWinstonLogger();
+const baseLogger = createWinstonLogger();
 
 export const logger = baseLogger;
-
-// No additional helpers exported; use `logger.info/error/debug` directly.

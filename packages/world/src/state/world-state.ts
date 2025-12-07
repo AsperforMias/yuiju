@@ -1,7 +1,7 @@
+import { IWorldState } from '@/types/state';
 import dayjs, { Dayjs } from 'dayjs';
-import { logger } from '@/utils/logger';
 
-export class WorldState {
+export class WorldState implements IWorldState {
   public time: Dayjs = dayjs();
 
   private static instance: WorldState | null = null;
@@ -13,12 +13,10 @@ export class WorldState {
 
   public updateTime(newTime?: Dayjs) {
     this.time = newTime || dayjs();
-    logger.debug({ event: 'time.update', iso: this.time.toISOString() });
   }
 
   public reset() {
     this.time = dayjs();
-    logger.info({ event: 'time.reset', iso: this.time.toISOString() });
   }
 }
 
