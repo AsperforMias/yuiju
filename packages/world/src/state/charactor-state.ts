@@ -14,6 +14,7 @@ export class CharactorState implements ICharactorState {
   public location: Location = { major: MajorScene.Home };
   public stamina: number = 100;
   public money: number = 0;
+  public dailyActionsDoneToday: ActionId[] = [];
 
   static getInstance() {
     if (!CharactorState.instance) CharactorState.instance = new CharactorState();
@@ -37,6 +38,20 @@ export class CharactorState implements ICharactorState {
     const changedMoney = (this.money += delta);
 
     this.money = Math.max(0, changedMoney);
+  }
+
+  hasActionDoneToday(action: ActionId): boolean {
+    return this.dailyActionsDoneToday.includes(action);
+  }
+
+  markActionDoneToday(action: ActionId): void {
+    if (!this.dailyActionsDoneToday.includes(action)) {
+      this.dailyActionsDoneToday.push(action);
+    }
+  }
+
+  clearDailyActions(): void {
+    this.dailyActionsDoneToday = [];
   }
 }
 

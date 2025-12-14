@@ -39,8 +39,8 @@ export async function tick(): Promise<number> {
 
   if (actionMetadata && selectedAction) {
     const durationMin = actionMetadata.useLLMDuration
-      ? selectedAction?.durationMinute ?? getDurationTime(actionMetadata.durationMin, context)
-      : getDurationTime(actionMetadata.durationMin, context);
+      ? selectedAction?.durationMinute ?? actionMetadata.durationMin
+      : actionMetadata.durationMin;
 
     await actionMetadata.executor(context);
 
@@ -49,6 +49,10 @@ export async function tick(): Promise<number> {
       reason: selectedAction.reason,
       timestamp: Date.now(),
     });
+
+    logger.info(
+      `[tick] Executed action: ${selectedAction.action}, Reason: ${selectedAction.reason}， Duration: ${durationMin} minutes`
+    );
 
     return getDurationTime(durationMin, context);
   } else {

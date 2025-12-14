@@ -56,3 +56,7 @@ export const isWeekday = (context: ActionContext) => {
   const weekday = context.worldState.time.day();
   return weekday >= 1 && weekday <= 5;
 };
+
+export const notDoneToday = (context: ActionContext, action: ActionId) => {
+  return !context.charactorState.hasActionDoneToday(action);
+};

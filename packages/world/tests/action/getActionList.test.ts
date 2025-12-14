@@ -17,10 +17,16 @@ function createContext(opts: {
       location: { major: opts.major as any },
       stamina: opts.stamina ?? 100,
       money: opts.money ?? 0,
+      dailyActionsDoneToday: [],
       setAction() {},
       setStamina() {},
       changeStamina() {},
       changeMoney() {},
+      hasActionDoneToday() {
+        return false;
+      },
+      markActionDoneToday() {},
+      clearDailyActions() {},
     },
     worldState: {
       time: dayjs(opts.time ?? '2025-01-01T08:00:00'),

@@ -1,5 +1,5 @@
 import { ActionId, ActionMetadata } from '@/types/action';
-import { isAfternoon, isEvening, isMorning, isNight, isWeekday, isWeekend } from './utils';
+import { isAfternoon, isEvening, isMorning, isNight, isWeekday, isWeekend, notDoneToday } from './utils';
 import { allTrue } from '@yuiju/utils';
 
 export const homeAction: ActionMetadata[] = [
@@ -13,6 +13,7 @@ export const homeAction: ActionMetadata[] = [
     executor(context) {
       context.charactorState.setAction(ActionId.Wake_Up);
       context.charactorState.setStamina(20);
+      context.charactorState.clearDailyActions();
     },
     durationMin: 10,
   },
@@ -20,12 +21,12 @@ export const homeAction: ActionMetadata[] = [
     action: ActionId.Eat_Breakfast,
     description: '吃早餐。体力增加50点。耗时20分钟。',
     precondition(context) {
-      // TODO：吃饭，只能吃一次
-      return allTrue([isMorning(context)]);
+      return allTrue([isMorning(context), () => notDoneToday(context, ActionId.Eat_Breakfast)]);
     },
     executor(context) {
       context.charactorState.setAction(ActionId.Eat_Breakfast);
       context.charactorState.changeStamina(50);
+      context.charactorState.markActionDoneToday(ActionId.Eat_Breakfast);
     },
     durationMin: 20,
   },
@@ -45,11 +46,12 @@ export const homeAction: ActionMetadata[] = [
     action: ActionId.Eat_Dinner,
     description: '吃晚餐。体力增加50点。耗时20分钟。',
     precondition(context) {
-      return allTrue([isEvening(context)]);
+      return allTrue([isEvening(context), () => notDoneToday(context, ActionId.Eat_Dinner)]);
     },
     executor(context) {
       context.charactorState.setAction(ActionId.Eat_Dinner);
       context.charactorState.changeStamina(50);
+      context.charactorState.markActionDoneToday(ActionId.Eat_Dinner);
     },
     durationMin: 20,
   },

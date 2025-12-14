@@ -1,3 +1,4 @@
+import type { Dayjs } from 'dayjs';
 import { worldViewPrompt } from './world-view';
 import { getTimeWithWeekday } from '@yuiju/utils';
 
@@ -13,11 +14,19 @@ export const baseInformation = `
 
 export interface CharacterCardPromptParams {
   userName: string;
+  recentActionList: {
+    action: string;
+    reason: string;
+    time: Dayjs;
+  }[];
 }
 
-export const getCharacterCardPrompt = (params: CharacterCardPromptParams) => {
+export const getCharacterCardPrompt = ({ recentActionList, userName }: CharacterCardPromptParams) => {
+  const recentActionPrompt = recentActionList.map(
+    item => `- ${item.action} (${getTimeWithWeekday(item.time)})：${item.reason}`
+  );
   return `
-你现在需要扮演一个名为ゆいじゅ的女孩子，昵称悠酱。
+你现在需要扮演一个名为ゆいじゅ的女孩子，昵称悠酱，与「${userName}」聊天。
 
 ${baseInformation}
 
@@ -31,10 +40,9 @@ ${baseInformation}
 
 ${worldViewPrompt}
 
-## 场景
+## 状态
 当前时间：${getTimeWithWeekday()}
-地点：家
-行为：使用手机与你的好友「${params.userName}」聊天
-
+最近的action：
+${recentActionPrompt}
 `.trim();
 };

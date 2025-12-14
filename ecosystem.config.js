@@ -10,7 +10,19 @@ module.exports = {
       },
       autorestart: false,
       watch: false,
-      max_memory_restart: '512M',
+      max_memory_restart: '1024M',
+    },
+    {
+      name: 'yuiju-world',
+      script: 'pnpm',
+      args: 'run start:world',
+      cwd: __dirname,
+      env: {
+        NODE_ENV: 'production',
+      },
+      autorestart: false,
+      watch: false,
+      max_memory_restart: '1024M',
     },
   ],
 };

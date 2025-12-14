@@ -1,5 +1,5 @@
 import { ActionId, ActionMetadata } from '@/types/action';
-import { isNotDoing } from './utils';
+import { isNotDoing, notDoneToday } from './utils';
 import { allTrue } from '@yuiju/utils';
 
 export const anywhereAction: ActionMetadata[] = [
@@ -20,11 +20,12 @@ export const anywhereAction: ActionMetadata[] = [
     description: '吃午饭，恢复50点体力。耗时20分钟。',
     precondition(context) {
       const hour = context.worldState.time.get('hour');
-      return allTrue([isNotDoing(context, ActionId.Sleep), () => hour >= 11 && hour < 14]);
+      return allTrue([isNotDoing(context, ActionId.Sleep), () => hour >= 11 && hour < 14, () => notDoneToday(context, ActionId.Eat_Lunch)]);
     },
     executor(context) {
       context.charactorState.setAction(ActionId.Eat_Lunch);
       context.charactorState.changeStamina(50);
+      context.charactorState.markActionDoneToday(ActionId.Eat_Lunch);
     },
     durationMin: 20,
   },

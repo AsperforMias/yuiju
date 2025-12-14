@@ -27,6 +27,8 @@ export interface ICharactorState {
   stamina: number;
   /** 金钱 */
   money: number;
+  /** 今日已执行的动作列表 */
+  dailyActionsDoneToday: ActionId[];
 
   setAction(action: ActionId): void;
   /** 设置体力值 */
@@ -35,6 +37,12 @@ export interface ICharactorState {
   changeStamina(delta: number): void;
   /** 改变金钱 */
   changeMoney(delta: number): void;
+  /** 是否已在今天执行该动作 */
+  hasActionDoneToday(action: ActionId): boolean;
+  /** 标记该动作已在今天执行 */
+  markActionDoneToday(action: ActionId): void;
+  /** 清空今日动作 */
+  clearDailyActions(): void;
 }
 
 export interface IWorldState {

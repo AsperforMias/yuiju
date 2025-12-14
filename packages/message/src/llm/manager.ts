@@ -1,10 +1,12 @@
 import { createDeepSeek } from '@ai-sdk/deepseek';
-import { generateText, stepCountIs, type ModelMessage } from 'ai';
+import { generateText, type ModelMessage } from 'ai';
 import { Conversation } from '../conversation';
 import MemoryClient from 'mem0ai';
 import { config } from '@/config';
 import { memorySearchTool } from '@/llm/tools/memorySearchTool';
 import { getCharacterCardPrompt } from '@yuiju/source';
+import dayjs from 'dayjs';
+import { ActionModal, type IActionSchema } from '@/schema/action.schema';
 
 export class LLMManager {
   private deepseekClient: ReturnType<typeof createDeepSeek>;
@@ -26,8 +28,17 @@ export class LLMManager {
   }
 
   public async chatWithLLM(input: string, userName: string) {
+    const actionDocs: IActionSchema[] = await ActionModal.find()
+      .sort({ create_time: -1 })
+      .limit(10);
+    const recentActionList = actionDocs.map(doc => ({
+      action: doc.action_id,
+      reason: doc.reason,
+      time: dayjs(doc.create_time),
+    }));
     const systemPrompt = getCharacterCardPrompt({
-      userName: '翊小久',
+      userName,
+      recentActionList,
     });
     // 添加用户输入到对话历史
     this.conversation.add('user', input);

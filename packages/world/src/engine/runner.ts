@@ -8,9 +8,11 @@ let stopped = false;
 
 process.on('SIGINT', () => {
   stopped = true;
+  process.exit();
 });
 process.on('SIGTERM', () => {
   stopped = true;
+  process.exit();
 });
 
 export async function startRealtimeLoop() {

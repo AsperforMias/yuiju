@@ -11,9 +11,10 @@
     "format": "biome format .",
     "format:write": "biome format . --write",
     "start:message": "pnpm --filter @yuiju/message run start",
+    "start:world": "pnpm --filter @yuiju/world run start",
     "dev:message": "pnpm --filter @yuiju/message run dev",
-    "dev:action": "pnpm --filter @yuiju/action run dev",
-    "test:action": "pnpm --filter @yuiju/action run test"
+    "dev:world": "pnpm --filter @yuiju/world run dev",
+    "test:world": "pnpm --filter @yuiju/world run test"
   },
   "repository": {
     "type": "git",
