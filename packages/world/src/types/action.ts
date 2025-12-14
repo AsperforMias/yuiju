@@ -29,7 +29,7 @@ export interface ActionMetadata {
   precondition: (context: ActionContext) => boolean | Promise<boolean>;
   executor: (context: ActionContext) => void | Promise<void>;
   /** 行动耗时 min。*/
-  durationMin: number;
+  durationMin: number | ((context: ActionContext) => number);
   /** 是否由 LLM 决定行动耗时 */
   useLLMDuration?: boolean;
 }

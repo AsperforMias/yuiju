@@ -1,12 +1,14 @@
 import { ActionId, ActionMetadata } from '@/types/action';
-import { isDoing } from './utils';
+import { isAfternoon, isEvening, isMorning, isNight, isWeekday, isWeekend } from './utils';
+import { allTrue } from '@yuiju/utils';
 
 export const homeAction: ActionMetadata[] = [
   {
     action: ActionId.Wake_Up,
     description: '起床。耗时10分钟。',
+    // 已在 precheckAction 中处理
     precondition(context) {
-      return isDoing(context, ActionId.Sleep);
+      return false;
     },
     executor(context) {
       context.charactorState.setAction(ActionId.Wake_Up);
@@ -19,7 +21,7 @@ export const homeAction: ActionMetadata[] = [
     description: '吃早餐。体力增加50点。耗时20分钟。',
     precondition(context) {
       // TODO：吃饭，只能吃一次
-      return true;
+      return allTrue([isMorning(context)]);
     },
     executor(context) {
       context.charactorState.setAction(ActionId.Eat_Breakfast);
@@ -31,7 +33,7 @@ export const homeAction: ActionMetadata[] = [
     action: ActionId.Go_To_School,
     description: '前往学校。体力消耗10点。耗时30分钟。',
     precondition(context) {
-      return true;
+      return allTrue([isWeekday(context), isMorning(context)]);
     },
     executor(context) {
       context.charactorState.setAction(ActionId.Go_To_School);
@@ -43,7 +45,7 @@ export const homeAction: ActionMetadata[] = [
     action: ActionId.Eat_Dinner,
     description: '吃晚餐。体力增加50点。耗时20分钟。',
     precondition(context) {
-      return isDoing(context, ActionId.Stay_At_Home);
+      return allTrue([isEvening(context)]);
     },
     executor(context) {
       context.charactorState.setAction(ActionId.Eat_Dinner);
@@ -53,9 +55,13 @@ export const homeAction: ActionMetadata[] = [
   },
   {
     action: ActionId.Stay_At_Home,
-    description: '待在家中。持续60分钟。',
+    description: '待在家中，放松、学习。持续60分钟。',
     precondition(context) {
-      return isDoing(context, ActionId.Go_To_School);
+      if (isWeekend(context)) {
+        return true;
+      } else {
+        return allTrue([isAfternoon(context), isEvening(context)]);
+      }
     },
     executor(context) {
       context.charactorState.setAction(ActionId.Stay_At_Home);
@@ -66,7 +72,7 @@ export const homeAction: ActionMetadata[] = [
     action: ActionId.Sleep,
     description: '睡觉。持续8个小时。',
     precondition(context) {
-      return true;
+      return allTrue([isNight(context)]);
     },
     executor(context) {
       context.charactorState.setAction(ActionId.Sleep);

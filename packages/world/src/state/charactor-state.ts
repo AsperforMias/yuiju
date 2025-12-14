@@ -10,7 +10,7 @@ const MAX_STAMINA = 100;
 export class CharactorState implements ICharactorState {
   private static instance: CharactorState | null = null;
 
-  public action: ActionId = ActionId.Idle_At_Home;
+  public action: ActionId = ActionId.Idle;
   public location: Location = { major: MajorScene.Home };
   public stamina: number = 100;
   public money: number = 0;

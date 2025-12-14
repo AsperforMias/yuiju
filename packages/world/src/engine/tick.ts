@@ -7,6 +7,14 @@ import { getActionById } from '@/action/utils';
 import { shortActionMemory } from '@/memory/short-action';
 import { logger } from '@/utils/logger';
 
+export function getDurationTime(durationMin: number | ((context: ActionContext) => number), context: ActionContext) {
+  if (typeof durationMin === 'function') {
+    return durationMin(context);
+  } else {
+    return durationMin;
+  }
+}
+
 /**
  *
  * @returns 下一次的 tick 时间
@@ -23,18 +31,18 @@ export async function tick(): Promise<number> {
     const idleAction = getActionById(ActionId.Idle);
     logger.error('[tick] action list is empty');
 
-    return idleAction.durationMin;
+    return getDurationTime(idleAction.durationMin, context);
   }
 
   const selectedAction = await chooseAction(actionList, context, shortActionMemory.list());
   const actionMetadata = actionList.find(item => item.action === selectedAction?.action);
 
   if (actionMetadata && selectedAction) {
-    await actionMetadata.executor(context);
-
     const durationMin = actionMetadata.useLLMDuration
-      ? selectedAction?.durationMinute ?? actionMetadata.durationMin
-      : actionMetadata.durationMin;
+      ? selectedAction?.durationMinute ?? getDurationTime(actionMetadata.durationMin, context)
+      : getDurationTime(actionMetadata.durationMin, context);
+
+    await actionMetadata.executor(context);
 
     shortActionMemory.push({
       action: selectedAction.action,
@@ -42,10 +50,10 @@ export async function tick(): Promise<number> {
       timestamp: Date.now(),
     });
 
-    return durationMin;
+    return getDurationTime(durationMin, context);
   } else {
     const idleAction = getActionById(ActionId.Idle);
     logger.error('[tick] LLM selected action is not executable.', selectedAction);
-    return idleAction.durationMin;
+    return getDurationTime(idleAction.durationMin, context);
   }
 }

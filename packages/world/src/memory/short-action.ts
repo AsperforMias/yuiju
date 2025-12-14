@@ -1,5 +1,6 @@
 import { saveActionModal } from '@/db/action.schema';
 import { ActionId } from '@/types/action';
+import { isProd } from '@/utils/env';
 
 export interface ActionMemory {
   action: ActionId;
@@ -12,17 +13,19 @@ export class ShortActionMemory {
   private buffer: Array<ActionMemory> = [];
   private readonly capacity: number;
 
-  constructor(capacity = 6) {
+  constructor(capacity = 10) {
     this.capacity = capacity;
   }
 
   push(entry: ActionMemory) {
     this.buffer.push(entry);
-    // 存储数据库
-    saveActionModal({
-      action_id: entry.action,
-      reason: entry.reason,
-    });
+    if (!isProd()) {
+      // 存储数据库
+      saveActionModal({
+        action_id: entry.action,
+        reason: entry.reason,
+      });
+    }
     if (this.buffer.length > this.capacity) {
       this.buffer.shift();
     }
@@ -30,6 +33,10 @@ export class ShortActionMemory {
 
   list() {
     return [...this.buffer];
+  }
+
+  clear() {
+    this.buffer = [];
   }
 }
 
