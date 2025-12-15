@@ -16,8 +16,6 @@ const level = process.env.LOG_LEVEL || (isProd ? 'info' : 'debug');
 const logDir = process.env.LOG_DIR || resolve(__dir, 'logs');
 
 export default {
-  service: '@yuiju/action',
-  env: process.env.NODE_ENV || 'development',
   level,
   format: 'text',
   consoleEnabled: true,

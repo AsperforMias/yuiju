@@ -108,7 +108,6 @@ function createWinstonLogger() {
 
   return winston.createLogger({
     level: cfg.level,
-    defaultMeta: { service: cfg.service, env: cfg.env },
     transports,
     exitOnError: false,
   });
