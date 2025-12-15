@@ -19,7 +19,7 @@ export class ShortActionMemory {
 
   push(entry: ActionMemory) {
     this.buffer.push(entry);
-    if (!isProd()) {
+    if (isProd()) {
       // 存储数据库
       saveActionModal({
         action_id: entry.action,

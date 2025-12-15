@@ -1,6 +1,9 @@
 import 'dotenv/config';
 import * as readline from 'readline';
 import { llmManager } from './llm/manager';
+import { connectDB } from './db';
+
+connectDB();
 
 // 设置终端输入输出接口
 const rl = readline.createInterface({
