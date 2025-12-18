@@ -34,6 +34,12 @@ export async function tick(): Promise<number> {
     return getDurationTime(idleAction.durationMin, context);
   }
 
+  logger.info(
+    `[tick] Available actions: [${actionList.map(a => a.action).join(', ')}]`,
+    context.charactorState.log(),
+    context.worldState.log()
+  );
+
   const selectedAction = await chooseAction(actionList, context, shortActionMemory.list());
   const actionMetadata = actionList.find(item => item.action === selectedAction?.action);
 
@@ -51,7 +57,9 @@ export async function tick(): Promise<number> {
     });
 
     logger.info(
-      `[tick] Executed action: ${selectedAction.action}, Reason: ${selectedAction.reason}， Duration: ${durationMin} minutes`
+      `[tick] Executed action: ${selectedAction.action}, Reason: ${selectedAction.reason}， Duration: ${durationMin} minutes`,
+      context.charactorState.log(),
+      context.worldState.log()
     );
 
     return getDurationTime(durationMin, context);

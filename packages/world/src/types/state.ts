@@ -20,7 +20,7 @@ export type Location =
   | { major: MajorScene.Home; minor?: HomeSubScene }
   | { major: MajorScene.School; minor?: SchoolSubScene };
 
-export interface ICharactorState {
+export interface CharactorStateData {
   action: ActionId;
   location: Location;
   /**体力值 */
@@ -29,7 +29,9 @@ export interface ICharactorState {
   money: number;
   /** 今日已执行的动作列表 */
   dailyActionsDoneToday: ActionId[];
+}
 
+export interface ICharactorState extends CharactorStateData {
   setAction(action: ActionId): void;
   /** 设置体力值 */
   setStamina(stamina: number): void;
@@ -43,8 +45,14 @@ export interface ICharactorState {
   markActionDoneToday(action: ActionId): void;
   /** 清空今日动作 */
   clearDailyActions(): void;
+  /** 获取状态日志（深拷贝） */
+  log(): CharactorStateData;
 }
 
-export interface IWorldState {
+export interface WorldStateData {
   time: Dayjs;
+}
+
+export interface IWorldState extends WorldStateData {
+  log(): WorldStateData;
 }

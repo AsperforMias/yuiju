@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import * as readline from 'readline';
 import { llmManager } from './llm/manager';
-import { connectDB } from './db';
+import { connectDB } from '@yuiju/utils';
 
 connectDB();
 

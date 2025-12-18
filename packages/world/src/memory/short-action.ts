@@ -1,4 +1,4 @@
-import { saveActionModal } from '@/db/action.schema';
+import { saveAction } from '@yuiju/utils';
 import { ActionId } from '@/types/action';
 import { isProd } from '@/utils/env';
 
@@ -21,7 +21,7 @@ export class ShortActionMemory {
     this.buffer.push(entry);
     if (isProd()) {
       // 存储数据库
-      saveActionModal({
+      saveAction({
         action_id: entry.action,
         reason: entry.reason,
       });

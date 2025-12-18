@@ -1,5 +1,6 @@
 import { ActionId } from '@/types/action';
-import { ICharactorState, Location, MajorScene } from '@/types/state';
+import { CharactorStateData, ICharactorState, Location, MajorScene } from '@/types/state';
+import { cloneDeep } from 'lodash-es';
 
 const MAX_STAMINA = 100;
 
@@ -52,6 +53,16 @@ export class CharactorState implements ICharactorState {
 
   clearDailyActions(): void {
     this.dailyActionsDoneToday = [];
+  }
+
+  public log(): CharactorStateData {
+    return cloneDeep({
+      action: this.action,
+      location: this.location,
+      stamina: this.stamina,
+      money: this.money,
+      dailyActionsDoneToday: this.dailyActionsDoneToday,
+    });
   }
 }
 

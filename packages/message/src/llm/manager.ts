@@ -6,7 +6,7 @@ import { config } from '@/config';
 import { memorySearchTool } from '@/llm/tools/memorySearchTool';
 import { getCharacterCardPrompt } from '@yuiju/source';
 import dayjs from 'dayjs';
-import { ActionModal, type IActionSchema } from '@/schema/action.schema';
+import { ActionModel, type IActionSchema } from '@yuiju/utils';
 
 export class LLMManager {
   private deepseekClient: ReturnType<typeof createDeepSeek>;
@@ -28,7 +28,7 @@ export class LLMManager {
   }
 
   public async chatWithLLM(input: string, userName: string) {
-    const actionDocs: IActionSchema[] = await ActionModal.find()
+    const actionDocs: IActionSchema[] = await ActionModel.find()
       .sort({ create_time: -1 })
       .limit(10);
     const recentActionList = actionDocs.map(doc => ({

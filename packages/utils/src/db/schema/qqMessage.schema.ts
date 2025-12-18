@@ -15,4 +15,10 @@ const QQMessageSchema = new Schema<IQQChatMessage>({
 });
 
 // 创建并导出模型
-export default mongoose.model<IQQChatMessage>('QQMessage', QQMessageSchema);
+export const QQMessageModel = mongoose.model<IQQChatMessage>('QQMessage', QQMessageSchema);
+
+// 封装数据库写入操作 - 保存消息
+export const saveQQMessage = async (messageData: Partial<IQQChatMessage>) => {
+  const message = new QQMessageModel(messageData);
+  return await message.save();
+};

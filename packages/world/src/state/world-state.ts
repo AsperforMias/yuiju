@@ -1,5 +1,6 @@
-import { IWorldState } from '@/types/state';
+import { IWorldState, WorldStateData } from '@/types/state';
 import dayjs, { Dayjs } from 'dayjs';
+import { cloneDeep } from 'lodash-es';
 
 export class WorldState implements IWorldState {
   public time: Dayjs = dayjs();
@@ -17,6 +18,12 @@ export class WorldState implements IWorldState {
 
   public reset() {
     this.time = dayjs();
+  }
+
+  public log(): WorldStateData {
+    return cloneDeep({
+      time: this.time,
+    });
   }
 }
 

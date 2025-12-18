@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import { NCWebsocket, Structs, type AllHandlers } from 'node-napcat-ts';
 import { config } from '@/config';
-import { connectDB, saveQQMessage } from './db';
+import { connectDB, saveQQMessage } from '@yuiju/utils';
 import { llmManager } from './llm/manager';
 
 const whiteList = config.whiteList;
