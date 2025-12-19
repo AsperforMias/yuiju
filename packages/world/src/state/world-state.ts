@@ -33,7 +33,7 @@ export class WorldState implements IWorldState {
 
   public async updateTime(newTime?: Dayjs) {
     this.time = newTime || dayjs();
-    await getRedis().hset(WORLD_STATE_KEY, 'time', this.time.toISOString());
+    await this.save();
   }
 
   public async reset() {

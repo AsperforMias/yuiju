@@ -22,9 +22,6 @@ function createContext(opts: {
       async setStamina() {},
       async changeStamina() {},
       async changeMoney() {},
-      async hasActionDoneToday() {
-        return false;
-      },
       async markActionDoneToday() {},
       async clearDailyActions() {},
       log() {

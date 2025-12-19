@@ -58,5 +58,5 @@ export const isWeekday = (context: ActionContext) => {
 };
 
 export const notDoneToday = (context: ActionContext, action: ActionId) => {
-  return !context.charactorState.hasActionDoneToday(action);
+  return !context.charactorState.dailyActionsDoneToday.find(a => a === action);
 };

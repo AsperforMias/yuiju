@@ -39,8 +39,6 @@ export interface ICharactorState extends CharactorStateData {
   changeStamina(delta: number): Promise<void>;
   /** 改变金钱 */
   changeMoney(delta: number): Promise<void>;
-  /** 是否已在今天执行该动作 */
-  hasActionDoneToday(action: ActionId): Promise<boolean>;
   /** 标记该动作已在今天执行 */
   markActionDoneToday(action: ActionId): Promise<void>;
   /** 清空今日动作 */

@@ -5,6 +5,7 @@ import { getActionList } from '@/action';
 import { ActionContext, ActionId } from '@/types/action';
 import { getActionById } from '@/action/utils';
 import { logger } from '@/utils/logger';
+import { isProd } from '@yuiju/utils';
 import { getRecentActions, saveAction } from '@yuiju/utils';
 
 export function getDurationTime(durationMin: number | ((context: ActionContext) => number), context: ActionContext) {
@@ -57,12 +58,13 @@ export async function tick(): Promise<number> {
 
     await actionMetadata.executor(context);
 
-    // 异步保存，不阻塞主流程，但要确保不报错
-    await saveAction({
-      action_id: selectedAction.action,
-      reason: selectedAction.reason,
-      create_time: new Date(),
-    })
+    if (isProd) {
+      await saveAction({
+        action_id: selectedAction.action,
+        reason: selectedAction.reason,
+        create_time: new Date(),
+      });
+    }
 
     logger.info(
       `[tick] Executed action: ${selectedAction.action}, Reason: ${selectedAction.reason}， Duration: ${durationMin} minutes`,
