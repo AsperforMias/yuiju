@@ -10,10 +10,10 @@ export const homeAction: ActionMetadata[] = [
     precondition(context) {
       return false;
     },
-    executor(context) {
-      context.charactorState.setAction(ActionId.Wake_Up);
-      context.charactorState.setStamina(20);
-      context.charactorState.clearDailyActions();
+    async executor(context) {
+      await context.charactorState.setAction(ActionId.Wake_Up);
+      await context.charactorState.setStamina(20);
+      await context.charactorState.clearDailyActions();
     },
     durationMin: 10,
   },
@@ -23,10 +23,10 @@ export const homeAction: ActionMetadata[] = [
     precondition(context) {
       return allTrue([isMorning(context), () => notDoneToday(context, ActionId.Eat_Breakfast)]);
     },
-    executor(context) {
-      context.charactorState.setAction(ActionId.Eat_Breakfast);
-      context.charactorState.changeStamina(50);
-      context.charactorState.markActionDoneToday(ActionId.Eat_Breakfast);
+    async executor(context) {
+      await context.charactorState.setAction(ActionId.Eat_Breakfast);
+      await context.charactorState.changeStamina(50);
+      await context.charactorState.markActionDoneToday(ActionId.Eat_Breakfast);
     },
     durationMin: 20,
   },
@@ -36,9 +36,9 @@ export const homeAction: ActionMetadata[] = [
     precondition(context) {
       return allTrue([isWeekday(context), isMorning(context)]);
     },
-    executor(context) {
-      context.charactorState.setAction(ActionId.Go_To_School);
-      context.charactorState.changeStamina(-10);
+    async executor(context) {
+      await context.charactorState.setAction(ActionId.Go_To_School);
+      await context.charactorState.changeStamina(-10);
     },
     durationMin: 30,
   },
@@ -48,10 +48,10 @@ export const homeAction: ActionMetadata[] = [
     precondition(context) {
       return allTrue([isEvening(context), () => notDoneToday(context, ActionId.Eat_Dinner)]);
     },
-    executor(context) {
-      context.charactorState.setAction(ActionId.Eat_Dinner);
-      context.charactorState.changeStamina(50);
-      context.charactorState.markActionDoneToday(ActionId.Eat_Dinner);
+    async executor(context) {
+      await context.charactorState.setAction(ActionId.Eat_Dinner);
+      await context.charactorState.changeStamina(50);
+      await context.charactorState.markActionDoneToday(ActionId.Eat_Dinner);
     },
     durationMin: 20,
   },
@@ -65,8 +65,8 @@ export const homeAction: ActionMetadata[] = [
         return allTrue([isAfternoon(context), isEvening(context)]);
       }
     },
-    executor(context) {
-      context.charactorState.setAction(ActionId.Stay_At_Home);
+    async executor(context) {
+      await context.charactorState.setAction(ActionId.Stay_At_Home);
     },
     durationMin: 60,
   },

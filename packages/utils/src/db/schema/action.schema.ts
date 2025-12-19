@@ -21,3 +21,8 @@ export async function saveAction(actionData: Partial<IActionSchema>) {
   const action = new ActionModel(actionData);
   return await action.save();
 }
+
+// 获取最近的 Action 记录
+export async function getRecentActions(limit: number = 10) {
+  return await ActionModel.find().sort({ create_time: -1 }).limit(limit).exec();
+}

@@ -9,8 +9,8 @@ export const anywhereAction: ActionMetadata[] = [
     precondition(context) {
       return isNotDoing(context, ActionId.Sleep);
     },
-    executor(context) {
-      context.charactorState.setAction(ActionId.Idle);
+    async executor(context) {
+      await context.charactorState.setAction(ActionId.Idle);
     },
     durationMin: 10,
     useLLMDuration: true,
@@ -20,12 +20,16 @@ export const anywhereAction: ActionMetadata[] = [
     description: '吃午饭，恢复50点体力。耗时20分钟。',
     precondition(context) {
       const hour = context.worldState.time.get('hour');
-      return allTrue([isNotDoing(context, ActionId.Sleep), () => hour >= 11 && hour < 14, () => notDoneToday(context, ActionId.Eat_Lunch)]);
+      return allTrue([
+        isNotDoing(context, ActionId.Sleep),
+        () => hour >= 11 && hour < 14,
+        () => notDoneToday(context, ActionId.Eat_Lunch),
+      ]);
     },
-    executor(context) {
-      context.charactorState.setAction(ActionId.Eat_Lunch);
-      context.charactorState.changeStamina(50);
-      context.charactorState.markActionDoneToday(ActionId.Eat_Lunch);
+    async executor(context) {
+      await context.charactorState.setAction(ActionId.Eat_Lunch);
+      await context.charactorState.changeStamina(50);
+      await context.charactorState.markActionDoneToday(ActionId.Eat_Lunch);
     },
     durationMin: 20,
   },

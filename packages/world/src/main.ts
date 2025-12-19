@@ -2,7 +2,7 @@ import 'dotenv/config';
 import { logger } from '@/utils/logger';
 import { startRealtimeLoop } from '@/engine/runner';
 import process from 'node:process';
-import { connectDB } from './db';
+import { connectDB } from '@yuiju/utils';
 
 async function main() {
   await connectDB();

@@ -18,18 +18,34 @@ function createContext(opts: {
       stamina: opts.stamina ?? 100,
       money: opts.money ?? 0,
       dailyActionsDoneToday: [],
-      setAction() {},
-      setStamina() {},
-      changeStamina() {},
-      changeMoney() {},
-      hasActionDoneToday() {
+      async setAction() {},
+      async setStamina() {},
+      async changeStamina() {},
+      async changeMoney() {},
+      async hasActionDoneToday() {
         return false;
       },
-      markActionDoneToday() {},
-      clearDailyActions() {},
+      async markActionDoneToday() {},
+      async clearDailyActions() {},
+      log() {
+        return {
+          action: opts.action,
+          location: { major: opts.major as any },
+          stamina: opts.stamina ?? 100,
+          money: opts.money ?? 0,
+          dailyActionsDoneToday: [],
+        };
+      },
     },
     worldState: {
       time: dayjs(opts.time ?? '2025-01-01T08:00:00'),
+      log() {
+        return {
+          time: dayjs(opts.time ?? '2025-01-01T08:00:00'),
+        };
+      },
+      async updateTime() {},
+      async reset() {},
     },
   };
 }

@@ -4,8 +4,8 @@ import { chooseAction } from '@/llm/llm-client';
 import { getActionList } from '@/action';
 import { ActionContext, ActionId } from '@/types/action';
 import { getActionById } from '@/action/utils';
-import { shortActionMemory } from '@/memory/short-action';
 import { logger } from '@/utils/logger';
+import { getRecentActions, saveAction } from '@yuiju/utils';
 
 export function getDurationTime(durationMin: number | ((context: ActionContext) => number), context: ActionContext) {
   if (typeof durationMin === 'function') {
@@ -40,7 +40,14 @@ export async function tick(): Promise<number> {
     context.worldState.log()
   );
 
-  const selectedAction = await chooseAction(actionList, context, shortActionMemory.list());
+  const recentActions = await getRecentActions(10);
+  const history = recentActions.map(a => ({
+    action: a.action_id as ActionId,
+    reason: a.reason,
+    timestamp: a.create_time.getTime(),
+  }));
+
+  const selectedAction = await chooseAction(actionList, context, history);
   const actionMetadata = actionList.find(item => item.action === selectedAction?.action);
 
   if (actionMetadata && selectedAction) {
@@ -50,11 +57,12 @@ export async function tick(): Promise<number> {
 
     await actionMetadata.executor(context);
 
-    shortActionMemory.push({
-      action: selectedAction.action,
+    // 异步保存，不阻塞主流程，但要确保不报错
+    await saveAction({
+      action_id: selectedAction.action,
       reason: selectedAction.reason,
-      timestamp: Date.now(),
-    });
+      create_time: new Date(),
+    })
 
     logger.info(
       `[tick] Executed action: ${selectedAction.action}, Reason: ${selectedAction.reason}， Duration: ${durationMin} minutes`,

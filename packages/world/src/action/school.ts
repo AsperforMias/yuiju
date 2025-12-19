@@ -17,9 +17,9 @@ export const schoolAction: ActionMetadata[] = [
         isWeekday(context),
       ]);
     },
-    executor(context) {
-      context.charactorState.setAction(ActionId.Study_At_School);
-      context.charactorState.changeStamina(-30);
+    async executor(context) {
+      await context.charactorState.setAction(ActionId.Study_At_School);
+      await context.charactorState.changeStamina(-30);
     },
     durationMin: 60 * 3,
   },
@@ -29,9 +29,9 @@ export const schoolAction: ActionMetadata[] = [
     precondition(context) {
       return allTrue([context.charactorState.stamina >= 10, isAfternoon(context)]);
     },
-    executor(context) {
-      context.charactorState.setAction(ActionId.Go_Home_From_School);
-      context.charactorState.changeStamina(-5);
+    async executor(context) {
+      await context.charactorState.setAction(ActionId.Go_Home_From_School);
+      await context.charactorState.changeStamina(-5);
     },
     durationMin: 30,
   },

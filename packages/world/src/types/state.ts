@@ -32,19 +32,19 @@ export interface CharactorStateData {
 }
 
 export interface ICharactorState extends CharactorStateData {
-  setAction(action: ActionId): void;
+  setAction(action: ActionId): Promise<void>;
   /** 设置体力值 */
-  setStamina(stamina: number): void;
+  setStamina(stamina: number): Promise<void>;
   /** 改变体力值 */
-  changeStamina(delta: number): void;
+  changeStamina(delta: number): Promise<void>;
   /** 改变金钱 */
-  changeMoney(delta: number): void;
+  changeMoney(delta: number): Promise<void>;
   /** 是否已在今天执行该动作 */
-  hasActionDoneToday(action: ActionId): boolean;
+  hasActionDoneToday(action: ActionId): Promise<boolean>;
   /** 标记该动作已在今天执行 */
-  markActionDoneToday(action: ActionId): void;
+  markActionDoneToday(action: ActionId): Promise<void>;
   /** 清空今日动作 */
-  clearDailyActions(): void;
+  clearDailyActions(): Promise<void>;
   /** 获取状态日志（深拷贝） */
   log(): CharactorStateData;
 }
@@ -55,4 +55,6 @@ export interface WorldStateData {
 
 export interface IWorldState extends WorldStateData {
   log(): WorldStateData;
+  updateTime(newTime?: Dayjs): Promise<void>;
+  reset(): Promise<void>;
 }
