@@ -1,9 +1,7 @@
 import { IWorldState, WorldStateData } from '@/types/state';
-import { getRedis } from '@/db/redis';
+import { REDIS_KEY_WORLD_STATE, getRedis } from '@yuiju/utils';
 import dayjs, { Dayjs } from 'dayjs';
 import { cloneDeep } from 'lodash-es';
-
-const WORLD_STATE_KEY = 'yuiju:world:state';
 
 export class WorldState implements IWorldState {
   public time: Dayjs = dayjs();
@@ -17,7 +15,7 @@ export class WorldState implements IWorldState {
 
   async load() {
     const redis = getRedis();
-    const timeStr = await redis.hget(WORLD_STATE_KEY, 'time');
+    const timeStr = await redis.hget(REDIS_KEY_WORLD_STATE, 'time');
     if (timeStr) {
       this.time = dayjs(timeStr);
     } else {
@@ -28,7 +26,7 @@ export class WorldState implements IWorldState {
 
   async save() {
     const redis = getRedis();
-    await redis.hset(WORLD_STATE_KEY, 'time', this.time.toISOString());
+    await redis.hset(REDIS_KEY_WORLD_STATE, 'time', this.time.toISOString());
   }
 
   public async updateTime(newTime?: Dayjs) {

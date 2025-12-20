@@ -8,9 +8,13 @@ import { logger } from '@/utils/logger';
 import { isProd } from '@yuiju/utils';
 import { getRecentActions, saveAction } from '@yuiju/utils';
 
-export function getDurationTime(durationMin: number | ((context: ActionContext) => number), context: ActionContext) {
+export async function getDurationTime(
+  durationMin: number | ((context: ActionContext, llmDurationMin?: number) => Promise<number>),
+  context: ActionContext,
+  llmDurationMin?: number
+) {
   if (typeof durationMin === 'function') {
-    return durationMin(context);
+    return durationMin(context, llmDurationMin);
   } else {
     return durationMin;
   }
@@ -52,10 +56,6 @@ export async function tick(): Promise<number> {
   const actionMetadata = actionList.find(item => item.action === selectedAction?.action);
 
   if (actionMetadata && selectedAction) {
-    const durationMin = actionMetadata.useLLMDuration
-      ? selectedAction?.durationMinute ?? actionMetadata.durationMin
-      : actionMetadata.durationMin;
-
     await actionMetadata.executor(context);
 
     if (isProd) {
@@ -66,13 +66,15 @@ export async function tick(): Promise<number> {
       });
     }
 
+    const durationMin = await getDurationTime(actionMetadata.durationMin, context, selectedAction.durationMinute);
+
     logger.info(
       `[tick] Executed action: ${selectedAction.action}, Reason: ${selectedAction.reason}， Duration: ${durationMin} minutes`,
       context.charactorState.log(),
       context.worldState.log()
     );
 
-    return getDurationTime(durationMin, context);
+    return durationMin;
   } else {
     const idleAction = getActionById(ActionId.Idle);
     logger.error('[tick] LLM selected action is not executable.', selectedAction);

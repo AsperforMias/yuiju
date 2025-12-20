@@ -3,10 +3,11 @@ import { generateText, type ModelMessage } from 'ai';
 import { Conversation } from '../conversation';
 import MemoryClient from 'mem0ai';
 import { config } from '@/config';
-import { memorySearchTool } from '@/llm/tools/memorySearchTool';
+// import { memorySearchTool } from '@/llm/tools/memorySearchTool';
 import { getCharacterCardPrompt } from '@yuiju/source';
 import dayjs from 'dayjs';
-import { ActionModel, type IActionSchema } from '@yuiju/utils';
+import { getRecentActions, type IActionSchema } from '@yuiju/utils';
+import { getCharactorState } from '../state';
 
 export class LLMManager {
   private deepseekClient: ReturnType<typeof createDeepSeek>;
@@ -28,17 +29,19 @@ export class LLMManager {
   }
 
   public async chatWithLLM(input: string, userName: string) {
-    const actionDocs: IActionSchema[] = await ActionModel.find()
-      .sort({ create_time: -1 })
-      .limit(10);
+    const actionDocs: IActionSchema[] = await getRecentActions();
     const recentActionList = actionDocs.map(doc => ({
       action: doc.action_id,
       reason: doc.reason,
       time: dayjs(doc.create_time),
     }));
+    
+    const state = await getCharactorState();
+
     const systemPrompt = getCharacterCardPrompt({
       userName,
       recentActionList,
+      state,
     });
     // 添加用户输入到对话历史
     this.conversation.add('user', input);

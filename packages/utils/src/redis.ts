@@ -1,6 +1,11 @@
 import Redis from 'ioredis';
+import { isDev } from './env';
 
 let redis: Redis | null = null;
+
+export const REDIS_KEY_CHARACTOR_STATE = isDev ? 'dev:yuiju:charactor:state' : 'yuiju:charactor:state';
+
+export const REDIS_KEY_WORLD_STATE = isDev ? 'dev:yuiju:world:state' : 'yuiju:world:state';
 
 export const getRedis = () => {
   if (!redis) {

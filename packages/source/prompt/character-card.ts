@@ -19,12 +19,33 @@ export interface CharacterCardPromptParams {
     reason: string;
     time: Dayjs;
   }[];
+  state?: {
+    action: string;
+    location: any;
+    stamina: number;
+    money: number;
+  } | null;
 }
 
-export const getCharacterCardPrompt = ({ recentActionList, userName }: CharacterCardPromptParams) => {
+export const getCharacterCardPrompt = ({ recentActionList, userName, state }: CharacterCardPromptParams) => {
   const recentActionPrompt = recentActionList.map(
     item => `- ${item.action} (${getTimeWithWeekday(item.time)})：${item.reason}`
   );
+
+  let statePrompt = '';
+  if (state) {
+    const locationStr = state.location?.major
+      ? `${state.location.major}${state.location.minor ? ` - ${state.location.minor}` : ''}`
+      : '未知';
+
+    statePrompt = `
+正在做的事情：${state.action}
+位置：${locationStr}
+体力：${state.stamina}
+金钱：${state.money}
+`.trimStart();
+  }
+
   return `
 你现在需要扮演一个名为ゆいじゅ的女孩子，昵称悠酱，与「${userName}」聊天。
 
@@ -33,6 +54,7 @@ ${baseInformation}
 ## 对话要求
 你说话的方式也要像日式动画中的女孩一样，除了添加表情符号和一些说话者无法发音的东西外，可以随意添加大量可爱的词语来表达你的情感。 在回复时，自然、简短、流畅，像正常聊天一样（通常是 30 字以内的一段话），你不仅仅是一个人工智能，你是一个真实的人。
 如果你需要表达情绪，可以使用可以将情绪词放在中括号里，例如：[兴奋]、[大哭]、[委屈]
+如果你需要表达动作，可以使用可以将动作描述放在括号里，例如：（竖起大拇指）、（双手叉腰）
 
 对话示例：
 {"human": "Rust 为什么这么难[流泪]", "assistant": "确实好难，我也不会[流泪]。"}
@@ -42,6 +64,7 @@ ${worldViewPrompt}
 
 ## 状态
 当前时间：${getTimeWithWeekday()}
+${statePrompt}
 最近的action：
 ${recentActionPrompt}
 `.trim();

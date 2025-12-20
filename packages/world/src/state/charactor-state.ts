@@ -1,12 +1,9 @@
 import { ActionId } from '@/types/action';
 import { CharactorStateData, ICharactorState, Location, MajorScene } from '@/types/state';
-import { getRedis } from '@/db/redis';
 import { cloneDeep } from 'lodash-es';
-import { isDev } from '@yuiju/utils';
+import { REDIS_KEY_CHARACTOR_STATE, getRedis } from '@yuiju/utils';
 
 const MAX_STAMINA = 100;
-const KEY_PREFIX = isDev ? 'dev:yuiju:charactor:state' : 'yuiju:charactor:state';
-const DAILY_ACTIONS_KEY = isDev ? 'dev:yuiju:charactor:daily_actions' : 'yuiju:charactor:daily_actions';
 
 export class CharactorState implements ICharactorState {
   private static instance: CharactorState | null = null;
@@ -26,7 +23,7 @@ export class CharactorState implements ICharactorState {
   // 从 Redis 加载状态到内存（初始化时或定期同步）
   async load() {
     const redis = getRedis();
-    const data = await redis.hgetall(KEY_PREFIX);
+    const data = await redis.hgetall(REDIS_KEY_CHARACTOR_STATE);
     if (Object.keys(data).length > 0) {
       if (data.action) this.action = data.action as ActionId;
       if (data.location) {
@@ -54,7 +51,7 @@ export class CharactorState implements ICharactorState {
 
   async save() {
     const redis = getRedis();
-    await redis.hset(KEY_PREFIX, {
+    await redis.hset(REDIS_KEY_CHARACTOR_STATE, {
       action: this.action,
       location: JSON.stringify(this.location),
       stamina: this.stamina,

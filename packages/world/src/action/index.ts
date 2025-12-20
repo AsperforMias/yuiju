@@ -8,9 +8,9 @@ import { precheckAction } from './utils';
 export function getActionList(context: ActionContext) {
   let locationAction: ActionMetadata[] = [];
 
-  const action = precheckAction(context);
-  if (action) {
-    return [action];
+  const actionList = precheckAction(context);
+  if (actionList) {
+    return actionList;
   }
 
   switch (context.charactorState.location.major) {

@@ -12,8 +12,9 @@ export const anywhereAction: ActionMetadata[] = [
     async executor(context) {
       await context.charactorState.setAction(ActionId.Idle);
     },
-    durationMin: 10,
-    useLLMDuration: true,
+    async durationMin(context, durationMinute) {
+      return durationMinute ?? 10;
+    },
   },
   {
     action: ActionId.Eat_Lunch,

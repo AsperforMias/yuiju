@@ -3,15 +3,15 @@ import { anywhereAction } from './anywhere';
 import { homeAction } from './home';
 import { schoolAction } from './school';
 
-export const PrecheckActionMap: Record<string, ActionId> = {
-  [ActionId.Sleep]: ActionId.Wake_Up,
+export const PrecheckActionMap: Record<string, ActionId[]> = {
+  [ActionId.Sleep]: [ActionId.Wake_Up],
 };
 
 export function precheckAction(context: ActionContext) {
   const currentAction = context.charactorState.action;
-  const actionId = PrecheckActionMap[currentAction];
-  if (actionId) {
-    return getActionById(actionId);
+  const actionList = PrecheckActionMap[currentAction];
+  if (actionList) {
+    return actionList.map(getActionById);
   }
 }
 
