@@ -50,9 +50,9 @@ function createContext(opts: {
 describe('getActionList', () => {
   it('returns only Wake_Up when current action is Sleep', () => {
     const context = createContext({ action: ActionId.Sleep, major: MajorScene.Home });
-    const list = getActionList(context);
-    expect(list.length).toBe(1);
-    expect(list[0].action).toBe(ActionId.Wake_Up);
+    const list = getActionList(context).map(a => a.action);
+    expect(list.length).toBe(2);
+    expect(list).toEqual([ActionId.Wake_Up, ActionId.Sleep_For_A_Little]);
   });
 
   it('Home morning weekday 08:00 returns breakfast, go to school, idle', () => {

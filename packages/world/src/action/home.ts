@@ -5,7 +5,7 @@ import { allTrue } from '@yuiju/utils';
 export const homeAction: ActionMetadata[] = [
   {
     action: ActionId.Wake_Up,
-    description: '起床。耗时10分钟。',
+    description: '起床并洗漱。耗时10分钟。',
     // 已在 precheckAction 中处理
     precondition(context) {
       return false;
@@ -14,6 +14,17 @@ export const homeAction: ActionMetadata[] = [
       await context.charactorState.setAction(ActionId.Wake_Up);
       await context.charactorState.setStamina(20);
       await context.charactorState.clearDailyActions();
+    },
+    durationMin: 10,
+  },
+  {
+    action: ActionId.Sleep_For_A_Little,
+    description: '再睡一会。耗时10分钟。',
+    precondition(context) {
+      // 已在 precheckAction 中处理
+      return false;
+    },
+    async executor(context) {
     },
     durationMin: 10,
   },
@@ -79,6 +90,16 @@ export const homeAction: ActionMetadata[] = [
     executor(context) {
       context.charactorState.setAction(ActionId.Sleep);
     },
-    durationMin: 60 * 8,
+    durationMin: async (context) => {
+      const now = context.worldState.time.clone();
+      let target = now.hour(7).minute(30).second(0).millisecond(0);
+
+      if (target.isBefore(now)) {
+        target = target.add(1, 'day');
+      }
+
+      return target.diff(now, 'minute');
+    },
+    completionEvent: '闹钟响了',
   },
 ];

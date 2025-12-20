@@ -6,13 +6,13 @@ export const schoolAction: ActionMetadata[] = [
   {
     // TODO：逻辑优化，上课时间应该是固定的时间段，而不是随时可以上课
     action: ActionId.Study_At_School,
-    description: '在学校上课。每次消耗体力30点。耗时3小时。',
+    description: '在学校上课。每次消耗体力30点。',
     precondition(context) {
       return allTrue([
         () => {
-          // 只能在9点到16点之间上课
-          const hour = context.worldState.time.get('hour');
-          return hour >= 9 && hour < 16;
+          // 上课时间：9点-12点、14点-16点
+          const hour = context.worldState.time.hour();
+          return (hour >= 9 && hour < 12) || (hour >= 14 && hour < 16);
         },
         isWeekday(context),
       ]);
@@ -21,7 +21,18 @@ export const schoolAction: ActionMetadata[] = [
       await context.charactorState.setAction(ActionId.Study_At_School);
       await context.charactorState.changeStamina(-30);
     },
-    durationMin: 60 * 3,
+    durationMin: async (context) => {
+      const now = context.worldState.time.clone();
+      // 如果是上午，上课到12点；如果是下午，上课到16点
+      const hour = now.hour();
+      let targetHour = 12;
+      if (hour >= 14) {
+        targetHour = 16;
+      }
+      
+      const target = now.hour(targetHour).minute(0).second(0).millisecond(0);
+      return target.diff(now, 'minute');
+    },
   },
   {
     action: ActionId.Go_Home_From_School,

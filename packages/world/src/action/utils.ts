@@ -4,7 +4,7 @@ import { homeAction } from './home';
 import { schoolAction } from './school';
 
 export const PrecheckActionMap: Record<string, ActionId[]> = {
-  [ActionId.Sleep]: [ActionId.Wake_Up],
+  [ActionId.Sleep]: [ActionId.Wake_Up, ActionId.Sleep_For_A_Little],
 };
 
 export function precheckAction(context: ActionContext) {

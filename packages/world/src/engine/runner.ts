@@ -20,10 +20,13 @@ export async function startRealtimeLoop() {
   if (running) return;
   running = true;
 
+  let eventDescription: string | undefined = undefined;
+
   while (!stopped) {
     worldState.updateTime();
 
-    const durationMin = await tick();
-    await setTimeout(durationMin * 60 * 1000);
+    const { nextTickInMinutes, completionEvent } = await tick({});
+    eventDescription = completionEvent;
+    await setTimeout(nextTickInMinutes * 60 * 1000);
   }
 }

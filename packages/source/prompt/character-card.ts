@@ -41,7 +41,7 @@ export const getCharacterCardPrompt = ({ recentActionList, userName, state }: Ch
     statePrompt = `
 正在做的事情：${state.action}
 位置：${locationStr}
-体力：${state.stamina}
+体力：${state.stamina} / 100
 金钱：${state.money}
 `.trimStart();
   }

@@ -20,14 +20,24 @@ export async function getDurationTime(
   }
 }
 
+export interface TickParams {
+  eventDescription?: string;
+}
+
+export interface TickReturn {
+  nextTickInMinutes: number;
+  completionEvent?: string;
+}
+
 /**
  *
  * @returns 下一次的 tick 时间
  */
-export async function tick(): Promise<number> {
+export async function tick(params: TickParams): Promise<TickReturn> {
   const context: ActionContext = {
     charactorState,
     worldState,
+    eventDescription: params.eventDescription,
   };
 
   const actionList = getActionList(context);
@@ -36,7 +46,8 @@ export async function tick(): Promise<number> {
     const idleAction = getActionById(ActionId.Idle);
     logger.error('[tick] action list is empty');
 
-    return getDurationTime(idleAction.durationMin, context);
+    const durationMin = await getDurationTime(idleAction.durationMin, context);
+    return { nextTickInMinutes: durationMin };
   }
 
   logger.info(
@@ -56,6 +67,9 @@ export async function tick(): Promise<number> {
   const actionMetadata = actionList.find(item => item.action === selectedAction?.action);
 
   if (actionMetadata && selectedAction) {
+    // 更新时间
+    await context.worldState.updateTime();
+
     await actionMetadata.executor(context);
 
     if (isProd) {
@@ -66,7 +80,15 @@ export async function tick(): Promise<number> {
       });
     }
 
+    // 更新时间
+    await context.worldState.updateTime();
+
     const durationMin = await getDurationTime(actionMetadata.durationMin, context, selectedAction.durationMinute);
+
+    const completionEvent =
+      typeof actionMetadata.completionEvent === 'function'
+        ? await actionMetadata.completionEvent(context)
+        : actionMetadata.completionEvent;
 
     logger.info(
       `[tick] Executed action: ${selectedAction.action}, Reason: ${selectedAction.reason}， Duration: ${durationMin} minutes`,
@@ -74,10 +96,11 @@ export async function tick(): Promise<number> {
       context.worldState.log()
     );
 
-    return durationMin;
+    return { nextTickInMinutes: durationMin, completionEvent };
   } else {
     const idleAction = getActionById(ActionId.Idle);
     logger.error('[tick] LLM selected action is not executable.', selectedAction);
-    return getDurationTime(idleAction.durationMin, context);
+    const durationMin = await getDurationTime(idleAction.durationMin, context);
+    return { nextTickInMinutes: durationMin };
   }
 }

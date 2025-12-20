@@ -50,6 +50,12 @@ describe('tick()', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
     await connectDB();
+    // Mock updateTime to prevent resetting to system time during tick
+    vi.spyOn(worldState, 'updateTime').mockImplementation(async newTime => {
+      if (newTime) {
+        worldState.time = newTime;
+      }
+    });
   });
 
   it('执行 Eat_Lunch：更新体力与每日记录，返回20分钟', async () => {
@@ -64,12 +70,12 @@ describe('tick()', () => {
       reason: '午餐时间到了',
     });
 
-    const minutes = await tick();
+    const result = await tick({});
 
     expect(charactorState.action).toBe(ActionId.Eat_Lunch);
     expect(charactorState.stamina).toBe(90);
     expect(charactorState.dailyActionsDoneToday.includes(ActionId.Eat_Lunch)).toBe(true);
-    expect(minutes).toBe(20);
+    expect(result.nextTickInMinutes).toBe(20);
   });
 
   it('执行 Go_To_School：体力-10，返回30分钟', async () => {
@@ -84,11 +90,11 @@ describe('tick()', () => {
       reason: '工作日早上应该去学校',
     });
 
-    const minutes = await tick();
+    const result = await tick({});
 
     expect(charactorState.action).toBe(ActionId.Go_To_School);
     expect(charactorState.stamina).toBe(50);
-    expect(minutes).toBe(30);
+    expect(result.nextTickInMinutes).toBe(30);
   });
 
   it('执行 Idle 且 LLM给出耗时：返回给定分钟数', async () => {
@@ -104,10 +110,10 @@ describe('tick()', () => {
       durationMinute: 15,
     });
 
-    const minutes = await tick();
+    const result = await tick({});
 
     expect(charactorState.action).toBe(ActionId.Idle);
-    expect(minutes).toBe(15);
+    expect(result.nextTickInMinutes).toBe(15);
   });
 
   it('LLM选择不可执行动作：返回 Idle 默认10分钟，不更改状态', async () => {
@@ -122,10 +128,10 @@ describe('tick()', () => {
       reason: '错误选择',
     });
 
-    const minutes = await tick();
+    const result = await tick({});
 
     expect(charactorState.action).toBe(ActionId.Idle);
-    expect(minutes).toBe(10);
+    expect(result.nextTickInMinutes).toBe(10);
   });
 
   it('当前为 Sleep：预检查只给 Wake_Up，执行后体力设为20并清空每日记录，返回10分钟', async () => {
@@ -140,11 +146,121 @@ describe('tick()', () => {
       reason: '起床时间',
     });
 
-    const minutes = await tick();
+    const result = await tick({});
 
     expect(charactorState.action).toBe(ActionId.Wake_Up);
     expect(charactorState.stamina).toBe(20);
     expect(charactorState.dailyActionsDoneToday.length).toBe(0);
-    expect(minutes).toBe(10);
+    expect(result.nextTickInMinutes).toBe(10);
+  });
+
+  it('执行 Sleep：计算距离次日 7:30 的分钟数', async () => {
+    // 22:00 -> 07:30 (+1 day) = 2 + 7.5 = 9.5 hours = 570 minutes
+    await resetState({
+      locationMajor: 'home',
+      stamina: 10,
+      action: ActionId.Idle,
+      timeISO: '2025-01-01T22:00:00',
+    });
+    chooseActionMock.mockResolvedValue({
+      action: ActionId.Sleep,
+      reason: '该睡觉了',
+    });
+
+    const result = await tick({});
+
+    expect(charactorState.action).toBe(ActionId.Sleep);
+    expect(result.nextTickInMinutes).toBe(570);
+  });
+
+  it('执行 Sleep (凌晨)：计算距离当日 7:30 的分钟数', async () => {
+    // 01:00 -> 07:30 = 6.5 hours = 390 minutes
+    await resetState({
+      locationMajor: 'home',
+      stamina: 10,
+      action: ActionId.Idle,
+      timeISO: '2025-01-02T01:00:00',
+    });
+    chooseActionMock.mockResolvedValue({
+      action: ActionId.Sleep,
+      reason: '太晚了',
+    });
+
+    const result = await tick({});
+
+    expect(charactorState.action).toBe(ActionId.Sleep);
+    expect(result.nextTickInMinutes).toBe(390);
+  });
+
+  it('执行 Study_At_School (上午)：9点开始，持续到12点 (180分钟)', async () => {
+    await resetState({
+      locationMajor: 'school',
+      stamina: 80,
+      action: ActionId.Idle,
+      timeISO: '2025-01-01T09:00:00', // Wednesday
+    });
+    chooseActionMock.mockResolvedValue({
+      action: ActionId.Study_At_School,
+      reason: '开始上课',
+    });
+
+    const result = await tick({});
+
+    expect(charactorState.action).toBe(ActionId.Study_At_School);
+    expect(result.nextTickInMinutes).toBe(180);
+  });
+
+  it('执行 Study_At_School (下午)：14点开始，持续到16点 (120分钟)', async () => {
+    await resetState({
+      locationMajor: 'school',
+      stamina: 80,
+      action: ActionId.Idle,
+      timeISO: '2025-01-01T14:00:00', // Wednesday
+    });
+    chooseActionMock.mockResolvedValue({
+      action: ActionId.Study_At_School,
+      reason: '下午课',
+    });
+
+    const result = await tick({});
+
+    expect(charactorState.action).toBe(ActionId.Study_At_School);
+    expect(result.nextTickInMinutes).toBe(120);
+  });
+
+  it('非上课时间 (13:00)：Study_At_School 不可用，回退到 Idle', async () => {
+    await resetState({
+      locationMajor: 'school',
+      stamina: 80,
+      action: ActionId.Idle,
+      timeISO: '2025-01-01T13:00:00', // Wednesday
+    });
+    chooseActionMock.mockResolvedValue({
+      action: ActionId.Study_At_School,
+      reason: '想上课',
+    });
+
+    const result = await tick({});
+
+    expect(charactorState.action).toBe(ActionId.Idle);
+    expect(result.nextTickInMinutes).toBe(10);
+  });
+
+  it('执行 Sleep_For_A_Little：耗时10分钟，不改变状态', async () => {
+    await resetState({
+      locationMajor: 'home',
+      stamina: 50,
+      action: ActionId.Sleep,
+      timeISO: '2025-01-01T07:30:00',
+    });
+    chooseActionMock.mockResolvedValue({
+      action: ActionId.Sleep_For_A_Little,
+      reason: '再睡一会',
+    });
+
+    const result = await tick({});
+
+    expect(charactorState.action).toBe(ActionId.Sleep);
+    expect(result.nextTickInMinutes).toBe(10);
   });
 });

@@ -1,15 +1,18 @@
 import { generateObject } from 'ai';
 import { deepseek } from '@ai-sdk/deepseek';
 import { z } from 'zod';
-import { ActionContext, ActionMetadata } from '@/types/action';
+import { ActionContext, ActionId, ActionMetadata } from '@/types/action';
 import { chooseActionPrompt } from '@yuiju/source';
-import { ActionMemory } from '@/memory/short-action';
 import dayjs from 'dayjs';
 
 export async function chooseAction(
   actionList: ActionMetadata[],
   context: ActionContext,
-  actionMemoryList: ActionMemory[]
+  actionMemoryList: {
+    action: ActionId;
+    reason: string;
+    timestamp: number;
+  }[]
 ) {
   const systemPrompt = chooseActionPrompt({
     actionList,
@@ -30,7 +33,7 @@ export async function chooseAction(
   for (let i = 0; i < 3; i++) {
     try {
       const { object } = await generateObject({
-        model: deepseek('deepseek-reasoner'),
+        model: deepseek('deepseek-chat'),
         schema: z.object({
           action: z.enum(actionList?.map(item => item.action)),
           reason: z.string(),
