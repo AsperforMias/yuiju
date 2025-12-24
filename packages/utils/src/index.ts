@@ -3,3 +3,4 @@ export * from './utils';
 export * from './db';
 export * from './env';
 export * from './redis';
+export * from './llm-tools/plan-management-tool';
