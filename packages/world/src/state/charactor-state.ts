@@ -1,5 +1,5 @@
 import { ActionId } from '@/types/action';
-import { CharactorStateData, ICharactorState, Location, MajorScene } from '@/types/state';
+import { CharactorStateData, ICharactorState, Location, MajorScene, InventoryItem } from '@/types/state';
 import { cloneDeep } from 'lodash-es';
 import { REDIS_KEY_CHARACTOR_STATE, getRedis } from '@yuiju/utils';
 
@@ -18,6 +18,8 @@ export class CharactorState implements ICharactorState {
   public longTermPlan: string | undefined;
   /** 短期计划（步骤列表） */
   public shortTermPlan: string[] | undefined;
+  /** 背包物品列表 */
+  public inventory: InventoryItem[] = [];
 
   static getInstance() {
     if (!CharactorState.instance) CharactorState.instance = new CharactorState();
@@ -58,6 +60,14 @@ export class CharactorState implements ICharactorState {
           this.shortTermPlan = [];
         }
       }
+      if (data.inventory) {
+        try {
+          this.inventory = JSON.parse(data.inventory);
+        } catch (e) {
+          console.error('Failed to parse inventory:', e);
+          this.inventory = [];
+        }
+      }
     } else {
       // Redis 为空，写入初始值
       await this.save();
@@ -72,8 +82,9 @@ export class CharactorState implements ICharactorState {
       stamina: this.stamina,
       money: this.money,
       dailyActionsDoneToday: JSON.stringify(this.dailyActionsDoneToday),
-      longTermPlan: this.longTermPlan,
-      shortTermPlan: JSON.stringify(this.shortTermPlan),
+      longTermPlan: this.longTermPlan || '',
+      shortTermPlan: JSON.stringify(this.shortTermPlan || []),
+      inventory: JSON.stringify(this.inventory),
     });
   }
 
@@ -127,6 +138,71 @@ export class CharactorState implements ICharactorState {
     await this.save();
   }
 
+  /**
+   * 添加物品到背包
+   * 如果物品已存在，增加数量；否则创建新物品
+   */
+  async addItem(itemName: string, quantity: number = 1): Promise<void> {
+    const existingItem = this.inventory.find(item => item.name === itemName);
+
+    if (existingItem) {
+      // 物品已存在，增加数量
+      existingItem.quantity += quantity;
+    } else {
+      // 新物品，需要从商店数据中获取物品信息
+      // 这里简化处理，实际应该从商店或物品数据库获取完整信息
+      const newItem: InventoryItem = {
+        name: itemName,
+        category: 'food', // 默认类别，实际应该从数据源获取
+        quantity: quantity,
+      };
+
+      // 根据物品名称设置基本属性（简化的硬编码，实际应该从配置获取）
+      switch (itemName) {
+        case '苹果':
+          newItem.category = 'food';
+          newItem.stamina = 15;
+          newItem.price = 5;
+          break;
+      }
+
+      this.inventory.push(newItem);
+    }
+
+    await this.save();
+  }
+
+  /**
+   * 消费背包中的物品
+   * 返回是否成功消费
+   */
+  async consumeItem(itemName: string, quantity: number = 1): Promise<boolean> {
+    const item = this.inventory.find(item => item.name === itemName);
+
+    if (!item || item.quantity < quantity) {
+      return false; // 物品不存在或数量不足
+    }
+
+    item.quantity -= quantity;
+
+    // 如果数量为0，从背包中移除
+    if (item.quantity <= 0) {
+      const index = this.inventory.indexOf(item);
+      this.inventory.splice(index, 1);
+    }
+
+    await this.save();
+    return true;
+  }
+
+  /**
+   * 获取背包中指定物品的数量
+   */
+  getItemQuantity(itemName: string): number {
+    const item = this.inventory.find(item => item.name === itemName);
+    return item ? item.quantity : 0;
+  }
+
   public log(): CharactorStateData {
     return cloneDeep({
       action: this.action,
@@ -136,6 +212,7 @@ export class CharactorState implements ICharactorState {
       dailyActionsDoneToday: this.dailyActionsDoneToday,
       longTermPlan: this.longTermPlan,
       shortTermPlan: this.shortTermPlan,
+      inventory: this.inventory,
     });
   }
 }
