@@ -1,4 +1,4 @@
-import { createDeepSeek } from '@ai-sdk/deepseek';
+import { createOpenAI } from '@ai-sdk/openai';
 import { generateText, type ModelMessage } from 'ai';
 import { Conversation } from '../conversation';
 import MemoryClient from 'mem0ai';
@@ -10,14 +10,16 @@ import { getRecentActions, type IActionSchema } from '@yuiju/utils';
 import { getCharactorState } from '../state';
 
 export class LLMManager {
-  private deepseekClient: ReturnType<typeof createDeepSeek>;
+  private siliconflowClient: ReturnType<typeof createOpenAI>;
   private modelName: string;
   private conversation: Conversation;
   private mem0Client: MemoryClient;
 
-  constructor(modelName: string = 'deepseek-chat', conversationLimit: number = 10) {
-    this.deepseekClient = createDeepSeek({
-      apiKey: process.env.DEEPSEEK_API_KEY ?? '',
+  constructor(modelName: string = 'Qwen/Qwen3-8B', conversationLimit: number = 10) {
+    this.siliconflowClient = createOpenAI({
+      baseURL: 'https://api.siliconflow.cn/v1',
+      apiKey: process.env.SILICONFLOW_API_KEY ?? '',
+      name: 'Siliconflow',
     });
     this.modelName = modelName;
     this.conversation = new Conversation(conversationLimit);
@@ -35,7 +37,7 @@ export class LLMManager {
       reason: doc.reason,
       time: dayjs(doc.create_time),
     }));
-    
+
     const state = await getCharactorState();
 
     const systemPrompt = getCharacterCardPrompt({
@@ -49,12 +51,17 @@ export class LLMManager {
     // 获取对话历史
     const messages: ModelMessage[] = this.conversation.getMessages(input);
 
-    const model = this.deepseekClient(this.modelName);
+    const model = this.siliconflowClient.chat('Qwen/Qwen3-8B');
 
     const result = await generateText({
       model,
       messages,
       system: systemPrompt,
+      providerOptions: {
+        Siliconflow: {
+          enable_thinking: false,
+        },
+      },
       // stopWhen: stepCountIs(5),
       // tools: {
       //   memorySearchTool,
@@ -82,7 +89,7 @@ export class LLMManager {
   }
 
   public getClient() {
-    return this.deepseekClient(this.modelName);
+    return this.siliconflowClient.chat(this.modelName);
   }
 }
 
