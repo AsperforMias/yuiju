@@ -9,6 +9,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## 开发命令
 
 ### 代码质量
+
 ```bash
 # 代码检查
 pnpm check          # 使用 biome 检查代码
@@ -21,6 +22,7 @@ pnpm --filter @yuiju/world run type-check
 ```
 
 ### 运行服务
+
 ```bash
 # 开发环境
 pnpm dev:message    # 启动消息服务（开发模式，使用 terminal.ts）
@@ -35,6 +37,7 @@ pnpm test:world     # 运行 world 包的测试
 ```
 
 ### 进程管理
+
 项目使用 PM2 进行进程管理，配置文件为 `ecosystem.config.js`。
 
 ## 核心架构
@@ -42,17 +45,20 @@ pnpm test:world     # 运行 world 包的测试
 ### 包结构
 
 - **@yuiju/world** - 世界模拟引擎
+
   - `engine/` - 核心循环引擎（runner.ts: tick 循环, tick.ts: 行为执行）
   - `action/` - 行为定义（home.ts: 家中行为, school.ts: 学校行为, anywhere.ts: 通用行为）
   - `state/` - 状态管理（charactor-state.ts: 角色状态, world-state.ts: 世界状态）
   - `llm/` - LLM 决策客户端
 
-- **@yuiju/message** - QQ 消息服务
+- **@yuiju/server** - QQ 消息服务
+
   - `server.ts` - NapCat WebSocket 服务端（生产）
   - `terminal.ts` - 终端交互模式（开发）
   - `llm/manager.ts` - LLM 对话管理器
 
 - **@yuiju/utils** - 共享工具库
+
   - `db/` - MongoDB 连接和 Mongoose Schema（action.schema.ts, qqMessage.schema.ts）
   - `redis.ts` - Redis 客户端（角色状态缓存）
   - `llm-tools/` - LLM 工具（如计划管理工具）
@@ -62,6 +68,7 @@ pnpm test:world     # 运行 world 包的测试
 ### 状态管理架构
 
 **重要**：角色状态采用"Redis 为准"的架构模式：
+
 - [charactor-state.ts:24-50](packages/world/src/state/charactor-state.ts#L24-L50) - `load()` 方法从 Redis HGETALL 加载状态到内存
 - [charactor-state.ts:52-61](packages/world/src/state/charactor-state.ts#L52-L61) - `save()` 方法将状态持久化到 Redis
 - 所有状态修改方法（setStamina, changeMoney 等）都会自动调用 `save()`
@@ -73,14 +80,17 @@ Redis Key 常量定义在 `@yuiju/utils` 的 `redis.ts` 中（如 REDIS_KEY_CHAR
 [tick.ts:36-106](packages/world/src/engine/tick.ts#L36-L106) 实现了核心决策循环：
 
 1. **获取可用行为** - [action/index.ts:8-30](packages/world/src/action/index.ts#L8-L30)
+
    - 根据位置（Home/School）加载场景特定行为
    - 过滤满足前置条件的行为
 
 2. **LLM 选择行为** - [llm-client.ts](packages/world/src/llm/llm-client.ts)
+
    - 传入当前状态、可用行为列表、历史记录
    - 返回选中的行为 ID 和原因
 
 3. **执行行为** - [tick.ts:73](packages/world/src/engine/tick.ts#L73)
+
    - 调用行为的 executor 函数
    - 计算持续时间（支持动态计算）
    - 保存行为记录到 MongoDB（生产环境）
@@ -92,6 +102,7 @@ Redis Key 常量定义在 `@yuiju/utils` 的 `redis.ts` 中（如 REDIS_KEY_CHAR
 ### 行为定义规范
 
 行为在 `action/` 目录下定义，包含以下字段：
+
 - `action` - ActionId 枚举值
 - `precondition` - 前置条件函数（返回 boolean）
 - `executor` - 执行函数（修改状态）
@@ -103,7 +114,9 @@ Redis Key 常量定义在 `@yuiju/utils` 的 `redis.ts` 中（如 REDIS_KEY_CHAR
 ### 数据库 Schema
 
 使用 Mongoose 定义模型：
+
 - **ActionRecord** ([db/schema/action.schema.ts](packages/utils/src/db/schema/action.schema.ts))
+
   - action_id, reason, create_time
 
 - **QQMessage** ([db/schema/qqMessage.schema.ts](packages/utils/src/db/schema/qqMessage.schema.ts))
@@ -112,6 +125,7 @@ Redis Key 常量定义在 `@yuiju/utils` 的 `redis.ts` 中（如 REDIS_KEY_CHAR
 ### 环境变量
 
 项目使用 `.env` 文件配置环境变量，关键变量包括：
+
 - `NODE_ENV` - development/production
 - `DEEPSEEK_API_KEY` - DeepSeek API 密钥
 - `NAPCAT_TOKEN` - NapCat WebSocket 访问令牌

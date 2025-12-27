@@ -10,9 +10,9 @@
     "lint": "biome lint .",
     "format": "biome format .",
     "format:write": "biome format . --write",
-    "start:message": "pnpm --filter @yuiju/message run start",
+    "start:server": "pnpm --filter @yuiju/server run start",
     "start:world": "pnpm --filter @yuiju/world run start",
-    "dev:message": "pnpm --filter @yuiju/message run dev",
+    "dev:server": "pnpm --filter @yuiju/server run dev",
     "dev:world": "pnpm --filter @yuiju/world run dev",
     "test:world": "pnpm --filter @yuiju/world run test"
   },

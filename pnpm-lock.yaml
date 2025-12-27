@@ -76,7 +76,7 @@ importers:
         specifier: ^4.0.13
         version: 4.0.13(@opentelemetry/api@1.9.0)(@types/node@24.10.1)(tsx@4.20.6)
 
-  packages/message:
+  packages/server:
     dependencies:
       '@yuiju/source':
         specifier: workspace:*
