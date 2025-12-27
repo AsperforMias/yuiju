@@ -29,6 +29,10 @@ export interface CharactorStateData {
   money: number;
   /** 今日已执行的动作列表 */
   dailyActionsDoneToday: ActionId[];
+    /** 长期计划（一句话描述） */
+  longTermPlan?: string;
+  /** 短期计划（步骤列表） */
+  shortTermPlan?: string[];
 }
 
 export interface ICharactorState extends CharactorStateData {

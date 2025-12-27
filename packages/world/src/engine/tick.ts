@@ -67,6 +67,16 @@ export async function tick(params: TickParams): Promise<TickReturn> {
   const actionMetadata = actionList.find(item => item.action === selectedAction?.action);
 
   if (actionMetadata && selectedAction) {
+    // 处理计划更新
+    if (selectedAction.updateLongTermPlan !== undefined) {
+      await charactorState.setLongTermPlan(selectedAction.updateLongTermPlan || null);
+      logger.info(`[tick] Long term plan updated: ${selectedAction.updateLongTermPlan || '（清空）'}`);
+    }
+    if (selectedAction.updateShortTermPlan !== undefined) {
+      await charactorState.setShortTermPlan(selectedAction.updateShortTermPlan);
+      logger.info(`[tick] Short term plan updated: ${JSON.stringify(selectedAction.updateShortTermPlan)}`);
+    }
+
     // 更新时间
     await context.worldState.updateTime();
 

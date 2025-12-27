@@ -35,6 +35,8 @@ export async function chooseAction(
     location: `${context.charactorState.location.major}${
       context.charactorState.location.minor ? '-' + context.charactorState.location.minor : ''
     }`,
+    longTermPlan: context.charactorState.longTermPlan,
+    shortTermPlan: context.charactorState.shortTermPlan,
   });
 
   for (let i = 0; i < 3; i++) {
@@ -46,6 +48,8 @@ export async function chooseAction(
           action: z.enum(actionList?.map(item => item.action)).describe('选择的 action'),
           reason: z.string().describe('选择action的原因'),
           durationMinute: z.number().optional().describe('action的持续时间（分钟）'),
+          updateShortTermPlan: z.array(z.string()).optional().describe('如果需要修改短期计划，在此输出新的计划内容'),
+          updateLongTermPlan: z.string().optional().describe('如果需要修改长期计划，在此输出新的计划内容'),
         })
         })
 ,

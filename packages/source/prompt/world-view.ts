@@ -31,6 +31,8 @@ export interface ChooseActionPromptPayload {
   }[];
   worldTime: Dayjs;
   eventDescription?: string;
+  longTermPlan?: string;
+  shortTermPlan?: string[];
 }
 
 export function chooseActionPrompt({
@@ -42,11 +44,16 @@ export function chooseActionPrompt({
   stamina,
   worldTime,
   eventDescription,
+  longTermPlan,
+  shortTermPlan,
 }: ChooseActionPromptPayload) {
   const actionListPrompt = actionList.map(item => `- ${item.action}：${item.description}`).join('\n');
   const recentActionPrompt = recentActionList.map(
     item => `- ${item.action} (${getTimeWithWeekday(item.time)})：${item.reason}`
   );
+  const shortTermPlanPrompt = shortTermPlan?.length
+    ? shortTermPlan.map((item, index) => `${index + 1}. ${item}`).join('\n')
+    : '（无）';
 
   return `
 你现在需要扮演一个名为ゆいじゅ的女孩子，昵称悠酱。
@@ -57,7 +64,9 @@ ${worldViewPrompt}
 
 ## 要求
 你是角色的大脑，现在需要你选择一个 Action，在候选列表中选择一个最合适的 Action，例如：idle、wake_up等 。
-必须返回严格 JSON：{"action":"<动作ID>","reason":"<简短理由>","durationMinute":"<数字，动作持续多少分钟，只有特殊的Action需要给出>"}，不得输出其他字段或自由文本。
+必须返回严格 JSON：{"action":"<动作ID>","reason":"<简短理由>","durationMinute":"<数字，动作持续多少分钟，只有特殊的Action需要给出>","updateShortTermPlan":["<新的短期计划1>","<新的短期计划2>",...],"updateLongTermPlan":"<新的长期计划>"}，不得输出其他字段或自由文本。
+
+- 只有在需要修改计划时才输出对应的字段，否则不输出。
 
 ## 状态
 ${eventDescription ? `当前事件：${eventDescription}` : ''}
@@ -66,9 +75,12 @@ ${eventDescription ? `当前事件：${eventDescription}` : ''}
 当前Action：${currentAction}
 体力值：${stamina} / 100
 金币：${money}
-可选Action（仅可从中选择）：
-${actionListPrompt}
+长期计划：${longTermPlan || '（无）'}
+短期计划：
+${shortTermPlanPrompt}
 最近的action：
 ${recentActionPrompt}
+可选Action（仅可从中选择）：
+${actionListPrompt}
 `;
 }

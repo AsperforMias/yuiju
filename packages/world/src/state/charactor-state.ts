@@ -14,6 +14,10 @@ export class CharactorState implements ICharactorState {
   public money: number = 0;
   // 仅作内存缓存或只读展示，实际数据源为 Redis String (JSON)
   public dailyActionsDoneToday: ActionId[] = [];
+  /** 长期计划（一句话描述） */
+  public longTermPlan: string | undefined;
+  /** 短期计划（步骤列表） */
+  public shortTermPlan: string[] | undefined;
 
   static getInstance() {
     if (!CharactorState.instance) CharactorState.instance = new CharactorState();
@@ -43,6 +47,17 @@ export class CharactorState implements ICharactorState {
           this.dailyActionsDoneToday = [];
         }
       }
+      if (data.longTermPlan) {
+        this.longTermPlan = data.longTermPlan;
+      }
+      if (data.shortTermPlan) {
+        try {
+          this.shortTermPlan = JSON.parse(data.shortTermPlan);
+        } catch (e) {
+          console.error('Failed to parse short term plan:', e);
+          this.shortTermPlan = [];
+        }
+      }
     } else {
       // Redis 为空，写入初始值
       await this.save();
@@ -57,6 +72,8 @@ export class CharactorState implements ICharactorState {
       stamina: this.stamina,
       money: this.money,
       dailyActionsDoneToday: JSON.stringify(this.dailyActionsDoneToday),
+      longTermPlan: this.longTermPlan,
+      shortTermPlan: JSON.stringify(this.shortTermPlan),
     });
   }
 
@@ -100,6 +117,16 @@ export class CharactorState implements ICharactorState {
     await this.save();
   }
 
+  async setLongTermPlan(plan?: string): Promise<void> {
+    this.longTermPlan = plan;
+    await this.save();
+  }
+
+  async setShortTermPlan(plan?: string[]): Promise<void> {
+    this.shortTermPlan = plan;
+    await this.save();
+  }
+
   public log(): CharactorStateData {
     return cloneDeep({
       action: this.action,
@@ -107,6 +134,8 @@ export class CharactorState implements ICharactorState {
       stamina: this.stamina,
       money: this.money,
       dailyActionsDoneToday: this.dailyActionsDoneToday,
+      longTermPlan: this.longTermPlan,
+      shortTermPlan: this.shortTermPlan,
     });
   }
 }
