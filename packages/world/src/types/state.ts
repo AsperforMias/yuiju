@@ -21,24 +21,34 @@ export type Location =
   | { major: MajorScene.School; minor?: SchoolSubScene };
 
 /**
- * 物品接口
+ * 食物元数据
  */
-export interface InventoryItem {
+export interface FoodMetadata {
+  /** 体力恢复值 */
+  stamina: number;
+}
+
+/**
+ * @description 预留
+ * 材料元数据
+ */
+export interface MaterialMetadata {}
+
+/**
+ * 物品接口（判别联合类型）
+ */
+export type InventoryItem = {
   /** 物品名称 */
   name: string;
   /** 物品描述 */
-  description?: string;
+  description: string;
   /** 物品类别 */
   category: 'food' | 'material';
   /** 数量 */
   quantity: number;
-  /** 体力恢复值（仅食物有效） */
-  stamina?: number;
-  /** 价格 */
-  price?: number;
-  /** 其他效果 */
-  effect?: Record<string, any>;
-}
+  /** 食物元数据 */
+  metadata: FoodMetadata | MaterialMetadata;
+};
 
 /**
  * 商店物品接口

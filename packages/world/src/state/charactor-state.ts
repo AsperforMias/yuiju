@@ -149,24 +149,6 @@ export class CharactorState implements ICharactorState {
       // 物品已存在，增加数量
       existingItem.quantity += quantity;
     } else {
-      // 新物品，需要从商店数据中获取物品信息
-      // 这里简化处理，实际应该从商店或物品数据库获取完整信息
-      const newItem: InventoryItem = {
-        name: itemName,
-        category: 'food', // 默认类别，实际应该从数据源获取
-        quantity: quantity,
-      };
-
-      // 根据物品名称设置基本属性（简化的硬编码，实际应该从配置获取）
-      switch (itemName) {
-        case '苹果':
-          newItem.category = 'food';
-          newItem.stamina = 15;
-          newItem.price = 5;
-          break;
-      }
-
-      this.inventory.push(newItem);
     }
 
     await this.save();

@@ -15,6 +15,16 @@ export const worldViewPrompt = `
 1. 手机：可以接收到来自现实世界的信息。
 `.trim();
 
+function generateShortTermPlanPrompt(shortTermPlan?: string[]) {
+  return shortTermPlan?.length ? shortTermPlan.map((item, index) => `${index + 1}. ${item}`).join('\n') : '（无）';
+}
+
+function generateRecentActionPrompt(recentActionList: { action: string; reason: string; time: Dayjs }[]) {
+  return recentActionList.length
+    ? recentActionList.map(item => `- ${item.action} (${getTimeWithWeekday(item.time)})：${item.reason}`).join('\n')
+    : '（无）';
+}
+
 export interface ChooseActionPromptPayload {
   actionList: {
     action: string;
@@ -48,25 +58,17 @@ export function chooseActionPrompt({
   shortTermPlan,
 }: ChooseActionPromptPayload) {
   const actionListPrompt = actionList.map(item => `- ${item.action}：${item.description}`).join('\n');
-  const recentActionPrompt = recentActionList.map(
-    item => `- ${item.action} (${getTimeWithWeekday(item.time)})：${item.reason}`
-  );
-  const shortTermPlanPrompt = shortTermPlan?.length
-    ? shortTermPlan.map((item, index) => `${index + 1}. ${item}`).join('\n')
-    : '（无）';
 
   return `
-你现在需要扮演一个名为ゆいじゅ的女孩子，昵称悠酱。
+## 要求
+你现在需要扮演一个名为ゆいじゅ的女孩子，昵称悠酱。你是角色的大脑，为悠酱做出决策，现在需要你选择一个 Action，在候选列表中选择一个最合适的 Action，例如：idle、wake_up等 。
+
+### 输出说明
+- 只有在需要修改计划时才输出对应的字段，否则不输出。
 
 ${baseInformation}
 
 ${worldViewPrompt}
-
-## 要求
-你是角色的大脑，现在需要你选择一个 Action，在候选列表中选择一个最合适的 Action，例如：idle、wake_up等 。
-必须返回严格 JSON：{"action":"<动作ID>","reason":"<简短理由>","durationMinute":"<数字，动作持续多少分钟，只有特殊的Action需要给出>","updateShortTermPlan":["<新的短期计划1>","<新的短期计划2>",...],"updateLongTermPlan":"<新的长期计划>"}，不得输出其他字段或自由文本。
-
-- 只有在需要修改计划时才输出对应的字段，否则不输出。
 
 ## 状态
 ${eventDescription ? `当前事件：${eventDescription}` : ''}
@@ -77,10 +79,57 @@ ${eventDescription ? `当前事件：${eventDescription}` : ''}
 金币：${money}
 长期计划：${longTermPlan || '（无）'}
 短期计划：
-${shortTermPlanPrompt}
+${generateShortTermPlanPrompt(shortTermPlan)}
 最近的action：
-${recentActionPrompt}
+${generateRecentActionPrompt(recentActionList)}
 可选Action（仅可从中选择）：
 ${actionListPrompt}
+`;
+}
+
+export interface ChooseFoodPromptPayload {
+  availableFood?: {
+    value: string;
+    description: string;
+  }[];
+  location: string;
+  stamina: number;
+  recentActionList: {
+    action: string;
+    reason: string;
+    time: Dayjs;
+  }[];
+  worldTime: Dayjs;
+  longTermPlan?: string;
+  shortTermPlan?: string[];
+}
+
+export function chooseFoodPrompt({
+  availableFood,
+  location,
+  worldTime,
+  stamina,
+  longTermPlan,
+  shortTermPlan,
+  recentActionList,
+}: ChooseFoodPromptPayload) {
+  const availableFoodPrompt = availableFood?.map(food => `- ${food.value}：${food.description}`).join('\n') || '（无）';
+
+  return `
+## 要求
+你现在需要扮演一个名为ゆいじゅ的女孩子，昵称悠酱。你是角色的大脑，为悠酱做出决策，现在需要你选择一种 Food，在候选列表中选择一个最合适的 Food，例如：「薯片」、「饼干」、等。
+
+
+## 状态
+当前时间：${getTimeWithWeekday(worldTime)}
+地点：${location}
+体力值：${stamina} / 100
+长期计划：${longTermPlan || '（无）'}
+短期计划：
+${generateShortTermPlanPrompt(shortTermPlan)}
+最近的action：
+${generateRecentActionPrompt(recentActionList)}
+可选Action（仅可从中选择）：
+${availableFoodPrompt}
 `;
 }

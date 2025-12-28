@@ -1,20 +1,25 @@
 import { charactorState } from '@/state/charactor-state';
 import { worldState } from '@/state/world-state';
-import { chooseAction } from '@/llm/llm-client';
+import { chooseActionAgent } from '@/llm/agent';
 import { getActionList } from '@/action';
-import { ActionContext, ActionId } from '@/types/action';
+import { ActionContext, ActionId, ActionParameter } from '@/types/action';
 import { getActionById } from '@/action/utils';
 import { logger } from '@/utils/logger';
 import { isProd } from '@yuiju/utils';
 import { getRecentActions, saveAction } from '@yuiju/utils';
+import { coordinatorAgent } from '@/llm/coordinator';
 
+// TODO：记得更新入参
 export async function getDurationTime(
-  durationMin: number | ((context: ActionContext, llmDurationMin?: number) => Promise<number>),
+  durationMin:
+    | number
+    | ((context: ActionContext, llmDurationMin?: number, parameters?: ActionParameter[]) => Promise<number>),
   context: ActionContext,
-  llmDurationMin?: number
+  llmDurationMin?: number,
+  parameters?: ActionParameter[]
 ) {
   if (typeof durationMin === 'function') {
-    return durationMin(context, llmDurationMin);
+    return durationMin(context, llmDurationMin, parameters);
   } else {
     return durationMin;
   }
@@ -63,13 +68,13 @@ export async function tick(params: TickParams): Promise<TickReturn> {
     timestamp: a.create_time.getTime(),
   }));
 
-  const selectedAction = await chooseAction(actionList, context, history);
+  const { selectedAction, selectedParameter } = await coordinatorAgent(actionList, context, history);
   const actionMetadata = actionList.find(item => item.action === selectedAction?.action);
 
   if (actionMetadata && selectedAction) {
     // 处理计划更新
     if (selectedAction.updateLongTermPlan !== undefined) {
-      await charactorState.setLongTermPlan(selectedAction.updateLongTermPlan || null);
+      await charactorState.setLongTermPlan(selectedAction.updateLongTermPlan);
       logger.info(`[tick] Long term plan updated: ${selectedAction.updateLongTermPlan || '（清空）'}`);
     }
     if (selectedAction.updateShortTermPlan !== undefined) {
@@ -80,7 +85,7 @@ export async function tick(params: TickParams): Promise<TickReturn> {
     // 更新时间
     await context.worldState.updateTime();
 
-    await actionMetadata.executor(context);
+    await actionMetadata.executor(context, selectedParameter?.parameters);
 
     if (isProd) {
       await saveAction({
@@ -93,11 +98,16 @@ export async function tick(params: TickParams): Promise<TickReturn> {
     // 更新时间
     await context.worldState.updateTime();
 
-    const durationMin = await getDurationTime(actionMetadata.durationMin, context, selectedAction.durationMinute);
+    const durationMin = await getDurationTime(
+      actionMetadata.durationMin,
+      context,
+      selectedAction.durationMinute,
+      selectedParameter?.parameters
+    );
 
     const completionEvent =
       typeof actionMetadata.completionEvent === 'function'
-        ? await actionMetadata.completionEvent(context)
+        ? await actionMetadata.completionEvent(context, selectedParameter?.parameters)
         : actionMetadata.completionEvent;
 
     logger.info(

@@ -23,9 +23,9 @@ import { tick } from '@/engine/tick';
 import { ActionId } from '@/types/action';
 import { charactorState } from '@/state/charactor-state';
 import { worldState } from '@/state/world-state';
-import { chooseAction } from '@/llm/llm-client';
+import { chooseActionAgent } from '@/llm/agent';
 
-const chooseActionMock = chooseAction as any;
+const chooseActionMock = chooseActionAgent as any;
 
 async function resetState(opts: {
   locationMajor: 'home' | 'school';
