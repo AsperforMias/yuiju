@@ -1,3 +1,4 @@
 {
-  "cSpell.words": ["yuiju"]
+  "cSpell.words": ["yuiju"],
+  "editor.defaultFormatter": "biomejs.biome",
 }
