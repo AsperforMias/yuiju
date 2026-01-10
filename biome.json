@@ -15,7 +15,8 @@
     "rules": {
       "recommended": true,
       "suspicious": {
-        "noEmptyInterface": "warn"
+        "noEmptyInterface": "warn",
+        "noExplicitAny": "off"
       }
     }
   },

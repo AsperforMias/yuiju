@@ -1,4 +1,3 @@
-import { deepseek } from "@ai-sdk/deepseek";
 import { chooseActionPrompt, chooseFoodPrompt } from "@yuiju/source";
 import { generateText, Output, stepCountIs } from "ai";
 import dayjs from "dayjs";
@@ -13,7 +12,7 @@ import type {
 } from "@/types/action";
 import { logger } from "@/utils/logger";
 import { queryAvailableFood } from "./tools";
-import { model_qwen3_8B } from "./utils";
+import { model_deepseek_reasoner, model_qwen3_8B } from "./utils";
 
 const RETRY_COUNT = 3;
 
@@ -43,7 +42,7 @@ export async function chooseActionAgent(
   for (let i = 0; i < RETRY_COUNT; i++) {
     try {
       const { output, reasoningText } = await generateText({
-        model: deepseek("deepseek-reasoner"),
+        model: model_deepseek_reasoner,
         tools: {
           queryAvailableFood: queryAvailableFood(context),
         },
@@ -104,6 +103,11 @@ export async function chooseFoodAgent(
     try {
       const { output } = await generateText({
         model: model_qwen3_8B,
+        providerOptions: {
+          Siliconflow: {
+            enable_thinking: true,
+          },
+        },
         output: Output.object({
           schema: z.array(
             z.object({
