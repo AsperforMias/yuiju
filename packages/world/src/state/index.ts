@@ -1,7 +1,7 @@
-import { charactorState } from './charactor-state';
-import { worldState } from './world-state';
+import { characterState } from "./charactor-state";
+import { worldState } from "./world-state";
 
 export async function initState(): Promise<void> {
-  await charactorState.load();
+  await characterState.load();
   await worldState.load();
 }

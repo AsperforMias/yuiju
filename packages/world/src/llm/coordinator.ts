@@ -1,26 +1,21 @@
 import {
-  ActionAgentDecision,
-  ActionContext,
+  type ActionAgentDecision,
+  type ActionContext,
   ActionId,
-  ActionMetadata,
-  ActionParameter,
-  ActionRecord,
-} from '@/types/action';
-import { chooseActionAgent, chooseFoodAgent } from './agent';
+  type ActionMetadata,
+  type ActionParameter,
+  type BehaviorRecord,
+  type ParameterAgentDecision,
+} from "@/types/action";
+import { chooseActionAgent, chooseFoodAgent } from "./agent";
 
 const Action2ParameterAgentMap: Record<
   string,
   (
     parameterList: ActionParameter[],
     context: ActionContext,
-    actionMemoryList: ActionRecord[]
-  ) => Promise<
-    | {
-        selectedList: string[];
-        reason: string;
-      }
-    | undefined
-  >
+    actionMemoryList: BehaviorRecord[],
+  ) => Promise<ParameterAgentDecision | undefined>
 > = {
   [ActionId.Eat_Item]: chooseFoodAgent,
 };
@@ -28,28 +23,29 @@ const Action2ParameterAgentMap: Record<
 export async function coordinatorAgent(
   actionList: ActionMetadata[],
   context: ActionContext,
-  actionMemoryList: ActionRecord[]
+  behaviorList: BehaviorRecord[],
 ): Promise<{
   selectedAction?: ActionAgentDecision;
   selectedParameter?: {
     parameters: ActionParameter[];
-    reason: string;
   };
 }> {
-  const selectedAction = await chooseActionAgent(actionList, context, actionMemoryList);
+  const selectedAction = await chooseActionAgent(actionList, context, behaviorList);
   if (!selectedAction) {
     return {};
   }
-  const actionMetadata = actionList.find(item => item.action === selectedAction?.action);
+  const actionMetadata = actionList.find((item) => item.action === selectedAction?.action);
   if (!actionMetadata) {
     return {};
   }
 
   const parameterAgent = Action2ParameterAgentMap[selectedAction.action];
   if (parameterAgent) {
-    const parameterList = actionMetadata.parameterAgent ? await actionMetadata.parameterAgent(context) : [];
+    const parameterList = actionMetadata.parameterAgent
+      ? await actionMetadata.parameterAgent(context)
+      : [];
 
-    const parameterAgentRes = await parameterAgent(parameterList, context, actionMemoryList);
+    const parameterAgentRes = await parameterAgent(parameterList, context, behaviorList);
 
     if (!parameterAgentRes || parameterAgentRes.selectedList.length === 0) {
       return {
@@ -59,8 +55,16 @@ export async function coordinatorAgent(
     }
 
     const selectedParameterList = parameterAgentRes.selectedList
-      .map(value => {
-        return parameterList.find(param => param.value === value);
+      .map((selectedItem) => {
+        const baseParam = parameterList.find((param) => param.value === selectedItem.value);
+        if (!baseParam) return null;
+
+        // 合并数量信息
+        return {
+          ...baseParam,
+          quantity: selectedItem.quantity,
+          reason: selectedItem.reason,
+        };
       })
       .filter(Boolean) as ActionParameter[];
 
@@ -68,7 +72,6 @@ export async function coordinatorAgent(
       selectedAction,
       selectedParameter: {
         parameters: selectedParameterList,
-        reason: parameterAgentRes.reason,
       },
     };
   }

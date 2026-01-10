@@ -1,4 +1,4 @@
-import mongoose, { type Document, Schema } from 'mongoose';
+import mongoose, { type Document, Schema } from "mongoose";
 
 /**
  * 行为参数
@@ -10,7 +10,7 @@ export interface BehaviorParameter {
   /** 数量，默认为 1 */
   quantity?: number;
   /** 选择原因 */
-  reason: string;
+  reason?: string;
   /** 额外信息，如：{ stamina: 15, price: 5 } */
   extra?: Record<string, any>;
 }
@@ -26,7 +26,7 @@ export interface IBehaviorRecord extends Document {
   /** 发生时间 */
   timestamp: Date;
   /** 触发来源：agent（LLM）、user（用户）、system（系统） */
-  trigger: 'agent' | 'user' | 'system';
+  trigger: "agent" | "user" | "system";
   /** Agent 选择的行为参数 */
   parameters?: BehaviorParameter[];
   /** 行为持续时间（分钟） */
@@ -40,16 +40,16 @@ const BehaviorRecordSchema = new Schema<IBehaviorRecord>({
   timestamp: { type: Date, required: true, default: Date.now, index: true },
   trigger: {
     type: String,
-    enum: ['agent', 'user', 'system'],
+    enum: ["agent", "user", "system"],
     required: true,
-    default: 'agent',
+    default: "agent",
     index: true,
   },
   parameters: [
     {
       value: { type: String, required: true },
       quantity: { type: Number, default: 1 },
-      reason: { type: String, required: true },
+      reason: { type: String, required: false },
       extra: { type: Schema.Types.Mixed, default: {} },
     },
   ],
@@ -61,7 +61,10 @@ BehaviorRecordSchema.index({ timestamp: -1 });
 BehaviorRecordSchema.index({ trigger: 1, timestamp: -1 });
 BehaviorRecordSchema.index({ behavior: 1, timestamp: -1 });
 
-export const BehaviorRecordModel = mongoose.model<IBehaviorRecord>('BehaviorRecord', BehaviorRecordSchema);
+export const BehaviorRecordModel = mongoose.model<IBehaviorRecord>(
+  "BehaviorRecord",
+  BehaviorRecordSchema,
+);
 
 /**
  * 保存行为记录到数据库

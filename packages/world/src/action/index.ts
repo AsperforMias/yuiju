@@ -1,9 +1,9 @@
-import { ActionContext, ActionMetadata } from '@/types/action';
-import { homeAction } from './home';
-import { MajorScene } from '@/types/state';
-import { schoolAction } from './school';
-import { anywhereAction } from './anywhere';
-import { precheckAction } from './utils';
+import type { ActionContext, ActionMetadata } from "@/types/action";
+import { MajorScene } from "@/types/state";
+import { anywhereAction } from "./anywhere";
+import { homeAction } from "./home";
+import { schoolAction } from "./school";
+import { precheckAction } from "./utils";
 
 export function getActionList(context: ActionContext) {
   let locationAction: ActionMetadata[] = [];
@@ -13,7 +13,7 @@ export function getActionList(context: ActionContext) {
     return actionList;
   }
 
-  switch (context.charactorState.location.major) {
+  switch (context.characterState.location.major) {
     case MajorScene.Home:
       locationAction = homeAction;
       break;
@@ -24,7 +24,7 @@ export function getActionList(context: ActionContext) {
       break;
   }
 
-  return locationAction.concat(anywhereAction).filter(action => {
+  return locationAction.concat(anywhereAction).filter((action) => {
     return action.precondition(context);
   });
 }

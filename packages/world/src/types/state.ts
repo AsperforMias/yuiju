@@ -1,15 +1,15 @@
-import type { Dayjs } from 'dayjs';
-import type { ActionId } from './action';
+import type { Dayjs } from "dayjs";
+import type { ActionId } from "./action";
 
 // 大场景
 export enum MajorScene {
-  Home = 'home',
-  School = 'school',
+  Home = "home",
+  School = "school",
 }
 
 // 家的小场景
 export enum HomeSubScene {
-  House = 'house',
+  House = "house",
 }
 
 // 学校的小场景
@@ -43,14 +43,14 @@ export type InventoryItem = {
   /** 物品描述 */
   description: string;
   /** 物品类别 */
-  category: 'food' | 'material';
+  category: "food" | "material";
   /** 数量 */
   quantity: number;
   /** 食物元数据 */
   metadata: FoodMetadata | MaterialMetadata;
 };
 
-export interface CharactorStateData {
+export interface CharacterStateData {
   action: ActionId;
   location: Location;
   /**体力值 */
@@ -67,7 +67,7 @@ export interface CharactorStateData {
   inventory?: InventoryItem[];
 }
 
-export interface ICharactorState extends CharactorStateData {
+export interface ICharacterState extends CharacterStateData {
   setAction(action: ActionId): Promise<void>;
   /** 设置体力值 */
   setStamina(stamina: number): Promise<void>;
@@ -80,7 +80,7 @@ export interface ICharactorState extends CharactorStateData {
   /** 清空今日动作 */
   clearDailyActions(): Promise<void>;
   /** 获取状态日志（深拷贝） */
-  log(): CharactorStateData;
+  log(): CharacterStateData;
 
   /** 背包管理方法 */
   /** 添加物品到背包 */

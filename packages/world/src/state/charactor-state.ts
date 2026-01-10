@@ -1,12 +1,18 @@
-import { ActionId } from '@/types/action';
-import { CharactorStateData, ICharactorState, Location, MajorScene, InventoryItem } from '@/types/state';
-import { cloneDeep } from 'lodash-es';
-import { REDIS_KEY_CHARACTOR_STATE, getRedis } from '@yuiju/utils';
+import { getRedis, REDIS_KEY_CHARACTER_STATE } from "@yuiju/utils";
+import { cloneDeep } from "lodash-es";
+import { ActionId } from "@/types/action";
+import {
+  type CharacterStateData,
+  type ICharacterState,
+  type InventoryItem,
+  type Location,
+  MajorScene,
+} from "@/types/state";
 
 const MAX_STAMINA = 100;
 
-export class CharactorState implements ICharactorState {
-  private static instance: CharactorState | null = null;
+export class CharacterState implements ICharacterState {
+  private static instance: CharacterState | null = null;
 
   public action: ActionId = ActionId.Idle;
   public location: Location = { major: MajorScene.Home };
@@ -22,21 +28,21 @@ export class CharactorState implements ICharactorState {
   public inventory: InventoryItem[] = [];
 
   static getInstance() {
-    if (!CharactorState.instance) CharactorState.instance = new CharactorState();
-    return CharactorState.instance;
+    if (!CharacterState.instance) CharacterState.instance = new CharacterState();
+    return CharacterState.instance;
   }
 
   // 从 Redis 加载状态到内存（初始化时或定期同步）
   async load() {
     const redis = getRedis();
-    const data = await redis.hgetall(REDIS_KEY_CHARACTOR_STATE);
+    const data = await redis.hgetall(REDIS_KEY_CHARACTER_STATE);
     if (Object.keys(data).length > 0) {
       if (data.action) this.action = data.action as ActionId;
       if (data.location) {
         try {
           this.location = JSON.parse(data.location);
         } catch (e) {
-          console.error('Failed to parse location:', e);
+          console.error("Failed to parse location:", e);
         }
       }
       if (data.stamina) this.stamina = Number.parseInt(data.stamina, 10);
@@ -45,7 +51,7 @@ export class CharactorState implements ICharactorState {
         try {
           this.dailyActionsDoneToday = JSON.parse(data.dailyActionsDoneToday);
         } catch (e) {
-          console.error('Failed to parse daily actions:', e);
+          console.error("Failed to parse daily actions:", e);
           this.dailyActionsDoneToday = [];
         }
       }
@@ -56,7 +62,7 @@ export class CharactorState implements ICharactorState {
         try {
           this.shortTermPlan = JSON.parse(data.shortTermPlan);
         } catch (e) {
-          console.error('Failed to parse short term plan:', e);
+          console.error("Failed to parse short term plan:", e);
           this.shortTermPlan = [];
         }
       }
@@ -64,7 +70,7 @@ export class CharactorState implements ICharactorState {
         try {
           this.inventory = JSON.parse(data.inventory);
         } catch (e) {
-          console.error('Failed to parse inventory:', e);
+          console.error("Failed to parse inventory:", e);
           this.inventory = [];
         }
       }
@@ -76,13 +82,13 @@ export class CharactorState implements ICharactorState {
 
   async save() {
     const redis = getRedis();
-    await redis.hset(REDIS_KEY_CHARACTOR_STATE, {
+    await redis.hset(REDIS_KEY_CHARACTER_STATE, {
       action: this.action,
       location: JSON.stringify(this.location),
       stamina: this.stamina,
       money: this.money,
       dailyActionsDoneToday: JSON.stringify(this.dailyActionsDoneToday),
-      longTermPlan: this.longTermPlan || '',
+      longTermPlan: this.longTermPlan || "",
       shortTermPlan: JSON.stringify(this.shortTermPlan || []),
       inventory: JSON.stringify(this.inventory),
     });
@@ -143,7 +149,7 @@ export class CharactorState implements ICharactorState {
    * 如果物品已存在，增加数量；否则创建新物品
    */
   async addItem(itemName: string, quantity: number = 1): Promise<void> {
-    const existingItem = this.inventory.find(item => item.name === itemName);
+    const existingItem = this.inventory.find((item) => item.name === itemName);
 
     if (existingItem) {
       // 物品已存在，增加数量
@@ -159,7 +165,7 @@ export class CharactorState implements ICharactorState {
    * 返回是否成功消费
    */
   async consumeItem(itemName: string, quantity: number = 1): Promise<boolean> {
-    const item = this.inventory.find(item => item.name === itemName);
+    const item = this.inventory.find((item) => item.name === itemName);
 
     if (!item || item.quantity < quantity) {
       return false; // 物品不存在或数量不足
@@ -181,11 +187,11 @@ export class CharactorState implements ICharactorState {
    * 获取背包中指定物品的数量
    */
   getItemQuantity(itemName: string): number {
-    const item = this.inventory.find(item => item.name === itemName);
+    const item = this.inventory.find((item) => item.name === itemName);
     return item ? item.quantity : 0;
   }
 
-  public log(): CharactorStateData {
+  public log(): CharacterStateData {
     return cloneDeep({
       action: this.action,
       location: this.location,
@@ -199,4 +205,4 @@ export class CharactorState implements ICharactorState {
   }
 }
 
-export const charactorState = CharactorState.getInstance();
+export const characterState = CharacterState.getInstance();

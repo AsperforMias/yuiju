@@ -1,12 +1,12 @@
-import { ActionId, ActionMetadata } from '@/types/action';
-import { allTrue } from '@yuiju/utils';
-import { isAfternoon, isWeekday } from './utils';
+import { allTrue } from "@yuiju/utils";
+import { ActionId, type ActionMetadata } from "@/types/action";
+import { isAfternoon, isWeekday } from "./utils";
 
 export const schoolAction: ActionMetadata[] = [
   {
     // TODO：逻辑优化，上课时间应该是固定的时间段，而不是随时可以上课
     action: ActionId.Study_At_School,
-    description: '在学校上课。每次消耗体力30点。',
+    description: "在学校上课。每次消耗体力30点。",
     precondition(context) {
       return allTrue([
         () => {
@@ -18,8 +18,8 @@ export const schoolAction: ActionMetadata[] = [
       ]);
     },
     async executor(context) {
-      await context.charactorState.setAction(ActionId.Study_At_School);
-      await context.charactorState.changeStamina(-30);
+      await context.characterState.setAction(ActionId.Study_At_School);
+      await context.characterState.changeStamina(-30);
     },
     durationMin: async (context) => {
       const now = context.worldState.time.clone();
@@ -29,20 +29,20 @@ export const schoolAction: ActionMetadata[] = [
       if (hour >= 14) {
         targetHour = 16;
       }
-      
+
       const target = now.hour(targetHour).minute(0).second(0).millisecond(0);
-      return target.diff(now, 'minute');
+      return target.diff(now, "minute");
     },
   },
   {
     action: ActionId.Go_Home_From_School,
-    description: '从学校回家。消耗体力10点。耗时30分钟。',
+    description: "从学校回家。消耗体力10点。耗时30分钟。",
     precondition(context) {
-      return allTrue([context.charactorState.stamina >= 10, isAfternoon(context)]);
+      return allTrue([context.characterState.stamina >= 10, isAfternoon(context)]);
     },
     async executor(context) {
-      await context.charactorState.setAction(ActionId.Go_Home_From_School);
-      await context.charactorState.changeStamina(-5);
+      await context.characterState.setAction(ActionId.Go_Home_From_School);
+      await context.characterState.changeStamina(-5);
     },
     durationMin: 30,
   },
