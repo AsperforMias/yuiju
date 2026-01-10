@@ -1,28 +1,28 @@
-import 'dotenv/config';
-import { NCWebsocket, Structs, type AllHandlers } from 'node-napcat-ts';
-import { config } from '@/config';
-import { connectDB, saveQQMessage } from '@yuiju/utils';
-import { llmManager } from './llm/manager';
+import "dotenv/config";
+import { connectDB, saveQQMessage } from "@yuiju/utils";
+import { type AllHandlers, NCWebsocket, Structs } from "node-napcat-ts";
+import { config } from "@/config";
+import { llmManager } from "./llm/manager";
 
 const whiteList = config.whiteList;
 
 const napcat = new NCWebsocket(
   {
     ...config.napcat,
-    accessToken: process.env.NAPCAT_TOKEN || '',
+    accessToken: process.env.NAPCAT_TOKEN || "",
     throwPromise: true,
   },
-  false
+  false,
 );
 
 // 背后调用的接口是 .handle_quick_operation
 // 只支持 message request 这两个事件
-napcat.on('message.private', messageHandler);
+napcat.on("message.private", messageHandler);
 
-async function messageHandler(context: AllHandlers['message.private']) {
-  let receiveMessage;
+async function messageHandler(context: AllHandlers["message.private"]) {
+  let receiveMessage: string | null = null;
   for (const item of context.message) {
-    if (item.type === 'text') {
+    if (item.type === "text") {
       receiveMessage = item.data.text;
     }
   }
@@ -35,7 +35,9 @@ async function messageHandler(context: AllHandlers['message.private']) {
     return;
   }
 
-  console.log(`收到来自 ${context.sender.nickname}(${context.sender.user_id}) 的消息: ${receiveMessage}`);
+  console.log(
+    `收到来自 ${context.sender.nickname}(${context.sender.user_id}) 的消息: ${receiveMessage}`,
+  );
   const userName = context.sender.nickname;
 
   saveQQMessage({
@@ -46,22 +48,22 @@ async function messageHandler(context: AllHandlers['message.private']) {
 
   try {
     if (!process.env.DEEPSEEK_API_KEY) {
-      await context.quick_action([Structs.text('DeepSeek 未配置，稍后再试呢~')]);
+      await context.quick_action([Structs.text("DeepSeek 未配置，稍后再试呢~")]);
       return;
     }
 
     const { text } = await llmManager.chatWithLLM(receiveMessage, userName);
 
-    const reply = (text || '').trim() || '呜…这句话我一时没理解呢。';
+    const reply = (text || "").trim() || "呜…这句话我一时没理解呢。";
     console.log(`回复给 ${context.sender.nickname}(${context.sender.user_id}) 的消息: ${reply}`);
     await context.quick_action([Structs.text(reply)]);
     saveQQMessage({
-      senderName: '悠酱',
+      senderName: "悠酱",
       content: reply,
       timestamp: new Date(),
     });
   } catch (error) {
-    await context.quick_action([Structs.text('小久刚刚摔了一跤，重试下呀~')]);
+    await context.quick_action([Structs.text("小久刚刚摔了一跤，重试下呀~")]);
   }
 }
 

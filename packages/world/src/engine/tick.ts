@@ -1,13 +1,12 @@
+import { getRecentBehaviorRecords, isProd, saveBehaviorRecord } from '@yuiju/utils';
+import { getActionList } from '@/action';
+import { getActionById } from '@/action/utils';
+import { chooseActionAgent } from '@/llm/agent';
+import { coordinatorAgent } from '@/llm/coordinator';
 import { charactorState } from '@/state/charactor-state';
 import { worldState } from '@/state/world-state';
-import { chooseActionAgent } from '@/llm/agent';
-import { getActionList } from '@/action';
-import { ActionContext, ActionId, ActionParameter } from '@/types/action';
-import { getActionById } from '@/action/utils';
+import { type ActionContext, ActionId, type ActionParameter } from '@/types/action';
 import { logger } from '@/utils/logger';
-import { isProd } from '@yuiju/utils';
-import { getRecentActions, saveAction } from '@yuiju/utils';
-import { coordinatorAgent } from '@/llm/coordinator';
 
 export async function getDurationTime(
   durationMin:
@@ -33,10 +32,6 @@ export interface TickReturn {
   completionEvent?: string;
 }
 
-/**
- *
- * @returns 下一次的 tick 时间
- */
 export async function tick(params: TickParams): Promise<TickReturn> {
   const context: ActionContext = {
     charactorState,
@@ -60,11 +55,11 @@ export async function tick(params: TickParams): Promise<TickReturn> {
     context.worldState.log()
   );
 
-  const recentActions = await getRecentActions(10);
-  const history = recentActions.map(a => ({
-    action: a.action_id as ActionId,
-    reason: a.reason,
-    timestamp: a.create_time.getTime(),
+  const recentBehaviors = await getRecentBehaviorRecords(10);
+  const history = recentBehaviors.map(b => ({
+    behavior: b.behavior as ActionId,
+    description: b.description,
+    timestamp: b.timestamp.getTime(),
   }));
 
   const { selectedAction, selectedParameter } = await coordinatorAgent(actionList, context, history);
@@ -81,28 +76,36 @@ export async function tick(params: TickParams): Promise<TickReturn> {
       logger.info(`[tick] Short term plan updated: ${JSON.stringify(selectedAction.updateShortTermPlan)}`);
     }
 
-    // 更新时间
-    await context.worldState.updateTime();
-
+    // 执行行为
     await actionMetadata.executor(context, selectedParameter?.parameters);
 
-    if (isProd) {
-      await saveAction({
-        action_id: selectedAction.action,
-        reason: selectedAction.reason,
-        create_time: new Date(),
-      });
-    }
-
-    // 更新时间
+    // 更新世界时间（第一次）
     await context.worldState.updateTime();
 
+    // 计算行为持续时间
     const durationMin = await getDurationTime(
       actionMetadata.durationMin,
       context,
       selectedAction.durationMinute,
       selectedParameter?.parameters
     );
+
+    // 保存行为记录（包含持续时间）
+    if (isProd) {
+      await saveBehaviorRecord({
+        behavior: selectedAction.action,
+        description: selectedAction.reason,
+        timestamp: new Date(),
+        trigger: 'agent',
+        parameters: selectedParameter?.parameters?.map(p => ({
+          value: p.value,
+          quantity: p.quantity ?? 1,
+          reason: p.description,
+          extra: p.extra,
+        })),
+        duration_minutes: durationMin,
+      });
+    }
 
     const completionEvent =
       typeof actionMetadata.completionEvent === 'function'

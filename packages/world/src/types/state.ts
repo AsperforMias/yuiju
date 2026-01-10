@@ -1,5 +1,5 @@
-import { Dayjs } from 'dayjs';
-import { ActionId } from './action';
+import type { Dayjs } from 'dayjs';
+import type { ActionId } from './action';
 
 // 大场景
 export enum MajorScene {
@@ -32,7 +32,7 @@ export interface FoodMetadata {
  * @description 预留
  * 材料元数据
  */
-export interface MaterialMetadata {}
+export type MaterialMetadata = {};
 
 /**
  * 物品接口（判别联合类型）
@@ -49,34 +49,6 @@ export type InventoryItem = {
   /** 食物元数据 */
   metadata: FoodMetadata | MaterialMetadata;
 };
-
-/**
- * 商店物品接口
- */
-export interface ShopItem {
-  /** 物品名称 */
-  name: string;
-  /** 物品类别 */
-  category: 'food' | 'tool' | 'material' | 'other';
-  /** 价格 */
-  price: number;
-  /** 体力恢复值（仅食物有效） */
-  stamina?: number;
-  /** 其他效果 */
-  effect?: Record<string, any>;
-}
-
-/**
- * 商店接口
- */
-export interface Shop {
-  /** 商店名称 */
-  name: string;
-  /** 商店位置 */
-  location: Location;
-  /** 可购买的物品列表 */
-  items: ShopItem[];
-}
 
 export interface CharactorStateData {
   action: ActionId;

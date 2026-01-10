@@ -6,8 +6,7 @@
   "private": true,
   "packageManager": "pnpm@10.14.0",
   "scripts": {
-    "check": "biome check .",
-    "lint": "biome lint .",
+    "lint": "biome lint . --diagnostic-level=error",
     "format": "biome format .",
     "format:write": "biome format . --write",
     "start:server": "pnpm --filter @yuiju/server run start",
@@ -15,7 +14,8 @@
     "dev:server": "pnpm --filter @yuiju/server run dev",
     "dev:world": "pnpm --filter @yuiju/world run dev",
     "dev:web": "pnpm --filter @yuiju/web run dev",
-    "test:world": "pnpm --filter @yuiju/world run test"
+    "test:world": "pnpm --filter @yuiju/world run test",
+    "type-check:world": "pnpm --filter @yuiju/world run type-check"
   },
   "repository": {
     "type": "git",

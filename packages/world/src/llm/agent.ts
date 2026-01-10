@@ -29,8 +29,8 @@ export async function chooseActionAgent(
     stamina: context.charactorState.stamina,
     worldTime: context.worldState.time,
     recentActionList: actionMemoryList.map(item => ({
-      action: item.action,
-      reason: item.reason,
+      action: item.behavior,
+      reason: item.description,
       time: dayjs(item.timestamp),
     })),
     location: `${context.charactorState.location.major}${
@@ -83,8 +83,8 @@ export async function chooseFoodAgent(
     longTermPlan: context.charactorState.longTermPlan,
     shortTermPlan: context.charactorState.shortTermPlan,
     recentActionList: actionMemoryList.map(item => ({
-      action: item.action,
-      reason: item.reason,
+      action: item.behavior,
+      reason: item.description,
       time: dayjs(item.timestamp),
     })),
   });

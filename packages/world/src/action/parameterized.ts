@@ -40,7 +40,7 @@ export const parameterizedActions: ActionMetadata[] = [
       await context.charactorState.setAction(ActionId.Buy_Item);
 
       // 扣除金币
-      const price = selectedItem.metadata?.price || 5;
+      const price = selectedItem.extra?.price || 5;
       if (context.charactorState.money < price) {
         throw new Error(`金币不足，需要${price}金币，当前只有${context.charactorState.money}金币`);
       }
@@ -62,7 +62,7 @@ export const parameterizedActions: ActionMetadata[] = [
     completionEvent: async (context, parameters) => {
       if (parameters && parameters.length > 0) {
         const itemName = parameters[0].value;
-        const price = parameters[0].metadata?.price || 0;
+        const price = parameters[0].extra?.price || 0;
         return `悠酱花了${price}金币买了${itemName}，放进了背包里`;
       }
       return '悠酱买了一些东西';

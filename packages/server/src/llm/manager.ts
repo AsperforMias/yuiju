@@ -6,7 +6,7 @@ import { config } from '@/config';
 // import { memorySearchTool } from '@/llm/tools/memorySearchTool';
 import { getCharacterCardPrompt } from '@yuiju/source';
 import dayjs from 'dayjs';
-import { getRecentActions, type IActionSchema } from '@yuiju/utils';
+import { getRecentBehaviorRecords, type IBehaviorRecord } from '@yuiju/utils';
 import { getCharactorState } from '../state';
 
 export class LLMManager {
@@ -31,11 +31,11 @@ export class LLMManager {
   }
 
   public async chatWithLLM(input: string, userName: string) {
-    const actionDocs: IActionSchema[] = await getRecentActions();
-    const recentActionList = actionDocs.map(doc => ({
-      action: doc.action_id,
-      reason: doc.reason,
-      time: dayjs(doc.create_time),
+    const behaviorDocs: IBehaviorRecord[] = await getRecentBehaviorRecords();
+    const recentActionList = behaviorDocs.map(doc => ({
+      action: doc.behavior,
+      reason: doc.description,
+      time: dayjs(doc.timestamp),
     }));
 
     const state = await getCharactorState();
