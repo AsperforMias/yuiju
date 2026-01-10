@@ -1,6 +1,5 @@
 import { allTrue } from "@yuiju/utils";
 import { ActionId, type ActionMetadata } from "@/types/action";
-import type { FoodMetadata } from "@/types/state";
 import { logger } from "@/utils/logger";
 import { notDoneToday } from "./utils";
 

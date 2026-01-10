@@ -1,7 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
 import "dotenv/config";
-import { characterState } from "@/state/charactor-state";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { characterState } from "@/state/character-state";
 import { ActionId } from "@/types/action";
+
+process.env.NODE_ENV = "development";
 
 describe("短期与长期计划功能", () => {
   beforeEach(async () => {

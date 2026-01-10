@@ -3,9 +3,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import "dotenv/config";
 import { connectDB } from "@yuiju/utils";
 
-vi.mock("@/llm/llm-client", () => {
+process.env.NODE_ENV = "development";
+
+vi.mock("@/llm/agent", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/llm/agent")>();
   return {
-    chooseAction: vi.fn(),
+    ...actual,
+    chooseActionAgent: vi.fn(),
   };
 });
 
@@ -21,7 +25,7 @@ vi.mock("@/utils/logger", () => {
 
 import { tick } from "@/engine/tick";
 import { chooseActionAgent } from "@/llm/agent";
-import { characterState } from "@/state/charactor-state";
+import { characterState } from "@/state/character-state";
 import { worldState } from "@/state/world-state";
 import { ActionId } from "@/types/action";
 

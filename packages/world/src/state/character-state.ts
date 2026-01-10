@@ -89,7 +89,7 @@ export class CharacterState implements ICharacterState {
       money: this.money,
       dailyActionsDoneToday: JSON.stringify(this.dailyActionsDoneToday),
       longTermPlan: this.longTermPlan || "",
-      shortTermPlan: JSON.stringify(this.shortTermPlan || []),
+      shortTermPlan: this.shortTermPlan ? JSON.stringify(this.shortTermPlan) : "",
       inventory: JSON.stringify(this.inventory),
     });
   }

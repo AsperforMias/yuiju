@@ -1,4 +1,4 @@
-import { characterState } from "./charactor-state";
+import { characterState } from "./character-state";
 import { worldState } from "./world-state";
 
 export async function initState(): Promise<void> {

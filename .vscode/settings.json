@@ -1,5 +1,5 @@
 {
-  "cSpell.words": ["hgetall", "yuiju"],
+  "cSpell.words": ["hgetall", "hset", "yuiju"],
   "editor.defaultFormatter": "biomejs.biome",
   "[typescript]": {
     "editor.defaultFormatter": "biomejs.biome"

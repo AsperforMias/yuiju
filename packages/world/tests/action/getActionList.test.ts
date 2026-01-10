@@ -1,8 +1,10 @@
 import dayjs from "dayjs";
 import { describe, expect, it } from "vitest";
 import { getActionList } from "@/action";
-import { type ActionContext, ActionId } from "@/types/action";
+import { ActionId } from "@/types/action";
 import { MajorScene } from "@/types/state";
+
+process.env.NODE_ENV = "development";
 
 function createContext(opts: {
   action: ActionId;
@@ -10,7 +12,7 @@ function createContext(opts: {
   stamina?: number;
   money?: number;
   time?: string;
-}): ActionContext {
+}): any {
   return {
     characterState: {
       action: opts.action,
@@ -18,12 +20,24 @@ function createContext(opts: {
       stamina: opts.stamina ?? 100,
       money: opts.money ?? 0,
       dailyActionsDoneToday: [],
+      longTermPlan: undefined,
+      shortTermPlan: undefined,
+      inventory: [],
       async setAction() {},
       async setStamina() {},
       async changeStamina() {},
       async changeMoney() {},
       async markActionDoneToday() {},
       async clearDailyActions() {},
+      async addItem() {},
+      async consumeItem() {
+        return true;
+      },
+      getItemQuantity() {
+        return 0;
+      },
+      async setLongTermPlan() {},
+      async setShortTermPlan() {},
       log() {
         return {
           action: opts.action,
@@ -31,6 +45,9 @@ function createContext(opts: {
           stamina: opts.stamina ?? 100,
           money: opts.money ?? 0,
           dailyActionsDoneToday: [],
+          longTermPlan: undefined,
+          shortTermPlan: undefined,
+          inventory: [],
         };
       },
     },
