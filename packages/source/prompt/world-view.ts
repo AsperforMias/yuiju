@@ -1,6 +1,7 @@
-import type { Dayjs } from 'dayjs';
-import { baseInformation } from './character-card';
-import { getTimeWithWeekday } from '@yuiju/utils';
+import { getTimeWithWeekday } from "@yuiju/utils";
+import type { Dayjs } from "dayjs";
+import { baseInformation } from "./character-card";
+import { type BehaviorRecord, generateRecentBehaviorPrompt } from "./utils";
 
 export const worldViewPrompt = `
 ## 世界观
@@ -16,13 +17,9 @@ export const worldViewPrompt = `
 `.trim();
 
 function generateShortTermPlanPrompt(shortTermPlan?: string[]) {
-  return shortTermPlan?.length ? shortTermPlan.map((item, index) => `${index + 1}. ${item}`).join('\n') : '（无）';
-}
-
-function generateRecentActionPrompt(recentActionList: { action: string; reason: string; time: Dayjs }[]) {
-  return recentActionList.length
-    ? recentActionList.map(item => `- ${item.action} (${getTimeWithWeekday(item.time)})：${item.reason}`).join('\n')
-    : '（无）';
+  return shortTermPlan?.length
+    ? shortTermPlan.map((item, index) => `${index + 1}. ${item}`).join("\n")
+    : "（无）";
 }
 
 export interface ChooseActionPromptPayload {
@@ -34,11 +31,7 @@ export interface ChooseActionPromptPayload {
   location: string;
   money: number;
   stamina: number;
-  recentActionList: {
-    action: string;
-    reason: string;
-    time: Dayjs;
-  }[];
+  recentBehaviorList: BehaviorRecord[];
   worldTime: Dayjs;
   eventDescription?: string;
   longTermPlan?: string;
@@ -50,14 +43,16 @@ export function chooseActionPrompt({
   currentAction,
   location,
   money,
-  recentActionList,
+  recentBehaviorList,
   stamina,
   worldTime,
   eventDescription,
   longTermPlan,
   shortTermPlan,
 }: ChooseActionPromptPayload) {
-  const actionListPrompt = actionList.map(item => `- ${item.action}：${item.description}`).join('\n');
+  const actionListPrompt = actionList
+    .map((item) => `- ${item.action}：${item.description}`)
+    .join("\n");
 
   return `
 ## 要求
@@ -71,17 +66,17 @@ ${baseInformation}
 ${worldViewPrompt}
 
 ## 状态
-${eventDescription ? `当前事件：${eventDescription}` : ''}
+${eventDescription ? `当前事件：${eventDescription}` : ""}
 当前时间：${getTimeWithWeekday(worldTime)}
 地点：${location}
 当前Action：${currentAction}
 体力值：${stamina} / 100
 金币：${money}
-长期计划：${longTermPlan || '（无）'}
+长期计划：${longTermPlan || "（无）"}
 短期计划：
 ${generateShortTermPlanPrompt(shortTermPlan)}
 最近的action：
-${generateRecentActionPrompt(recentActionList)}
+${generateRecentBehaviorPrompt(recentBehaviorList)}
 可选Action（仅可从中选择）：
 ${actionListPrompt}
 `;
@@ -90,15 +85,11 @@ ${actionListPrompt}
 export interface ChooseFoodPromptPayload {
   availableFood?: {
     value: string;
-    description: string;
+    description?: string;
   }[];
   location: string;
   stamina: number;
-  recentActionList: {
-    action: string;
-    reason: string;
-    time: Dayjs;
-  }[];
+  recentBehaviorList: BehaviorRecord[];
   worldTime: Dayjs;
   longTermPlan?: string;
   shortTermPlan?: string[];
@@ -111,24 +102,27 @@ export function chooseFoodPrompt({
   stamina,
   longTermPlan,
   shortTermPlan,
-  recentActionList,
+  recentBehaviorList,
 }: ChooseFoodPromptPayload) {
-  const availableFoodPrompt = availableFood?.map(food => `- ${food.value}：${food.description}`).join('\n') || '（无）';
+  const availableFoodPrompt =
+    availableFood?.map((food) => `- ${food.value}：${food.description || ""}`).join("\n") ||
+    "（无）";
 
   return `
 ## 要求
 你现在需要扮演一个名为ゆいじゅ的女孩子，昵称悠酱。你是角色的大脑，为悠酱做出决策，现在需要你选择一种 Food，在候选列表中选择一个最合适的 Food，例如：「薯片」、「饼干」、等。
 
-
 ## 状态
 当前时间：${getTimeWithWeekday(worldTime)}
 地点：${location}
-体力值：${stamina} / 100
-长期计划：${longTermPlan || '（无）'}
+体力值：${stamina}/100
+长期计划：${longTermPlan || "（无）"}
 短期计划：
 ${generateShortTermPlanPrompt(shortTermPlan)}
+
 最近的action：
-${generateRecentActionPrompt(recentActionList)}
+${generateRecentBehaviorPrompt(recentBehaviorList)}
+
 可选Action（仅可从中选择）：
 ${availableFoodPrompt}
 `;

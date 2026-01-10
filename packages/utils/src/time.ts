@@ -1,14 +1,14 @@
-import dayjs, { Dayjs } from 'dayjs';
-import 'dayjs/locale/zh-cn';
+import dayjs, { type Dayjs } from "dayjs";
+import "dayjs/locale/zh-cn";
 
-dayjs.locale('zh-cn');
+dayjs.locale("zh-cn");
 
 /**
  *
  * Get formatted time with weekday
  */
-export function getTimeWithWeekday(time?: Dayjs) {
+export function getTimeWithWeekday(time?: Dayjs, format?: string) {
   const displayTime = time ?? dayjs();
 
-  return displayTime.format('YYYY-MM-DD HH:mm:ss') + ' ' + displayTime.format('dddd');
+  return `${displayTime.format(format || "YYYY-MM-DD HH:mm")} ${displayTime.format("dddd")}`;
 }

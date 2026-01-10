@@ -1,6 +1,6 @@
-import type { Dayjs } from 'dayjs';
-import { worldViewPrompt } from './world-view';
-import { getTimeWithWeekday } from '@yuiju/utils';
+import { getTimeWithWeekday } from "@yuiju/utils";
+import { type BehaviorRecord, generateRecentBehaviorPrompt } from "./utils";
+import { worldViewPrompt } from "./world-view";
 
 export const baseInformation = `
 ## 人物设定
@@ -14,11 +14,7 @@ export const baseInformation = `
 
 export interface CharacterCardPromptParams {
   userName: string;
-  recentActionList: {
-    action: string;
-    reason: string;
-    time: Dayjs;
-  }[];
+  recentBehaviorList: BehaviorRecord[];
   state?: {
     action: string;
     location: any;
@@ -27,16 +23,16 @@ export interface CharacterCardPromptParams {
   } | null;
 }
 
-export const getCharacterCardPrompt = ({ recentActionList, userName, state }: CharacterCardPromptParams) => {
-  const recentActionPrompt = recentActionList.map(
-    item => `- ${item.action} (${getTimeWithWeekday(item.time)})：${item.reason}`
-  );
-
-  let statePrompt = '';
+export const getCharacterCardPrompt = ({
+  recentBehaviorList,
+  userName,
+  state,
+}: CharacterCardPromptParams) => {
+  let statePrompt = "";
   if (state) {
     const locationStr = state.location?.major
-      ? `${state.location.major}${state.location.minor ? ` - ${state.location.minor}` : ''}`
-      : '未知';
+      ? `${state.location.major}${state.location.minor ? ` - ${state.location.minor}` : ""}`
+      : "未知";
 
     statePrompt = `
 正在做的事情：${state.action}
@@ -66,6 +62,6 @@ ${worldViewPrompt}
 当前时间：${getTimeWithWeekday()}
 ${statePrompt}
 最近的action：
-${recentActionPrompt}
+${generateRecentBehaviorPrompt(recentBehaviorList)}
 `.trim();
 };

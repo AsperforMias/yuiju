@@ -49,7 +49,7 @@ export interface ActionParameter {
   /** 数量，默认为 1 */
   quantity?: number;
   /** 参数描述，如："苹果可以恢复10点体力" */
-  description: string;
+  description?: string;
   /** 参数决策原因，如："需要恢复体力" */
   reason?: string;
   /** 额外信息，如：{ price: 5, stamina: 20 } */
@@ -111,4 +111,5 @@ export interface BehaviorRecord {
   behavior: ActionId; // 改为 behavior，与数据库字段一致
   description: string; // 改为 description
   timestamp: number;
+  parameters?: ActionParameter[];
 }

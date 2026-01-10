@@ -62,6 +62,10 @@ export async function tick(params: TickParams): Promise<TickReturn> {
   const history = recentBehaviors.map((b) => ({
     behavior: b.behavior as ActionId,
     description: b.description,
+    parameters: b.parameters?.map((p) => ({
+      value: p.value,
+      quantity: p.quantity ?? 1,
+    })),
     timestamp: b.timestamp.getTime(),
   }));
 
