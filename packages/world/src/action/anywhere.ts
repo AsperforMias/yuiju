@@ -48,7 +48,7 @@ export const anywhereAction: ActionMetadata[] = [
         },
       ]);
     },
-    parameterAgent: async (context) => {
+    parameterResolver: async (context) => {
       const inventory = context.characterState.inventory || [];
       const availableFood = inventory.filter(
         (item) => item.category === "food" && item.quantity > 0,

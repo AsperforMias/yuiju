@@ -41,8 +41,8 @@ export async function coordinatorAgent(
 
   const parameterAgent = Action2ParameterAgentMap[selectedAction.action];
   if (parameterAgent) {
-    const parameterList = actionMetadata.parameterAgent
-      ? await actionMetadata.parameterAgent(context)
+    const parameterList = actionMetadata.parameterResolver
+      ? await actionMetadata.parameterResolver(context)
       : [];
 
     const parameterAgentRes = await parameterAgent(parameterList, context, behaviorList);

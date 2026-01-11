@@ -21,7 +21,7 @@ export const parameterizedActions: ActionMetadata[] = [
      * 参数选择 Agent
      * 返回可购买的物品参数列表
      */
-    parameterAgent: async (context) => {
+    parameterResolver: async (context) => {
       // 这里的逻辑会被参数 Agent 覆盖，但保留作为备用
       throw new Error("需要通过参数 Agent 获取可购买物品");
     },

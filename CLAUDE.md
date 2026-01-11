@@ -12,7 +12,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 # 代码检查
-pnpm check          # 使用 biome 检查代码
 pnpm lint           # 代码 lint
 pnpm format         # 格式化代码检查
 pnpm format:write   # 格式化代码并写入

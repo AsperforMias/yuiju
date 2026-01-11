@@ -83,7 +83,7 @@ export interface ActionMetadata {
   precondition: (context: ActionContext) => boolean | Promise<boolean>;
 
   /** 参数选择 Agent（可选，用于参数化行为） */
-  parameterAgent?: (context: ActionContext) => Promise<ActionParameter[]>;
+  parameterResolver?: (context: ActionContext) => Promise<ActionParameter[]>;
 
   /** 执行器，支持接收参数 */
   executor: (context: ActionContext, parameters?: ActionParameter[]) => void | Promise<void>;
