@@ -17,6 +17,9 @@
       "suspicious": {
         "noEmptyInterface": "warn",
         "noExplicitAny": "off"
+      },
+      "correctness": {
+        "noUnusedVariables": "warn"
       }
     }
   },
