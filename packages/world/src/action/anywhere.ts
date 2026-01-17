@@ -42,7 +42,7 @@ export const anywhereAction: ActionMetadata[] = [
         () => {
           const inventory = context.characterState.inventory || [];
           const availableFood = inventory.filter(
-            (item) => item.category === "food" && item.quantity > 0,
+            (item) => item.category === "food" && item.quantity! > 0,
           );
           return availableFood.length > 0;
         },
@@ -51,7 +51,7 @@ export const anywhereAction: ActionMetadata[] = [
     parameterResolver: async (context) => {
       const inventory = context.characterState.inventory || [];
       const availableFood = inventory.filter(
-        (item) => item.category === "food" && item.quantity > 0,
+        (item) => item.category === "food" && item.quantity! > 0,
       );
 
       if (availableFood.length === 0) {

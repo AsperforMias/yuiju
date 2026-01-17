@@ -7,7 +7,7 @@ import {
   type BehaviorRecord,
   type ParameterAgentDecision,
 } from "@/types/action";
-import { chooseActionAgent, chooseFoodAgent } from "./agent";
+import { chooseActionAgent, chooseFoodAgent, chooseShopProductAgent } from "./agent";
 
 const Action2ParameterAgentMap: Record<
   string,
@@ -18,6 +18,7 @@ const Action2ParameterAgentMap: Record<
   ) => Promise<ParameterAgentDecision | undefined>
 > = {
   [ActionId.Eat_Item]: chooseFoodAgent,
+  [ActionId.Buy_Item_At_Shop]: chooseShopProductAgent,
 };
 
 export async function coordinatorAgent(

@@ -99,6 +99,11 @@ export class CharacterState implements ICharacterState {
     await this.save();
   }
 
+  async setLocation(location: Location) {
+    this.location = location;
+    await this.save();
+  }
+
   async setStamina(stamina: number) {
     this.stamina = Math.min(MAX_STAMINA, Math.max(0, stamina));
     await this.save();
@@ -148,13 +153,23 @@ export class CharacterState implements ICharacterState {
    * 添加物品到背包
    * 如果物品已存在，增加数量；否则创建新物品
    */
-  async addItem(itemName: string, quantity: number = 1): Promise<void> {
-    const existingItem = this.inventory.find((item) => item.name === itemName);
+  async addItem(item: Omit<InventoryItem, "quantity">, quantity: number = 1): Promise<void> {
+    if (quantity <= 0) {
+      return;
+    }
+
+    const existingItem = this.inventory.find((inventoryItem) => inventoryItem.name === item.name);
 
     if (existingItem) {
-      // 物品已存在，增加数量
-      existingItem.quantity += quantity;
+      existingItem.description = item.description;
+      existingItem.category = item.category;
+      existingItem.metadata = item.metadata;
+      existingItem.quantity = (existingItem.quantity ?? 0) + quantity;
     } else {
+      this.inventory.push({
+        ...item,
+        quantity,
+      });
     }
 
     await this.save();
@@ -166,6 +181,10 @@ export class CharacterState implements ICharacterState {
    */
   async consumeItem(itemName: string, quantity: number = 1): Promise<boolean> {
     const item = this.inventory.find((item) => item.name === itemName);
+
+    if (!item?.quantity) {
+      return false;
+    }
 
     if (!item || item.quantity < quantity) {
       return false; // 物品不存在或数量不足
@@ -188,7 +207,7 @@ export class CharacterState implements ICharacterState {
    */
   getItemQuantity(itemName: string): number {
     const item = this.inventory.find((item) => item.name === itemName);
-    return item ? item.quantity : 0;
+    return item ? (item.quantity ?? 0) : 0;
   }
 
   public log(): CharacterStateData {

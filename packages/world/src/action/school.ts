@@ -1,5 +1,6 @@
 import { allTrue } from "@yuiju/utils";
 import { ActionId, type ActionMetadata } from "@/types/action";
+import { MajorScene } from "@/types/state";
 import { isAfternoon, isWeekday } from "./utils";
 
 export const schoolAction: ActionMetadata[] = [
@@ -42,8 +43,28 @@ export const schoolAction: ActionMetadata[] = [
     },
     async executor(context) {
       await context.characterState.setAction(ActionId.Go_Home_From_School);
+      await context.characterState.setLocation({
+        major: MajorScene.Home,
+      });
+
       await context.characterState.changeStamina(-5);
     },
     durationMin: 30,
+  },
+  {
+    action: ActionId.Go_To_Shop_From_School,
+    description: "从学校前往商店。消耗体力5点。耗时10分钟。",
+    precondition(context) {
+      return context.characterState.stamina >= 5;
+    },
+    async executor(context) {
+      await context.characterState.setAction(ActionId.Go_To_Shop_From_School);
+      await context.characterState.setLocation({
+        major: MajorScene.Shop,
+      });
+
+      await context.characterState.changeStamina(-5);
+    },
+    durationMin: 10,
   },
 ];

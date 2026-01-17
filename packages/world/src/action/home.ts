@@ -9,6 +9,7 @@ import {
   isWeekend,
   notDoneToday,
 } from "./utils";
+import { MajorScene } from "@/types/state";
 
 export const homeAction: ActionMetadata[] = [
   {
@@ -56,9 +57,27 @@ export const homeAction: ActionMetadata[] = [
     },
     async executor(context) {
       await context.characterState.setAction(ActionId.Go_To_School);
+      await context.characterState.setLocation({
+        major: MajorScene.School,
+      });
       await context.characterState.changeStamina(-10);
     },
     durationMin: 30,
+  },
+  {
+    action: ActionId.Go_To_Shop_From_Home,
+    description: "从家前往商店。消耗体力5点。耗时20分钟。",
+    precondition(context) {
+      return context.characterState.stamina >= 5;
+    },
+    async executor(context) {
+      await context.characterState.setAction(ActionId.Go_To_Shop_From_Home);
+      await context.characterState.setLocation({
+        major: MajorScene.Shop,
+      });
+      await context.characterState.changeStamina(-5);
+    },
+    durationMin: 20,
   },
   {
     action: ActionId.Eat_Dinner,

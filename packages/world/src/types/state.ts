@@ -3,8 +3,9 @@ import type { ActionId } from "./action";
 
 // 大场景
 export enum MajorScene {
-  Home = "home",
-  School = "school",
+  Home = "家",
+  School = "学校",
+  Shop = "商店",
 }
 
 // 家的小场景
@@ -15,10 +16,14 @@ export enum HomeSubScene {
 // 学校的小场景
 export enum SchoolSubScene {}
 
+// 商店的小场景（预留）
+export enum ShopSubScene {}
+
 // 位置类型（判别联合）
 export type Location =
   | { major: MajorScene.Home; minor?: HomeSubScene }
-  | { major: MajorScene.School; minor?: SchoolSubScene };
+  | { major: MajorScene.School; minor?: SchoolSubScene }
+  | { major: MajorScene.Shop; minor?: ShopSubScene };
 
 /**
  * 食物元数据
@@ -71,6 +76,7 @@ export interface ICharacterState extends CharacterStateData {
   setAction(action: ActionId): Promise<void>;
   /** 设置体力值 */
   setStamina(stamina: number): Promise<void>;
+  setLocation(location: Location): Promise<void>;
   /** 改变体力值 */
   changeStamina(delta: number): Promise<void>;
   /** 改变金钱 */
@@ -84,7 +90,7 @@ export interface ICharacterState extends CharacterStateData {
 
   /** 背包管理方法 */
   /** 添加物品到背包 */
-  addItem(itemName: string, quantity?: number): Promise<void>;
+  addItem(item: Omit<InventoryItem, "quantity">, quantity?: number): Promise<void>;
   /** 消费背包中的物品 */
   consumeItem(itemName: string, quantity?: number): Promise<boolean>;
   /** 获取背包中指定物品的数量 */

@@ -2,6 +2,7 @@ import { type ActionContext, ActionId } from "@/types/action";
 import { anywhereAction } from "./anywhere";
 import { homeAction } from "./home";
 import { schoolAction } from "./school";
+import { shopAction } from "./shop";
 
 export const PrecheckActionMap: Record<string, ActionId[]> = {
   [ActionId.Sleep]: [ActionId.Wake_Up, ActionId.Sleep_For_A_Little],
@@ -22,7 +23,7 @@ export const isNotDoing = (context: ActionContext, action: ActionId) =>
   context.characterState.action !== action;
 
 export const getActionById = (action: ActionId) => {
-  return [...anywhereAction, ...homeAction, ...schoolAction].find(
+  return [...anywhereAction, ...homeAction, ...schoolAction, ...shopAction].find(
     (item) => item.action === action,
   )!;
 };

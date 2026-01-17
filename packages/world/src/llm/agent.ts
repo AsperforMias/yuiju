@@ -1,4 +1,4 @@
-import { chooseActionPrompt, chooseFoodPrompt } from "@yuiju/source";
+import { chooseActionPrompt, chooseFoodPrompt, chooseShopProductPrompt } from "@yuiju/source";
 import { generateText, Output, stepCountIs } from "ai";
 import dayjs from "dayjs";
 import { z } from "zod";
@@ -127,6 +127,63 @@ export async function chooseFoodAgent(
       return result;
     } catch (error) {
       logger.error("[chooseFoodAgent] 选择食物失败", error);
+    }
+  }
+}
+
+export async function chooseShopProductAgent(
+  productList: ActionParameter[],
+  context: ActionContext,
+  actionMemoryList: BehaviorRecord[],
+): Promise<ParameterAgentDecision | undefined> {
+  if (productList.length === 0) {
+    return;
+  }
+
+  const systemPrompt = chooseShopProductPrompt({
+    availableProducts: productList,
+    location: `${context.characterState.location.major}${
+      context.characterState.location.minor ? "-" + context.characterState.location.minor : ""
+    }`,
+    stamina: context.characterState.stamina,
+    money: context.characterState.money,
+    worldTime: context.worldState.time,
+    longTermPlan: context.characterState.longTermPlan,
+    shortTermPlan: context.characterState.shortTermPlan,
+    recentBehaviorList: actionMemoryList.map((item) => ({
+      behavior: item.behavior,
+      description: item.description,
+      parameters: item.parameters,
+      time: dayjs(item.timestamp),
+    })),
+  });
+
+  for (let i = 0; i < RETRY_COUNT; i++) {
+    try {
+      const { output } = await generateText({
+        model: model_qwen3_8B,
+        providerOptions: {
+          Siliconflow: {
+            enable_thinking: true,
+          },
+        },
+        output: Output.object({
+          schema: z.array(
+            z.object({
+              value: z.enum(productList.map((item) => item.value)).describe("选择的商品名称"),
+              reason: z.string().describe("简短的理由"),
+              quantity: z.number().describe("购买数量"),
+            }),
+          ),
+        }),
+        prompt: systemPrompt,
+      });
+
+      const result = { selectedList: output };
+      logger.info("[chooseShopProductAgent] 选择商品结果", result);
+      return result;
+    } catch (error) {
+      logger.error("[chooseShopProductAgent] 选择商品失败", error);
     }
   }
 }

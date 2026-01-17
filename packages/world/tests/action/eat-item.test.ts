@@ -89,7 +89,7 @@ function createMockCharacterState(opts: {
     async changeMoney(_delta: number) {},
     async markActionDoneToday(_action: ActionId) {},
     async clearDailyActions() {},
-    async addItem(_itemName: string, _quantity?: number) {},
+    async addItem(_item: any, _quantity?: number) {},
     async consumeItem(itemName: string, quantity: number = 1): Promise<boolean> {
       const item = this.inventory.find((item) => item.name === itemName);
 

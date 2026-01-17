@@ -3,6 +3,7 @@ import { MajorScene } from "@/types/state";
 import { anywhereAction } from "./anywhere";
 import { homeAction } from "./home";
 import { schoolAction } from "./school";
+import { shopAction } from "./shop";
 import { precheckAction } from "./utils";
 
 export function getActionList(context: ActionContext) {
@@ -19,6 +20,9 @@ export function getActionList(context: ActionContext) {
       break;
     case MajorScene.School:
       locationAction = schoolAction;
+      break;
+    case MajorScene.Shop:
+      locationAction = shopAction;
       break;
     default:
       break;

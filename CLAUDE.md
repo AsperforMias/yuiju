@@ -45,20 +45,19 @@ pnpm test:world     # 运行 world 包的测试
 ### 包结构
 
 - **@yuiju/world** - 世界模拟引擎
-
   - `engine/` - 核心循环引擎
   - `action/` - 行为定义（home.ts: 家中行为, school.ts: 学校行为, anywhere.ts: 通用行为）
   - `state/` - 状态管理（character-state.ts: 角色状态, world-state.ts: 世界状态）
   - `llm/` - LLM 决策客户端
 
-- **@yuiju/server** - QQ 消息服务
+每个模块下都有 REDEMD.md 文件，可以快速了解模块的作用，不用每次都读一遍代码。
 
+- **@yuiju/server** - QQ 消息服务
   - `server.ts` - NapCat WebSocket 服务端（生产）
   - `terminal.ts` - 终端交互模式（开发）
   - `llm/manager.ts` - LLM 对话管理器
 
 - **@yuiju/utils** - 共享工具库
-
   - `db/` - MongoDB 连接和 Mongoose Schema（[action.schema.ts](packages/utils/src/db/schema/action.schema.ts)）
   - `redis.ts` - Redis 客户端（角色状态缓存）
   - `env.ts` - 环境变量判断工具
@@ -82,19 +81,16 @@ Redis Key 常量定义在 `@yuiju/utils` 的 [redis.ts](packages/utils/src/redis
 [tick.ts:38-143](packages/world/src/engine/tick.ts#L38-L143) 实现核心决策循环：
 
 1. **获取可用行为** - [action/index.ts:8-30](packages/world/src/action/index.ts#L8-L30)
-
    - 特殊优先检查（precheckAction）处理起床/睡觉后的特殊选择
    - 根据位置（Home/School）加载场景特定行为
    - 过滤满足前置条件的行为
 
 2. **LLM 选择行为** - [llm/coordinator.ts:23-83](packages/world/src/llm/coordinator.ts#L23-L83)
-
    - coordinatorAgent 协调行为选择和参数选择
    - chooseActionAgent 选择行为（DeepSeek Reasoner）
    - chooseFoodAgent 等参数 Agent 选择具体参数（Qwen3-8B）
 
 3. **执行行为** - [tick.ts:94-95](packages/world/src/engine/tick.ts#L94-L95)
-
    - 调用行为的 executor 函数
    - 支持参数化行为（如 Eat_Item 接收食物列表）
    - 计算持续时间（支持动态计算）
@@ -109,17 +105,18 @@ Redis Key 常量定义在 `@yuiju/utils` 的 [redis.ts](packages/utils/src/redis
 
 ```typescript
 interface ActionMetadata {
-  action: ActionId;                    // ActionId 枚举值
-  description: string;                 // 行为描述
-  precondition: (context) => boolean;  // 前置条件函数
-  parameterResolver?: (context) => Promise<ActionParameter[]>;  // 可选：参数解析器
-  executor: (context, parameters?) => void;  // 执行函数，支持参数
-  durationMin: number | ((context, llmDurationMin?, parameters?) => Promise<number>);  // 持续时间
-  completionEvent?: string | ((context, parameters?) => string);  // 完成事件描述
+  action: ActionId; // ActionId 枚举值
+  description: string; // 行为描述
+  precondition: (context) => boolean; // 前置条件函数
+  parameterResolver?: (context) => Promise<ActionParameter[]>; // 可选：参数解析器
+  executor: (context, parameters?) => void; // 执行函数，支持参数
+  durationMin: number | ((context, llmDurationMin?, parameters?) => Promise<number>); // 持续时间
+  completionEvent?: string | ((context, parameters?) => string); // 完成事件描述
 }
 ```
 
 **参数化行为**（如 [anywhere.ts:38-101](packages/world/src/action/anywhere.ts#L38-L101)）：
+
 - 定义 `parameterResolver` 返回可用参数列表
 - executor 接收 `parameters?: ActionParameter[]`
 - 持续时间可根据参数动态计算
@@ -149,7 +146,6 @@ interface ActionMetadata {
 使用 Mongoose 定义模型：
 
 - **BehaviorRecord** ([packages/utils/src/db/schema/action.schema.ts](packages/utils/src/db/schema/action.schema.ts))
-
   - behavior, description, timestamp, trigger (agent/user/system)
   - parameters (BehaviorParameter[]), duration_minutes
 

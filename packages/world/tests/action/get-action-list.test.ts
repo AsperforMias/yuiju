@@ -29,7 +29,7 @@ function createContext(opts: {
       async changeMoney() {},
       async markActionDoneToday() {},
       async clearDailyActions() {},
-      async addItem() {},
+      async addItem(_item: any, _quantity?: number) {},
       async consumeItem() {
         return true;
       },
@@ -79,7 +79,12 @@ describe("getActionList", () => {
       time: "2025-01-01T08:00:00",
     });
     const list = getActionList(context).map((a) => a.action);
-    expect(list).toEqual([ActionId.Eat_Breakfast, ActionId.Go_To_School, ActionId.Idle]);
+    expect(list).toEqual([
+      ActionId.Eat_Breakfast,
+      ActionId.Go_To_School,
+      ActionId.Go_To_Shop_From_Home,
+      ActionId.Idle,
+    ]);
   });
 
   it("Home noon weekday 12:00 returns idle, eat lunch", () => {
@@ -89,7 +94,7 @@ describe("getActionList", () => {
       time: "2025-01-01T12:00:00",
     });
     const list = getActionList(context).map((a) => a.action);
-    expect(list).toEqual([ActionId.Idle, ActionId.Eat_Lunch]);
+    expect(list).toEqual([ActionId.Go_To_Shop_From_Home, ActionId.Idle, ActionId.Eat_Lunch]);
   });
 
   it("Home evening weekday 19:00 returns eat dinner, idle", () => {
@@ -99,7 +104,7 @@ describe("getActionList", () => {
       time: "2025-01-01T19:00:00",
     });
     const list = getActionList(context).map((a) => a.action);
-    expect(list).toEqual([ActionId.Eat_Dinner, ActionId.Idle]);
+    expect(list).toEqual([ActionId.Go_To_Shop_From_Home, ActionId.Eat_Dinner, ActionId.Idle]);
   });
 
   it("Home night weekday 23:00 returns sleep, idle", () => {
@@ -109,7 +114,7 @@ describe("getActionList", () => {
       time: "2025-01-01T23:00:00",
     });
     const list = getActionList(context).map((a) => a.action);
-    expect(list).toEqual([ActionId.Sleep, ActionId.Idle]);
+    expect(list).toEqual([ActionId.Go_To_Shop_From_Home, ActionId.Sleep, ActionId.Idle]);
   });
 
   it("Home weekend afternoon Sunday 15:00 returns stay at home, idle", () => {
@@ -119,7 +124,7 @@ describe("getActionList", () => {
       time: "2025-01-05T15:00:00",
     });
     const list = getActionList(context).map((a) => a.action);
-    expect(list).toEqual([ActionId.Stay_At_Home, ActionId.Idle]);
+    expect(list).toEqual([ActionId.Go_To_Shop_From_Home, ActionId.Stay_At_Home, ActionId.Idle]);
   });
 
   it("Home weekend morning Sunday 08:00 returns breakfast, go to school, stay at home, idle", () => {
@@ -129,7 +134,12 @@ describe("getActionList", () => {
       time: "2025-01-05T08:00:00",
     });
     const list = getActionList(context).map((a) => a.action);
-    expect(list).toEqual([ActionId.Eat_Breakfast, ActionId.Stay_At_Home, ActionId.Idle]);
+    expect(list).toEqual([
+      ActionId.Eat_Breakfast,
+      ActionId.Go_To_Shop_From_Home,
+      ActionId.Stay_At_Home,
+      ActionId.Idle,
+    ]);
   });
 
   it("Home weekend noon Sunday 12:00 returns stay at home, idle, eat lunch", () => {
@@ -139,7 +149,12 @@ describe("getActionList", () => {
       time: "2025-01-05T12:00:00",
     });
     const list = getActionList(context).map((a) => a.action);
-    expect(list).toEqual([ActionId.Stay_At_Home, ActionId.Idle, ActionId.Eat_Lunch]);
+    expect(list).toEqual([
+      ActionId.Go_To_Shop_From_Home,
+      ActionId.Stay_At_Home,
+      ActionId.Idle,
+      ActionId.Eat_Lunch,
+    ]);
   });
 
   it("Home weekend evening Sunday 19:00 returns eat dinner, stay at home, idle", () => {
@@ -149,7 +164,12 @@ describe("getActionList", () => {
       time: "2025-01-05T19:00:00",
     });
     const list = getActionList(context).map((a) => a.action);
-    expect(list).toEqual([ActionId.Eat_Dinner, ActionId.Stay_At_Home, ActionId.Idle]);
+    expect(list).toEqual([
+      ActionId.Go_To_Shop_From_Home,
+      ActionId.Eat_Dinner,
+      ActionId.Stay_At_Home,
+      ActionId.Idle,
+    ]);
   });
 
   it("Home weekend night Sunday 23:00 returns sleep, stay at home, idle", () => {
@@ -159,7 +179,12 @@ describe("getActionList", () => {
       time: "2025-01-05T23:00:00",
     });
     const list = getActionList(context).map((a) => a.action);
-    expect(list).toEqual([ActionId.Stay_At_Home, ActionId.Sleep, ActionId.Idle]);
+    expect(list).toEqual([
+      ActionId.Go_To_Shop_From_Home,
+      ActionId.Stay_At_Home,
+      ActionId.Sleep,
+      ActionId.Idle,
+    ]);
   });
   it("School weekday 10:00 returns study, idle", () => {
     const context = createContext({
@@ -169,7 +194,7 @@ describe("getActionList", () => {
       stamina: 20,
     });
     const list = getActionList(context).map((a) => a.action);
-    expect(list).toEqual([ActionId.Study_At_School, ActionId.Idle]);
+    expect(list).toEqual([ActionId.Study_At_School, ActionId.Go_To_Shop_From_School, ActionId.Idle]);
   });
 
   it("School weekday 17:00 returns go home, idle", () => {
@@ -180,7 +205,28 @@ describe("getActionList", () => {
       stamina: 20,
     });
     const list = getActionList(context).map((a) => a.action);
-    expect(list).toEqual([ActionId.Go_Home_From_School, ActionId.Idle]);
+    expect(list).toEqual([
+      ActionId.Go_Home_From_School,
+      ActionId.Go_To_Shop_From_School,
+      ActionId.Idle,
+    ]);
+  });
+
+  it("Shop noon 12:00 returns buy, go home, go school, idle, eat lunch", () => {
+    const context = createContext({
+      action: ActionId.Idle,
+      major: MajorScene.Shop,
+      time: "2025-01-01T12:00:00",
+      money: 100,
+    });
+    const list = getActionList(context).map((a) => a.action);
+    expect(list).toEqual([
+      ActionId.Buy_Item_At_Shop,
+      ActionId.Go_Home_From_Shop,
+      ActionId.Go_To_School_From_Shop,
+      ActionId.Idle,
+      ActionId.Eat_Lunch,
+    ]);
   });
 
   it("Unknown location noon 12:00 returns anywhere filtered: idle, eat lunch", () => {

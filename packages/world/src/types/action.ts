@@ -29,8 +29,17 @@ export enum ActionId {
 
   /** 吃指定食物 */
   Eat_Item = "eat_item",
-  /** 购买物品 */
-  Buy_Item = "buy_item",
+  /** 在家前往商店 */
+  Go_To_Shop_From_Home = "go_to_shop_from_home",
+  /** 在学校前往商店 */
+  Go_To_Shop_From_School = "go_to_shop_from_school",
+  /** 从商店回家 */
+  Go_Home_From_Shop = "go_home_from_shop",
+  /** 从商店去学校 */
+  Go_To_School_From_Shop = "go_to_school_from_shop",
+
+  /** 在商店购买物品 */
+  Buy_Item_At_Shop = "buy_item_at_shop",
 }
 
 export interface ActionContext {
