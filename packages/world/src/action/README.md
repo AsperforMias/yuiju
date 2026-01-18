@@ -11,7 +11,8 @@ action/
 ├── index.ts          # 行为获取入口，根据角色位置返回可用行为列表
 ├── home.ts           # 家中场景行为（起床、吃饭、睡觉等）
 ├── school.ts         # 学校场景行为（上课、放学等）
-├── anywhere.ts       # 通用行为（发呆、吃食物、买物品等）
+├── shop.ts           # 商店场景行为（上课、放学等）
+├── anywhere.ts       # 通用行为（发呆、吃食物等）
 └── utils.ts          # 工具函数（时间判断、前置条件检查等）
 ```
 
@@ -22,6 +23,7 @@ action/
 行为的完整定义，类型定义见 [types/action.ts](../types/action.ts)。
 
 核心字段：
+
 - `action: ActionId` - 行为 ID 枚举值
 - `description: string` - 行为描述（传给 LLM 作为决策依据）
 - `precondition: (context) => boolean` - 前置条件函数，返回 false 时该行为不可用
@@ -43,6 +45,7 @@ action/
 某些行为需要 LLM 选择具体参数，如"吃食物"需要选择吃什么。
 
 实现步骤：
+
 1. 实现 `parameterResolver`，返回可供 LLM 选择的参数列表
 2. 在 `executor` 中使用 LLM 选择的参数
 
