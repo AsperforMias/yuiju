@@ -8,11 +8,11 @@
   "scripts": {
     "lint": "biome lint . --diagnostic-level=error",
     "format:write": "biome format . --write",
-    "start:server": "pnpm --filter @yuiju/server run start",
+    "start:message": "pnpm --filter @yuiju/message run start",
     "start:world": "pnpm --filter @yuiju/world run start",
     "start:web": "pnpm --filter @yuiju/web run start",
     "build:web": "pnpm --filter @yuiju/web run build",
-    "dev:server": "pnpm --filter @yuiju/server run dev",
+    "dev:message": "pnpm --filter @yuiju/message run dev",
     "dev:world": "pnpm --filter @yuiju/world run dev",
     "dev:web": "pnpm --filter @yuiju/web run dev",
     "test:world": "pnpm --filter @yuiju/world run test",

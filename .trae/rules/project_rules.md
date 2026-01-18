@@ -19,12 +19,12 @@ pnpm type-check:world
 
 ```bash
 # 开发环境
-pnpm dev:server     # 启动消息服务（使用 terminal.ts 终端交互）
+pnpm dev:message     # 启动消息服务（使用 terminal.ts 终端交互）
 pnpm dev:world      # 启动世界模拟（开发模式）
 pnpm dev:web        # 启动 Web 界面
 
 # 生产环境
-pnpm start:server   # 启动消息服务（使用 server.ts NapCat WebSocket）
+pnpm start:message   # 启动消息服务（使用 message.ts NapCat WebSocket）
 pnpm start:world    # 启动世界模拟（生产模式）
 
 # 测试
@@ -47,7 +47,7 @@ pnpm test:world     # 运行 world 包的测试
 
 每个模块下都有 REDEMD.md 文件，可以快速了解模块的作用，不用每次都读一遍代码。
 
-- **@yuiju/server** - QQ 消息服务
+- **@yuiju/message** - QQ 消息服务
   - `server.ts` - NapCat WebSocket 服务端（生产）
   - `terminal.ts` - 终端交互模式（开发）
   - `llm/manager.ts` - LLM 对话管理器
@@ -96,7 +96,7 @@ Redis Key 常量定义在 `@yuiju/utils` 的 [redis.ts](packages/utils/src/redis
 
 ### 行为定义规范
 
-行为在 `action/` 目录下定义，类型定义在 [types/action.ts:78-108](packages/world/src/types/action.ts#L78-L108)：
+行为在 `action/` 目录下定义，类型定义在 [types/action.ts:78-108](packages/utils/src/types/action.ts#L78-L108)：
 
 ```typescript
 interface ActionMetadata {
@@ -162,6 +162,7 @@ interface ActionMetadata {
 - 使用 Biome 进行代码检查和格式化（配置：[biome.json](biome.json)）
 - TypeScript 路径别名：`@/` 指向各包的 `src/` 目录
 - 使用 tsx 直接运行 TypeScript（无需预编译）
+- 更改完代码后请使用 `pnpm format:write` 格式化代码
 
 ### 测试
 

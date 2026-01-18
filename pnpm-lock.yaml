@@ -79,7 +79,7 @@ importers:
         specifier: ^4.0.13
         version: 4.0.13(@opentelemetry/api@1.9.0)(@types/node@24.10.1)(jiti@2.6.1)(lightningcss@1.30.2)(tsx@4.20.6)
 
-  packages/server:
+  packages/message:
     dependencies:
       '@yuiju/source':
         specifier: workspace:*

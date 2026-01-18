@@ -23,12 +23,12 @@ pnpm type-check:world
 
 ```bash
 # 开发环境
-pnpm dev:server     # 启动消息服务（使用 terminal.ts 终端交互）
+pnpm dev:message     # 启动消息服务（使用 terminal.ts 终端交互）
 pnpm dev:world      # 启动世界模拟（开发模式）
 pnpm dev:web        # 启动 Web 界面
 
 # 生产环境
-pnpm start:server   # 启动消息服务（使用 server.ts NapCat WebSocket）
+pnpm start:message   # 启动消息服务（使用 message.ts NapCat WebSocket）
 pnpm start:world    # 启动世界模拟（生产模式）
 
 # 测试
@@ -51,7 +51,7 @@ pnpm test:world     # 运行 world 包的测试
 
 每个模块下都有 REDEMD.md 文件，可以快速了解模块的作用，不用每次都读一遍代码。
 
-- **@yuiju/server** - QQ 消息服务
+- **@yuiju/message** - QQ 消息服务
   - `server.ts` - NapCat WebSocket 服务端（生产）
   - `terminal.ts` - 终端交互模式（开发）
   - `llm/manager.ts` - LLM 对话管理器
