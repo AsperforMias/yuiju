@@ -9,7 +9,6 @@
 ```bash
 # 代码检查和格式化
 pnpm lint           # Biome 代码 lint
-pnpm format         # 格式化代码检查
 pnpm format:write   # 格式化代码并写入
 
 # 类型检查

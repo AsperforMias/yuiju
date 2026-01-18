@@ -1,5 +1,5 @@
-import type { ModelMessage } from 'ai';
-type Role = 'user' | 'assistant';
+import type { ModelMessage } from "ai";
+type Role = "user" | "assistant";
 
 interface Entry {
   role: Role;
@@ -20,11 +20,11 @@ export class Conversation {
 
   getMessages(input: string): ModelMessage[] {
     const cutoff = Date.now() - 3600 * 1000;
-    const list = this.store.filter(e => e.time >= cutoff);
-    const history: ModelMessage[] = list.map(e => ({
+    const list = this.store.filter((e) => e.time >= cutoff);
+    const history: ModelMessage[] = list.map((e) => ({
       role: e.role,
       content: e.content,
     }));
-    return [...history, { role: 'user', content: input }];
+    return [...history, { role: "user", content: input }];
   }
 }

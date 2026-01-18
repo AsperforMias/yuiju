@@ -193,7 +193,11 @@ describe("getActionList", () => {
       stamina: 20,
     });
     const list = getActionList(context).map((a) => a.action);
-    expect(list).toEqual([ActionId.Study_At_School, ActionId.Go_To_Shop_From_School, ActionId.Idle]);
+    expect(list).toEqual([
+      ActionId.Study_At_School,
+      ActionId.Go_To_Shop_From_School,
+      ActionId.Idle,
+    ]);
   });
 
   it("School weekday 17:00 returns go home, idle", () => {

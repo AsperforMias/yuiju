@@ -13,7 +13,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```bash
 # 代码检查和格式化
 pnpm lint           # Biome 代码 lint
-pnpm format         # 格式化代码检查
 pnpm format:write   # 格式化代码并写入
 
 # 类型检查
@@ -167,6 +166,7 @@ interface ActionMetadata {
 - 使用 Biome 进行代码检查和格式化（配置：[biome.json](biome.json)）
 - TypeScript 路径别名：`@/` 指向各包的 `src/` 目录
 - 使用 tsx 直接运行 TypeScript（无需预编译）
+- 更改完代码后请使用 `pnpm format:write` 格式化代码
 
 ### 测试
 

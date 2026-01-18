@@ -110,4 +110,3 @@ export interface IWorldState extends WorldStateData {
   updateTime(newTime?: Dayjs): Promise<void>;
   reset(): Promise<void>;
 }
-

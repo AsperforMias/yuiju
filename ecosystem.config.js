@@ -1,28 +1,28 @@
 module.exports = {
   apps: [
     {
-      name: 'yuiju-message',
-      script: 'pnpm',
-      args: 'run start:message',
+      name: "yuiju-message",
+      script: "pnpm",
+      args: "run start:message",
       cwd: __dirname,
       env: {
-        NODE_ENV: 'production',
+        NODE_ENV: "production",
       },
       autorestart: false,
       watch: false,
-      max_memory_restart: '1024M',
+      max_memory_restart: "1024M",
     },
     {
-      name: 'yuiju-world',
-      script: 'pnpm',
-      args: 'run start:world',
+      name: "yuiju-world",
+      script: "pnpm",
+      args: "run start:world",
       cwd: __dirname,
       env: {
-        NODE_ENV: 'production',
+        NODE_ENV: "production",
       },
       autorestart: false,
       watch: false,
-      max_memory_restart: '1024M',
+      max_memory_restart: "1024M",
     },
   ],
 };

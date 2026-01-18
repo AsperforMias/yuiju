@@ -1,13 +1,13 @@
-import { config } from '@/config';
-import { promises as fs } from 'fs';
-import os from 'os';
-import { join } from 'path';
-import { spawn } from 'child_process';
-import { URL } from 'url';
+import { config } from "@/config";
+import { promises as fs } from "fs";
+import os from "os";
+import { join } from "path";
+import { spawn } from "child_process";
+import { URL } from "url";
 
 function sanitizeForTTS(text: string) {
-  const removed = text.replace(/\([^)]*\)|（[^）]*）|\[[^\]]*\]/g, '');
-  return removed.replace(/\s+/g, ' ').trim();
+  const removed = text.replace(/\([^)]*\)|（[^）]*）|\[[^\]]*\]/g, "");
+  return removed.replace(/\s+/g, " ").trim();
 }
 
 function buildTTSBody(text: string) {
@@ -27,8 +27,8 @@ function buildTTSBody(text: string) {
 async function requestTTS(body: any): Promise<Buffer> {
   const url = new URL(config.tts.endpoint);
   const res = await fetch(url.toString(), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
   const ab = await res.arrayBuffer();
@@ -40,9 +40,9 @@ async function playWavBuffer(buf: Buffer, opts?: { volume?: number; cleanup?: bo
   const tmpWav = join(os.tmpdir(), `yuiju-tts-${Date.now()}.wav`);
   await fs.writeFile(tmpWav, buf);
   await new Promise<void>((resolve, reject) => {
-    const p = spawn('afplay', ['-v', String(volume), tmpWav], { stdio: 'ignore' });
-    p.on('exit', code => (code === 0 ? resolve() : reject(new Error(`afplay exit ${code}`))));
-    p.on('error', reject);
+    const p = spawn("afplay", ["-v", String(volume), tmpWav], { stdio: "ignore" });
+    p.on("exit", (code) => (code === 0 ? resolve() : reject(new Error(`afplay exit ${code}`))));
+    p.on("error", reject);
   });
   await fs.unlink(tmpWav).catch(() => {});
 }

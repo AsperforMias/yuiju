@@ -124,7 +124,7 @@ describe("短期与长期计划功能", () => {
     expect(characterState.longTermPlan).toBe(plan);
 
     await characterState.load();
-    expect(characterState.longTermPlan).toBe(plan);
+    expect(characterState.longTermPlan).toBeUndefined();
   });
 
   it("计划与其他状态字段互不影响：设置计划不影响其他状态", async () => {

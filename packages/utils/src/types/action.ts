@@ -122,4 +122,3 @@ export interface BehaviorRecord {
   timestamp: number;
   parameters?: ActionParameter[];
 }
-

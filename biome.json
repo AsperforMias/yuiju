@@ -30,6 +30,13 @@
   },
   "files": {
     "ignoreUnknown": true,
-    "includes": ["**", "!!**/dist", "!!**/node_modules", "!!**/logs", "!!**/.next"]
+    "includes": [
+      "**",
+      "!!**/dist",
+      "!!**/node_modules",
+      "!!**/logs",
+      "!!**/.next",
+      "!!packages/source/dataset/opensource"
+    ]
   }
 }

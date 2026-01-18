@@ -1,5 +1,13 @@
 import Redis from "ioredis";
+import dayjs from "dayjs";
 import { isDev } from "./env";
+import {
+  ActionId,
+  MajorScene,
+  type CharacterStateData,
+  type Location,
+  type WorldStateData,
+} from "./types";
 
 let redis: Redis | null = null;
 
@@ -21,4 +29,138 @@ export const closeRedis = async () => {
     await redis.quit();
     redis = null;
   }
+};
+
+const DEFAULT_CHARACTER_STATE_DATA: CharacterStateData = {
+  action: ActionId.Idle,
+  location: { major: MajorScene.Home },
+  stamina: 100,
+  money: 0,
+  dailyActionsDoneToday: [],
+  inventory: [],
+};
+
+const isActionId = (value: string): value is ActionId => {
+  return (Object.values(ActionId) as string[]).includes(value);
+};
+
+const isMajorScene = (value: unknown): value is MajorScene => {
+  return typeof value === "string" && (Object.values(MajorScene) as string[]).includes(value);
+};
+
+const safeParseJson = <T>(input: string): T | undefined => {
+  try {
+    return JSON.parse(input) as T;
+  } catch {
+    return undefined;
+  }
+};
+
+export const initCharacterStateData = async (): Promise<CharacterStateData> => {
+  const redis = getRedis();
+  const raw = await redis.hgetall(REDIS_KEY_CHARACTER_STATE);
+
+  if (Object.keys(raw).length === 0) {
+    await redis.hset(REDIS_KEY_CHARACTER_STATE, {
+      action: DEFAULT_CHARACTER_STATE_DATA.action,
+      location: JSON.stringify(DEFAULT_CHARACTER_STATE_DATA.location),
+      stamina: DEFAULT_CHARACTER_STATE_DATA.stamina,
+      money: DEFAULT_CHARACTER_STATE_DATA.money,
+      dailyActionsDoneToday: JSON.stringify(DEFAULT_CHARACTER_STATE_DATA.dailyActionsDoneToday),
+      longTermPlan: "",
+      shortTermPlan: "",
+      inventory: JSON.stringify(DEFAULT_CHARACTER_STATE_DATA.inventory ?? []),
+    });
+
+    return { ...DEFAULT_CHARACTER_STATE_DATA };
+  }
+
+  const state: CharacterStateData = {
+    ...DEFAULT_CHARACTER_STATE_DATA,
+    dailyActionsDoneToday: [...DEFAULT_CHARACTER_STATE_DATA.dailyActionsDoneToday],
+    inventory: [...(DEFAULT_CHARACTER_STATE_DATA.inventory ?? [])],
+  };
+
+  if (raw.action && isActionId(raw.action)) {
+    state.action = raw.action;
+  }
+
+  if (raw.location) {
+    const parsedLocation = safeParseJson<unknown>(raw.location);
+    if (
+      parsedLocation &&
+      typeof parsedLocation === "object" &&
+      "major" in parsedLocation &&
+      isMajorScene((parsedLocation as any).major)
+    ) {
+      state.location = parsedLocation as Location;
+    }
+  }
+
+  if (raw.stamina) {
+    const stamina = Number.parseInt(raw.stamina, 10);
+    if (Number.isFinite(stamina)) state.stamina = stamina;
+  }
+
+  if (raw.money) {
+    const money = Number.parseInt(raw.money, 10);
+    if (Number.isFinite(money)) state.money = money;
+  }
+
+  if (raw.dailyActionsDoneToday) {
+    const parsedDaily = safeParseJson<unknown>(raw.dailyActionsDoneToday);
+    if (Array.isArray(parsedDaily)) {
+      state.dailyActionsDoneToday = parsedDaily
+        .filter((item): item is string => typeof item === "string")
+        .filter((item): item is ActionId => isActionId(item));
+    } else {
+      state.dailyActionsDoneToday = [];
+    }
+  }
+
+  if (raw.longTermPlan && raw.longTermPlan.trim() !== "") {
+    state.longTermPlan = raw.longTermPlan;
+  }
+
+  if (raw.shortTermPlan && raw.shortTermPlan.trim() !== "") {
+    const parsedShortTermPlan = safeParseJson<unknown>(raw.shortTermPlan);
+    if (Array.isArray(parsedShortTermPlan)) {
+      state.shortTermPlan = parsedShortTermPlan.filter(
+        (item): item is string => typeof item === "string",
+      );
+    } else {
+      state.shortTermPlan = [];
+    }
+  }
+
+  if (raw.inventory) {
+    const parsedInventory = safeParseJson<unknown>(raw.inventory);
+    if (Array.isArray(parsedInventory)) {
+      state.inventory = parsedInventory as NonNullable<CharacterStateData["inventory"]>;
+    } else {
+      state.inventory = [];
+    }
+  }
+
+  return state;
+};
+
+export const initWorldStateData = async (): Promise<WorldStateData> => {
+  const redis = getRedis();
+  const timeStr = await redis.hget(REDIS_KEY_WORLD_STATE, "time");
+
+  if (!timeStr) {
+    const time = dayjs();
+    await redis.hset(REDIS_KEY_WORLD_STATE, "time", time.toISOString());
+    return { time };
+  }
+
+  const parsed = dayjs(timeStr);
+  if (!parsed.isValid()) {
+    const time = dayjs();
+    await redis.hset(REDIS_KEY_WORLD_STATE, "time", time.toISOString());
+    return { time };
+  }
+
+  return { time: parsed };
 };

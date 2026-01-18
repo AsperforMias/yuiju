@@ -7,7 +7,6 @@
   "packageManager": "pnpm@10.14.0",
   "scripts": {
     "lint": "biome lint . --diagnostic-level=error",
-    "format": "biome format .",
     "format:write": "biome format . --write",
     "start:server": "pnpm --filter @yuiju/server run start",
     "start:world": "pnpm --filter @yuiju/world run start",

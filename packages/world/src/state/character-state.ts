@@ -7,6 +7,7 @@ import {
   type InventoryItem,
   type Location,
   getRedis,
+  initCharacterStateData,
 } from "@yuiju/utils";
 import { cloneDeep } from "lodash-es";
 
@@ -35,50 +36,15 @@ export class CharacterState implements ICharacterState {
 
   // 从 Redis 加载状态到内存（初始化时或定期同步）
   async load() {
-    const redis = getRedis();
-    const data = await redis.hgetall(REDIS_KEY_CHARACTER_STATE);
-    if (Object.keys(data).length > 0) {
-      if (data.action) this.action = data.action as ActionId;
-      if (data.location) {
-        try {
-          this.location = JSON.parse(data.location);
-        } catch (e) {
-          console.error("Failed to parse location:", e);
-        }
-      }
-      if (data.stamina) this.stamina = Number.parseInt(data.stamina, 10);
-      if (data.money) this.money = Number.parseInt(data.money, 10);
-      if (data.dailyActionsDoneToday) {
-        try {
-          this.dailyActionsDoneToday = JSON.parse(data.dailyActionsDoneToday);
-        } catch (e) {
-          console.error("Failed to parse daily actions:", e);
-          this.dailyActionsDoneToday = [];
-        }
-      }
-      if (data.longTermPlan) {
-        this.longTermPlan = data.longTermPlan;
-      }
-      if (data.shortTermPlan) {
-        try {
-          this.shortTermPlan = JSON.parse(data.shortTermPlan);
-        } catch (e) {
-          console.error("Failed to parse short term plan:", e);
-          this.shortTermPlan = [];
-        }
-      }
-      if (data.inventory) {
-        try {
-          this.inventory = JSON.parse(data.inventory);
-        } catch (e) {
-          console.error("Failed to parse inventory:", e);
-          this.inventory = [];
-        }
-      }
-    } else {
-      // Redis 为空，写入初始值
-      await this.save();
-    }
+    const data = await initCharacterStateData();
+    this.action = data.action;
+    this.location = data.location;
+    this.stamina = data.stamina;
+    this.money = data.money;
+    this.dailyActionsDoneToday = [...data.dailyActionsDoneToday];
+    this.longTermPlan = data.longTermPlan;
+    this.shortTermPlan = data.shortTermPlan;
+    this.inventory = [...(data.inventory ?? [])];
   }
 
   async save() {
