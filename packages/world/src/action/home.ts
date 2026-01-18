@@ -111,7 +111,7 @@ export const homeAction: ActionMetadata[] = [
     precondition(context) {
       return allTrue([isNight(context)]);
     },
-    executor(context) {
+    async executor(context) {
       context.characterState.setAction(ActionId.Sleep);
     },
     durationMin: async (context) => {

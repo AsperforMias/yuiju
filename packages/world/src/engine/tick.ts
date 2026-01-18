@@ -1,6 +1,6 @@
 import {
-  ActionId,
   type ActionContext,
+  ActionId,
   type ActionParameter,
   getRecentBehaviorRecords,
   isProd,
@@ -98,7 +98,7 @@ export async function tick(params: TickParams): Promise<TickReturn> {
     }
 
     // 执行行为
-    await actionMetadata.executor(context, selectedParameter?.parameters);
+    const executionResult = await actionMetadata.executor(context, selectedParameter?.parameters);
 
     // 更新世界时间（第一次）
     await context.worldState.updateTime();
@@ -113,9 +113,14 @@ export async function tick(params: TickParams): Promise<TickReturn> {
 
     // 保存行为记录（包含持续时间）
     if (isProd) {
+      let description = selectedAction.reason;
+      if (executionResult) {
+        description += ` ${executionResult}`;
+      }
+
       await saveBehaviorRecord({
         behavior: selectedAction.action,
-        description: selectedAction.reason,
+        description,
         timestamp: new Date(),
         trigger: "agent",
         parameters: selectedParameter?.parameters?.map((p) => ({

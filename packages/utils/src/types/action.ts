@@ -94,8 +94,8 @@ export interface ActionMetadata {
   /** 参数选择 Agent（可选，用于参数化行为） */
   parameterResolver?: (context: ActionContext) => Promise<ActionParameter[]>;
 
-  /** 执行器，支持接收参数 */
-  executor: (context: ActionContext, parameters?: ActionParameter[]) => void | Promise<void>;
+  /** 执行器，支持接收参数，返回执行结果 */
+  executor: (context: ActionContext, parameters?: ActionParameter[]) => Promise<void | string>;
 
   /** 行动耗时 min，支持参数化计算 */
   durationMin:

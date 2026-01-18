@@ -29,7 +29,7 @@ export class LLMManager {
   }
 
   public async chatWithLLM(input: string, userName: string) {
-    const behaviorDocs: IBehaviorRecord[] = await getRecentBehaviorRecords();
+    const behaviorDocs: IBehaviorRecord[] = await getRecentBehaviorRecords(5);
     const recentBehaviorList = behaviorDocs.map((item) => ({
       behavior: item.behavior,
       description: item.description,
