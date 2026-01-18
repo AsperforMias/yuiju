@@ -15,7 +15,7 @@ const findDotEnvPath = (startDir: string) => {
   return null;
 };
 
-const dotEnvPath = findDotEnvPath(process.cwd());
+const dotEnvPath = findDotEnvPath(__dirname);
 if (dotEnvPath) {
   dotenv.config({ path: dotEnvPath });
 }
