@@ -1,7 +1,7 @@
-import "dotenv/config";
-import * as readline from "readline";
-import { llmManager } from "./llm/manager";
+import "@yuiju/utils/env";
+import * as readline from "node:readline";
 import { connectDB } from "@yuiju/utils";
+import { llmManager } from "./llm/manager";
 
 connectDB();
 

@@ -1,26 +1,25 @@
-import { createOpenAI } from "@ai-sdk/openai";
+import process from "node:process";
+import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { getCharacterCardPrompt } from "@yuiju/source";
 import {
   getRecentBehaviorRecords,
-  initCharacterStateData,
   type IBehaviorRecord,
+  initCharacterStateData,
 } from "@yuiju/utils";
 import { generateText, type ModelMessage } from "ai";
 import dayjs from "dayjs";
 import { Conversation } from "../conversation";
 
 export class LLMManager {
-  private siliconflowClient: ReturnType<typeof createOpenAI>;
-  private modelName: string;
+  private siliconflowClient: ReturnType<typeof createOpenAICompatible>;
   private conversation: Conversation;
 
-  constructor(modelName: string = "Qwen/Qwen3-8B", conversationLimit: number = 10) {
-    this.siliconflowClient = createOpenAI({
+  constructor(conversationLimit: number = 10) {
+    this.siliconflowClient = createOpenAICompatible({
       baseURL: "https://api.siliconflow.cn/v1",
       apiKey: process.env.SILICONFLOW_API_KEY ?? "",
       name: "Siliconflow",
     });
-    this.modelName = modelName;
     this.conversation = new Conversation(conversationLimit);
   }
 
@@ -50,7 +49,7 @@ export class LLMManager {
     // 获取对话历史
     const messages: ModelMessage[] = this.conversation.getMessages(input);
 
-    const model = this.siliconflowClient.chat("Qwen/Qwen3-8B");
+    const model = this.siliconflowClient("Qwen/Qwen3-8B");
 
     const result = await generateText({
       model,
@@ -68,10 +67,6 @@ export class LLMManager {
     this.conversation.add("assistant", result.text);
 
     return result;
-  }
-
-  public getClient() {
-    return this.siliconflowClient.chat(this.modelName);
   }
 }
 

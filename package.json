@@ -10,6 +10,8 @@
     "format:write": "biome format . --write",
     "start:server": "pnpm --filter @yuiju/server run start",
     "start:world": "pnpm --filter @yuiju/world run start",
+    "start:web": "pnpm --filter @yuiju/web run start",
+    "build:web": "pnpm --filter @yuiju/web run build",
     "dev:server": "pnpm --filter @yuiju/server run dev",
     "dev:world": "pnpm --filter @yuiju/world run dev",
     "dev:web": "pnpm --filter @yuiju/web run dev",

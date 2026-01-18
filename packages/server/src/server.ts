@@ -1,4 +1,4 @@
-import "dotenv/config";
+import "@yuiju/utils/env";
 import { connectDB, saveQQMessage } from "@yuiju/utils";
 import { type AllHandlers, NCWebsocket, Structs } from "node-napcat-ts";
 import { config } from "@/config";
@@ -63,6 +63,7 @@ async function messageHandler(context: AllHandlers["message.private"]) {
       timestamp: new Date(),
     });
   } catch (error) {
+    console.log(error);
     await context.quick_action([Structs.text("小久刚刚摔了一跤，重试下呀~")]);
   }
 }
