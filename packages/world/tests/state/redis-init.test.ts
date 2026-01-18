@@ -14,10 +14,8 @@ describe("Redis 状态初始化/格式化", () => {
     vi.resetModules();
     vi.doMock("ioredis", () => {
       return {
-        default: class MockRedis {
-          constructor() {
-            return redisInstance;
-          }
+        default: function MockRedis() {
+          return redisInstance as any;
         },
       };
     });
@@ -47,7 +45,7 @@ describe("Redis 状态初始化/格式化", () => {
         location: "{bad json",
         stamina: "not_a_number",
         money: "5",
-        dailyActionsDoneToday: JSON.stringify(["idle", "not_action"]),
+        dailyActionsDoneToday: JSON.stringify(["发呆", "not_action"]),
         longTermPlan: "",
         shortTermPlan: "",
         inventory: "{bad json",
@@ -60,10 +58,8 @@ describe("Redis 状态初始化/格式化", () => {
     vi.resetModules();
     vi.doMock("ioredis", () => {
       return {
-        default: class MockRedis {
-          constructor() {
-            return redisInstance;
-          }
+        default: function MockRedis() {
+          return redisInstance as any;
         },
       };
     });
@@ -97,10 +93,8 @@ describe("Redis 状态初始化/格式化", () => {
     vi.resetModules();
     vi.doMock("ioredis", () => {
       return {
-        default: class MockRedis {
-          constructor() {
-            return redisInstance;
-          }
+        default: function MockRedis() {
+          return redisInstance as any;
         },
       };
     });
@@ -125,10 +119,8 @@ describe("Redis 状态初始化/格式化", () => {
     vi.resetModules();
     vi.doMock("ioredis", () => {
       return {
-        default: class MockRedis {
-          constructor() {
-            return redisInstance;
-          }
+        default: function MockRedis() {
+          return redisInstance as any;
         },
       };
     });

@@ -1,10 +1,13 @@
 import { createOpenAI } from "@ai-sdk/openai";
 import { getCharacterCardPrompt } from "@yuiju/source";
-import { getRecentBehaviorRecords, type IBehaviorRecord } from "@yuiju/utils";
+import {
+  getRecentBehaviorRecords,
+  initCharacterStateData,
+  type IBehaviorRecord,
+} from "@yuiju/utils";
 import { generateText, type ModelMessage } from "ai";
 import dayjs from "dayjs";
 import { Conversation } from "../conversation";
-import { getCharactorState } from "../state";
 
 export class LLMManager {
   private siliconflowClient: ReturnType<typeof createOpenAI>;
@@ -34,7 +37,7 @@ export class LLMManager {
       time: dayjs(item.timestamp),
     }));
 
-    const state = await getCharactorState();
+    const state = await initCharacterStateData();
 
     const systemPrompt = getCharacterCardPrompt({
       userName,

@@ -124,7 +124,7 @@ ${generateShortTermPlanPrompt(shortTermPlan)}
 最近的action：
 ${generateRecentBehaviorPrompt(recentBehaviorList)}
 
-可选Action（仅可从中选择）：
+可选食物（仅可从中选择）：
 ${availableFoodPrompt}
 `;
 }

@@ -1,4 +1,4 @@
-import { getTimeWithWeekday } from "@yuiju/utils";
+import { getTimeWithWeekday, type CharacterStateData } from "@yuiju/utils";
 import { type BehaviorRecord, generateRecentBehaviorPrompt } from "./utils";
 import { worldViewPrompt } from "./world-view";
 
@@ -15,12 +15,7 @@ export const baseInformation = `
 export interface CharacterCardPromptParams {
   userName: string;
   recentBehaviorList: BehaviorRecord[];
-  state?: {
-    action: string;
-    location: any;
-    stamina: number;
-    money: number;
-  } | null;
+  state?: CharacterStateData;
 }
 
 export const getCharacterCardPrompt = ({
@@ -38,7 +33,7 @@ export const getCharacterCardPrompt = ({
 正在做的事情：${state.action}
 位置：${locationStr}
 体力：${state.stamina} / 100
-金钱：${state.money}
+金币：${state.money}
 `.trimStart();
   }
 
