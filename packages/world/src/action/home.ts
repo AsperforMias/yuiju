@@ -1,4 +1,4 @@
-import { ActionId, MajorScene, type ActionMetadata, allTrue } from "@yuiju/utils";
+import { ActionId, type ActionMetadata, allTrue, MajorScene } from "@yuiju/utils";
 import {
   isAfternoon,
   isEvening,
@@ -48,13 +48,13 @@ export const homeAction: ActionMetadata[] = [
     durationMin: 20,
   },
   {
-    action: ActionId.Go_To_School,
+    action: ActionId.Go_To_School_From_Home,
     description: "前往学校。体力消耗10点。耗时30分钟。",
     precondition(context) {
       return allTrue([isWeekday(context), isMorning(context)]);
     },
     async executor(context) {
-      await context.characterState.setAction(ActionId.Go_To_School);
+      await context.characterState.setAction(ActionId.Go_To_School_From_Home);
       await context.characterState.setLocation({
         major: MajorScene.School,
       });

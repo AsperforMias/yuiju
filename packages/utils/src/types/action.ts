@@ -2,44 +2,44 @@ import type { ICharacterState, IWorldState } from "./state";
 
 export enum ActionId {
   /** 起床 */
-  Wake_Up = "wake_up",
+  Wake_Up = "起床",
   /** 再睡一会 */
-  Sleep_For_A_Little = "sleep_for_a_little",
+  Sleep_For_A_Little = "再睡一会",
   /** 吃早餐 */
-  Eat_Breakfast = "eat_breakfast",
+  Eat_Breakfast = "吃早餐",
   /** 去学校 */
-  Go_To_School = "go_to_school",
-  /** 呆在家里 */
-  Stay_At_Home = "stay_at_home",
+  Go_To_School_From_Home = "从家去学校",
+  /** 待在家里 */
+  Stay_At_Home = "待在家里",
   /** 吃晚餐 */
-  Eat_Dinner = "eat_dinner",
+  Eat_Dinner = "吃晚餐",
   /** 睡觉 */
-  Sleep = "sleep",
+  Sleep = "睡觉",
 
   /** 吃午餐 */
-  Eat_Lunch = "eat_lunch",
+  Eat_Lunch = "吃午餐",
 
   /** 在学校学习 */
-  Study_At_School = "study_at_school",
+  Study_At_School = "在学校学习",
   /** 放学回家 */
-  Go_Home_From_School = "go_home_from_school",
+  Go_Home_From_School = "放学回家",
 
   /** 空闲/发呆 */
-  Idle = "idle",
+  Idle = "发呆",
 
   /** 吃指定食物 */
-  Eat_Item = "eat_item",
+  Eat_Item = "吃东西",
   /** 在家前往商店 */
-  Go_To_Shop_From_Home = "go_to_shop_from_home",
+  Go_To_Shop_From_Home = "从家去商店",
   /** 在学校前往商店 */
-  Go_To_Shop_From_School = "go_to_shop_from_school",
+  Go_To_Shop_From_School = "从学校去商店",
   /** 从商店回家 */
-  Go_Home_From_Shop = "go_home_from_shop",
+  Go_Home_From_Shop = "从商店回家",
   /** 从商店去学校 */
-  Go_To_School_From_Shop = "go_to_school_from_shop",
+  Go_To_School_From_Shop = "从商店去学校",
 
   /** 在商店购买物品 */
-  Buy_Item_At_Shop = "buy_item_at_shop",
+  Buy_Item_At_Shop = "在商店购买物品",
 }
 
 export interface ActionContext {

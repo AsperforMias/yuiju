@@ -1,7 +1,7 @@
+import { ActionId, MajorScene } from "@yuiju/utils";
 import dayjs from "dayjs";
 import { describe, expect, it } from "vitest";
 import { getActionList } from "@/action";
-import { ActionId, MajorScene } from "@yuiju/utils";
 
 process.env.NODE_ENV = "development";
 
@@ -80,7 +80,7 @@ describe("getActionList", () => {
     const list = getActionList(context).map((a) => a.action);
     expect(list).toEqual([
       ActionId.Eat_Breakfast,
-      ActionId.Go_To_School,
+      ActionId.Go_To_School_From_Home,
       ActionId.Go_To_Shop_From_Home,
       ActionId.Idle,
     ]);

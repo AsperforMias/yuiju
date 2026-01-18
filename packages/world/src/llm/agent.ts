@@ -1,7 +1,4 @@
 import { chooseActionPrompt, chooseFoodPrompt, chooseShopProductPrompt } from "@yuiju/source";
-import { generateText, Output, stepCountIs } from "ai";
-import dayjs from "dayjs";
-import { z } from "zod";
 import type {
   ActionAgentDecision,
   ActionContext,
@@ -10,6 +7,9 @@ import type {
   BehaviorRecord,
   ParameterAgentDecision,
 } from "@yuiju/utils";
+import { generateText, Output, stepCountIs } from "ai";
+import dayjs from "dayjs";
+import { z } from "zod";
 import { logger } from "@/utils/logger";
 import { queryAvailableFood } from "./tools";
 import { model_deepseek_reasoner, model_qwen3_8B } from "./utils";
@@ -168,18 +168,16 @@ export async function chooseShopProductAgent(
           },
         },
         output: Output.object({
-          schema: z.array(
-            z.object({
-              value: z.enum(productList.map((item) => item.value)).describe("选择的商品名称"),
-              reason: z.string().describe("简短的理由"),
-              quantity: z.number().describe("购买数量"),
-            }),
-          ),
+          schema: z.object({
+            value: z.enum(productList.map((item) => item.value)).describe("选择的商品名称"),
+            reason: z.string().describe("简短的理由"),
+            quantity: z.number().describe("购买数量"),
+          }),
         }),
         prompt: systemPrompt,
       });
 
-      const result = { selectedList: output };
+      const result = { selectedList: [output] };
       logger.info("[chooseShopProductAgent] 选择商品结果", result);
       return result;
     } catch (error) {

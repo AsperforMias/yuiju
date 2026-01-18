@@ -1,13 +1,14 @@
-import Redis from "ioredis";
 import dayjs from "dayjs";
+import Redis from "ioredis";
 import { isDev } from "./env";
 import {
   ActionId,
-  MajorScene,
   type CharacterStateData,
   type Location,
+  MajorScene,
   type WorldStateData,
 } from "./types";
+import { safeParseJson } from "./utils";
 
 let redis: Redis | null = null;
 
@@ -46,14 +47,6 @@ const isActionId = (value: string): value is ActionId => {
 
 const isMajorScene = (value: unknown): value is MajorScene => {
   return typeof value === "string" && (Object.values(MajorScene) as string[]).includes(value);
-};
-
-const safeParseJson = <T>(input: string): T | undefined => {
-  try {
-    return JSON.parse(input) as T;
-  } catch {
-    return undefined;
-  }
 };
 
 export const initCharacterStateData = async (): Promise<CharacterStateData> => {
