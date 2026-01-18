@@ -122,7 +122,7 @@ Redis Key 定义在 `@yuiju/utils` 的 `redis.ts` 中：
 
 ## 相关文件
 
-- [types/state.ts](../types/state.ts) - 状态相关类型定义
+- [types/state.ts](../../../utils/src/types/state.ts) - 状态相关类型定义
 - [utils/redis.ts](../../utils/src/redis.ts) - Redis 客户端和 Key 常量
 - [action/utils.ts](../action/utils.ts) - 行为工具函数（使用状态判断）
 - [engine/tick.ts](../engine/tick.ts) - Tick 执行逻辑（使用和修改状态）

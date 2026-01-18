@@ -1,5 +1,4 @@
-import type { ActionContext, ActionMetadata } from "@/types/action";
-import { MajorScene } from "@/types/state";
+import { MajorScene, type ActionContext, type ActionMetadata } from "@yuiju/utils";
 import { anywhereAction } from "./anywhere";
 import { homeAction } from "./home";
 import { schoolAction } from "./school";

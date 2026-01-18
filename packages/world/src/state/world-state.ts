@@ -1,4 +1,4 @@
-import { IWorldState, WorldStateData } from '@/types/state';
+import { IWorldState, WorldStateData } from '@yuiju/utils';
 import { REDIS_KEY_WORLD_STATE, getRedis } from '@yuiju/utils';
 import dayjs, { Dayjs } from 'dayjs';
 import { cloneDeep } from 'lodash-es';

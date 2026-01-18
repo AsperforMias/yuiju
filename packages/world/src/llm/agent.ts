@@ -9,7 +9,7 @@ import type {
   ActionParameter,
   BehaviorRecord,
   ParameterAgentDecision,
-} from "@/types/action";
+} from "@yuiju/utils";
 import { logger } from "@/utils/logger";
 import { queryAvailableFood } from "./tools";
 import { model_deepseek_reasoner, model_qwen3_8B } from "./utils";

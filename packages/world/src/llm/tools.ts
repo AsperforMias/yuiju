@@ -1,6 +1,6 @@
 import { tool } from "ai";
 import z from "zod";
-import type { ActionContext } from "@/types/action";
+import type { ActionContext } from "@yuiju/utils";
 
 export const queryAvailableFood = (context: ActionContext) =>
   tool({

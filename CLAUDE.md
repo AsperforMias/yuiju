@@ -101,7 +101,7 @@ Redis Key 常量定义在 `@yuiju/utils` 的 [redis.ts](packages/utils/src/redis
 
 ### 行为定义规范
 
-行为在 `action/` 目录下定义，类型定义在 [types/action.ts:78-108](packages/world/src/types/action.ts#L78-L108)：
+行为在 `action/` 目录下定义，类型定义在 [types/action.ts:78-108](packages/utils/src/types/action.ts#L78-L108)：
 
 ```typescript
 interface ActionMetadata {

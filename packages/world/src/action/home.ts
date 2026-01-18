@@ -1,5 +1,4 @@
-import { allTrue } from "@yuiju/utils";
-import { ActionId, type ActionMetadata } from "@/types/action";
+import { ActionId, MajorScene, type ActionMetadata, allTrue } from "@yuiju/utils";
 import {
   isAfternoon,
   isEvening,
@@ -9,7 +8,6 @@ import {
   isWeekend,
   notDoneToday,
 } from "./utils";
-import { MajorScene } from "@/types/state";
 
 export const homeAction: ActionMetadata[] = [
   {

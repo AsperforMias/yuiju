@@ -1,8 +1,7 @@
 import dayjs from "dayjs";
 import { describe, expect, it } from "vitest";
 import { getActionList } from "@/action";
-import { ActionId } from "@/types/action";
-import { MajorScene } from "@/types/state";
+import { ActionId, MajorScene } from "@yuiju/utils";
 
 process.env.NODE_ENV = "development";
 

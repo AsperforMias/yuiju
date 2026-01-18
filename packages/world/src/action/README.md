@@ -20,7 +20,7 @@ action/
 
 ### ActionMetadata
 
-行为的完整定义，类型定义见 [types/action.ts](../types/action.ts)。
+行为的完整定义，类型定义见 [types/action.ts](../../../utils/src/types/action.ts)。
 
 核心字段：
 
@@ -61,7 +61,7 @@ action/
 
 ## 添加新行为
 
-1. 在 [types/action.ts](../types/action.ts) 添加 `ActionId` 枚举
+1. 在 [types/action.ts](../../../utils/src/types/action.ts) 添加 `ActionId` 枚举
 2. 在对应场景文件（home.ts/school.ts/anywhere.ts）定义行为
 3. 如需参数化，添加 `parameterResolver`
 4. 在 `executor` 中实现状态修改逻辑
@@ -75,7 +75,7 @@ action/
 
 ## 相关文件
 
-- [types/action.ts](../types/action.ts) - 行为相关类型定义
+- [types/action.ts](../../../utils/src/types/action.ts) - 行为相关类型定义
 - [state/charactor-state.ts](../state/charactor-state.ts) - 角色状态管理
 - [engine/tick.ts](../engine/tick.ts) - 行为执行循环
 - [llm/llm-client.ts](../llm/llm-client.ts) - LLM 决策客户端

@@ -1,5 +1,4 @@
-import { allTrue } from "@yuiju/utils";
-import { ActionId, type ActionMetadata } from "@/types/action";
+import { ActionId, type ActionMetadata, allTrue } from "@yuiju/utils";
 import { logger } from "@/utils/logger";
 import { notDoneToday } from "./utils";
 

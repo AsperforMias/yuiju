@@ -1,3 +1,4 @@
+import dayjs from "dayjs";
 import mongoose, { type Document, Schema } from "mongoose";
 
 /**
@@ -82,5 +83,13 @@ export async function saveBehaviorRecord(behaviorData: Partial<IBehaviorRecord>)
  * @returns 按时间倒序排列的行为记录列表
  */
 export async function getRecentBehaviorRecords(limit: number = 10) {
-  return await BehaviorRecordModel.find().sort({ timestamp: -1 }).limit(limit).exec();
+  const startOfToday = dayjs().startOf("day");
+  const startOfTomorrow = startOfToday.add(1, "day");
+
+  return await BehaviorRecordModel.find({
+    timestamp: { $gte: startOfToday.toDate(), $lt: startOfTomorrow.toDate() },
+  })
+    .sort({ timestamp: -1 })
+    .limit(limit)
+    .exec();
 }

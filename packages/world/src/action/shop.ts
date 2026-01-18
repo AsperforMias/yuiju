@@ -1,6 +1,4 @@
-import { allTrue } from "@yuiju/utils";
-import { ActionId, type ActionMetadata } from "@/types/action";
-import { MajorScene } from "@/types/state";
+import { ActionId, MajorScene, type ActionMetadata, allTrue } from "@yuiju/utils";
 import { logger } from "@/utils/logger";
 
 type ShopProduct = {

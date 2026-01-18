@@ -1,5 +1,5 @@
-import { REDIS_KEY_CHARACTOR_STATE, REDIS_KEY_WORLD_STATE, getRedis } from '@yuiju/utils';
-import dayjs, { Dayjs } from 'dayjs';
+import { getRedis, REDIS_KEY_CHARACTER_STATE, REDIS_KEY_WORLD_STATE } from "@yuiju/utils";
+import dayjs, { type Dayjs } from "dayjs";
 
 export interface CharactorStateData {
   action: string;
@@ -15,15 +15,15 @@ export interface WorldStateData {
 
 export const getCharactorState = async (): Promise<CharactorStateData | null> => {
   const redis = getRedis();
-  const data = await redis.hgetall(REDIS_KEY_CHARACTOR_STATE);
+  const data = await redis.hgetall(REDIS_KEY_CHARACTER_STATE);
 
   if (Object.keys(data).length === 0) {
     return null;
   }
 
   const state: CharactorStateData = {
-    action: 'idle',
-    location: { major: 'home' },
+    action: "idle",
+    location: { major: "home" },
     stamina: 100,
     money: 0,
     dailyActionsDoneToday: [],
@@ -34,7 +34,7 @@ export const getCharactorState = async (): Promise<CharactorStateData | null> =>
     try {
       state.location = JSON.parse(data.location);
     } catch (e) {
-      console.error('Failed to parse location:', e);
+      console.error("Failed to parse location:", e);
     }
   }
   if (data.stamina) state.stamina = Number.parseInt(data.stamina, 10);
@@ -43,7 +43,7 @@ export const getCharactorState = async (): Promise<CharactorStateData | null> =>
     try {
       state.dailyActionsDoneToday = JSON.parse(data.dailyActionsDoneToday);
     } catch (e) {
-      console.error('Failed to parse daily actions:', e);
+      console.error("Failed to parse daily actions:", e);
       state.dailyActionsDoneToday = [];
     }
   }
@@ -53,12 +53,12 @@ export const getCharactorState = async (): Promise<CharactorStateData | null> =>
 
 export const getWorldState = async (): Promise<WorldStateData> => {
   const redis = getRedis();
-  const timeStr = await redis.hget(REDIS_KEY_WORLD_STATE, 'time');
-  
+  const timeStr = await redis.hget(REDIS_KEY_WORLD_STATE, "time");
+
   if (timeStr) {
     return { time: dayjs(timeStr) };
   }
-  
+
   // Default to current time if not found, similar to initialization logic
   return { time: dayjs() };
 };

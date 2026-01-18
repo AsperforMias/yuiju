@@ -6,7 +6,7 @@ import {
   type ActionParameter,
   type BehaviorRecord,
   type ParameterAgentDecision,
-} from "@/types/action";
+} from "@yuiju/utils";
 import { chooseActionAgent, chooseFoodAgent, chooseShopProductAgent } from "./agent";
 
 const Action2ParameterAgentMap: Record<

@@ -1,11 +1,8 @@
 import { createOpenAI } from "@ai-sdk/openai";
-// import { memorySearchTool } from '@/llm/tools/memorySearchTool';
 import { getCharacterCardPrompt } from "@yuiju/source";
 import { getRecentBehaviorRecords, type IBehaviorRecord } from "@yuiju/utils";
 import { generateText, type ModelMessage } from "ai";
 import dayjs from "dayjs";
-import MemoryClient from "mem0ai";
-import { config } from "@/config";
 import { Conversation } from "../conversation";
 import { getCharactorState } from "../state";
 
@@ -13,7 +10,6 @@ export class LLMManager {
   private siliconflowClient: ReturnType<typeof createOpenAI>;
   private modelName: string;
   private conversation: Conversation;
-  private mem0Client: MemoryClient;
 
   constructor(modelName: string = "Qwen/Qwen3-8B", conversationLimit: number = 10) {
     this.siliconflowClient = createOpenAI({
@@ -23,7 +19,6 @@ export class LLMManager {
     });
     this.modelName = modelName;
     this.conversation = new Conversation(conversationLimit);
-    this.mem0Client = new MemoryClient({ apiKey: config.mem0.apiKey });
   }
 
   public addMessage(role: "user" | "assistant", content: string) {
@@ -64,27 +59,10 @@ export class LLMManager {
         },
       },
       // stopWhen: stepCountIs(5),
-      // tools: {
-      //   memorySearchTool,
-      // },
     });
 
     // 添加助手回复到对话历史
     this.conversation.add("assistant", result.text);
-
-    // this.mem0Client.add(
-    //   [
-    //     {
-    //       role: 'user',
-    //       content: input,
-    //     },
-    //     {
-    //       role: 'assistant',
-    //       content: result.text,
-    //     },
-    //   ],
-    //   { user_id: userName }
-    // );
 
     return result;
   }

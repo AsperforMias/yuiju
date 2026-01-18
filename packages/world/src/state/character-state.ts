@@ -1,13 +1,14 @@
-import { getRedis, REDIS_KEY_CHARACTER_STATE } from "@yuiju/utils";
-import { cloneDeep } from "lodash-es";
-import { ActionId } from "@/types/action";
 import {
+  ActionId,
+  MajorScene,
+  REDIS_KEY_CHARACTER_STATE,
   type CharacterStateData,
   type ICharacterState,
   type InventoryItem,
   type Location,
-  MajorScene,
-} from "@/types/state";
+  getRedis,
+} from "@yuiju/utils";
+import { cloneDeep } from "lodash-es";
 
 const MAX_STAMINA = 100;
 

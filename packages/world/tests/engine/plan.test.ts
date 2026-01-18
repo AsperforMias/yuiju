@@ -1,7 +1,7 @@
 import "dotenv/config";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { characterState } from "@/state/character-state";
-import { ActionId } from "@/types/action";
+import { ActionId } from "@yuiju/utils";
 
 process.env.NODE_ENV = "development";
 

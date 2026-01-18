@@ -1,4 +1,4 @@
-import { type ActionContext, ActionId } from "@/types/action";
+import { type ActionContext, ActionId } from "@yuiju/utils";
 import { anywhereAction } from "./anywhere";
 import { homeAction } from "./home";
 import { schoolAction } from "./school";

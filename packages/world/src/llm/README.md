@@ -82,7 +82,7 @@ const Action2ParameterAgentMap: Record<string, ParameterAgentFunction> = {
 
 ### 行为选择输出
 
-定义见 [types/action.ts:59-68](../types/action.ts#L59-L68)：
+定义见 [types/action.ts:59-68](../../../utils/src/types/action.ts#L59-L68)：
 ```typescript
 {
   action: ActionId,           // 选中的行为 ID
@@ -95,7 +95,7 @@ const Action2ParameterAgentMap: Record<string, ParameterAgentFunction> = {
 
 ### 参数选择输出
 
-定义见 [types/action.ts:70-76](../types/action.ts#L70-L76)：
+定义见 [types/action.ts:70-76](../../../utils/src/types/action.ts#L70-L76)：
 ```typescript
 {
   selectedList: [{
@@ -134,7 +134,7 @@ const Action2ParameterAgentMap: Record<string, ParameterAgentFunction> = {
 
 ## 相关文件
 
-- [types/action.ts](../types/action.ts) - 行为相关类型定义
+- [types/action.ts](../../../utils/src/types/action.ts) - 行为相关类型定义
 - [action/index.ts](../action/index.ts) - 行为列表获取
 - [engine/tick.ts](../engine/tick.ts) - Tick 执行逻辑
 - [packages/source](../../source) - 提示词模板管理

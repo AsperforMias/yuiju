@@ -2,10 +2,7 @@ import dayjs from "dayjs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { shopAction } from "@/action/shop";
-import type { ActionParameter } from "@/types/action";
-import { ActionId } from "@/types/action";
-import type { InventoryItem } from "@/types/state";
-import { MajorScene } from "@/types/state";
+import { ActionId, MajorScene, type ActionParameter, type InventoryItem } from "@yuiju/utils";
 
 process.env.NODE_ENV = "development";
 
