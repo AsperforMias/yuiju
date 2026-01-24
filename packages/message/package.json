@@ -13,7 +13,6 @@
   "license": "ISC",
   "packageManager": "pnpm@10.14.0",
   "dependencies": {
-    "mem0ai": "^2.1.38",
     "node-napcat-ts": "^0.4.20",
     "@yuiju/source": "workspace:*",
     "@yuiju/utils": "workspace:*"
