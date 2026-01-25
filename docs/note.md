@@ -7,3 +7,14 @@ mem0/oss 依赖了 sqlite3，使用时会报 binding 错误，需要重写构建
 ```sh
 npm rebuild sqlite3
 ```
+
+## neo4j
+
+```sql
+-- 查询可视化
+CALL db.schema.visualization();
+
+-- 删除所有节点
+MATCH (n)
+DETACH DELETE n;
+```
