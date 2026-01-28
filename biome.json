@@ -34,6 +34,7 @@
       "**",
       "!!**/dist",
       "!!**/node_modules",
+      "!!**/.venv",
       "!!**/logs",
       "!!**/.next",
       "!!packages/source/dataset/opensource"

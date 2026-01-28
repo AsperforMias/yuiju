@@ -1,3 +1,3 @@
 # 开发计划
 
-- 研究 mem0 自部署，并接入
+- Action 可以抽象成一个 abstract class

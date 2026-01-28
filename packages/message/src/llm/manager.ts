@@ -2,17 +2,21 @@ import process from "node:process";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { getCharacterCardPrompt } from "@yuiju/source";
 import {
+  getMemoryServiceClientFromEnv,
   getRecentBehaviorRecords,
   type IBehaviorRecord,
   initCharacterStateData,
+  type MemorySearchItem,
 } from "@yuiju/utils";
 import { generateText, type ModelMessage } from "ai";
 import dayjs from "dayjs";
 import { Conversation } from "../conversation";
+import { memorySearchTool } from "./tools/memorySearchTool";
 
 export class LLMManager {
   private siliconflowClient: ReturnType<typeof createOpenAICompatible>;
   private conversation: Conversation;
+  private memoryClient = getMemoryServiceClientFromEnv();
 
   constructor(conversationLimit: number = 10) {
     this.siliconflowClient = createOpenAICompatible({
@@ -25,6 +29,20 @@ export class LLMManager {
 
   public addMessage(role: "user" | "assistant", content: string) {
     this.conversation.add(role, content);
+  }
+
+  private buildMemoryContextBlock(memoryList: MemorySearchItem[]): string {
+    if (memoryList.length === 0) return "";
+
+    const truncated = memoryList.map((m) => {
+      const raw = (m.memory || "").trim();
+      const text = raw.length > 200 ? `${raw.slice(0, 200)}…` : raw;
+      const time = m.time ? `（${m.time}）` : "";
+      const source = m.source ? `【${m.source}】` : "";
+      return `- ${source}${text}${time}`;
+    });
+
+    return `\n\n【相关记忆（检索）】\n${truncated.join("\n")}\n`;
   }
 
   public async chatWithLLM(input: string, userName: string) {
@@ -43,6 +61,12 @@ export class LLMManager {
       recentBehaviorList,
       state,
     });
+
+    const memoryList = this.memoryClient
+      ? await this.memoryClient.searchMemory({ user_name: userName, query: input, top_k: 5 })
+      : [];
+    const systemPromptWithMemory = systemPrompt + this.buildMemoryContextBlock(memoryList);
+
     // 添加用户输入到对话历史
     this.conversation.add("user", input);
 
@@ -54,7 +78,10 @@ export class LLMManager {
     const result = await generateText({
       model,
       messages,
-      system: systemPrompt,
+      system: systemPromptWithMemory,
+      tools: {
+        memorySearchTool,
+      },
       providerOptions: {
         Siliconflow: {
           enable_thinking: false,

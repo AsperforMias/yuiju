@@ -3,6 +3,7 @@ import {
   ActionId,
   type ActionParameter,
   getRecentBehaviorRecords,
+  getMemoryServiceClientFromEnv,
   isProd,
   saveBehaviorRecord,
 } from "@yuiju/utils";
@@ -12,6 +13,8 @@ import { coordinatorAgent } from "@/llm/coordinator";
 import { characterState } from "@/state/character-state";
 import { worldState } from "@/state/world-state";
 import { logger } from "@/utils/logger";
+
+const memoryClient = getMemoryServiceClientFromEnv();
 
 export async function getDurationTime(
   durationMin:
@@ -131,6 +134,38 @@ export async function tick(params: TickParams): Promise<TickReturn> {
         })),
         duration_minutes: durationMin,
       });
+    }
+
+    if (memoryClient && selectedAction.action !== ActionId.Idle) {
+      try {
+        const now = new Date();
+        let description = selectedAction.reason;
+        if (executionResult) {
+          description += ` ${executionResult}`;
+        }
+
+        await memoryClient.writeEpisode({
+          user_name: "ゆいじゅ",
+          type: "world_action",
+          reference_time: now,
+          content: {
+            ts: now.toISOString(),
+            action: selectedAction.action,
+            reason: selectedAction.reason,
+            description,
+            parameters:
+              selectedParameter?.parameters?.map((p) => ({
+                value: p.value,
+                quantity: p.quantity ?? 1,
+                reason: p.reason,
+                extra: p.extra,
+              })) ?? [],
+            duration_minutes: durationMin,
+          },
+        });
+      } catch (e) {
+        logger.error("[tick] write world_action episode failed", e);
+      }
     }
 
     const completionEvent =

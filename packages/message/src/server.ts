@@ -1,8 +1,9 @@
 import "@yuiju/utils/env";
-import { connectDB } from "@yuiju/utils";
+import { connectDB, getMemoryServiceClientFromEnv, saveQQMessage } from "@yuiju/utils";
 import { type AllHandlers, NCWebsocket, Structs } from "node-napcat-ts";
 import { config } from "@/config";
 import { llmManager } from "./llm/manager";
+import { ChatEpisodeBuffer } from "./memory/chatEpisodeBuffer";
 
 const whiteList = config.whiteList;
 
@@ -18,6 +19,11 @@ const napcat = new NCWebsocket(
 // 背后调用的接口是 .handle_quick_operation
 // 只支持 message request 这两个事件
 napcat.on("message.private", messageHandler);
+
+const chatEpisodeBuffer = new ChatEpisodeBuffer({
+  windowMs: 10 * 60 * 1000,
+  memoryClient: getMemoryServiceClientFromEnv(),
+});
 
 async function messageHandler(context: AllHandlers["message.private"]) {
   let receiveMessage: string | null = null;
@@ -38,7 +44,8 @@ async function messageHandler(context: AllHandlers["message.private"]) {
   console.log(
     `收到来自 ${context.sender.nickname}(${context.sender.user_id}) 的消息: ${receiveMessage}`,
   );
-  const userName = context.sender.nickname;
+  const userName = context.sender.nickname || String(context.sender.user_id);
+  const now = new Date();
 
   try {
     if (!process.env.DEEPSEEK_API_KEY) {
@@ -50,6 +57,36 @@ async function messageHandler(context: AllHandlers["message.private"]) {
 
     const reply = (text || "").trim() || "呜…这句话我一时没理解呢。";
     console.log(`回复给 ${context.sender.nickname}(${context.sender.user_id}) 的消息: ${reply}`);
+
+    saveQQMessage({
+      user_name: userName,
+      role: "user",
+      content: receiveMessage,
+      timestamp: now,
+      senderName: context.sender.nickname || undefined,
+    });
+    chatEpisodeBuffer.addMessage({
+      user_name: userName,
+      role: "user",
+      content: receiveMessage,
+      timestamp: now,
+    });
+
+    const replyTs = new Date();
+    saveQQMessage({
+      user_name: userName,
+      role: "assistant",
+      content: reply,
+      timestamp: replyTs,
+      senderName: context.sender.nickname || undefined,
+    });
+    chatEpisodeBuffer.addMessage({
+      user_name: userName,
+      role: "assistant",
+      content: reply,
+      timestamp: replyTs,
+    });
+
     await context.quick_action([Structs.text(reply)]);
   } catch (error) {
     console.log(error);
