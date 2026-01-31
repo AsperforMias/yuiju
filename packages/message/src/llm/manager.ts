@@ -2,13 +2,11 @@ import { deepseek } from "@ai-sdk/deepseek";
 import { getCharacterCardPrompt } from "@yuiju/source";
 import {
   getMemoryServiceClientFromEnv,
-  getRecentBehaviorRecords,
-  type IBehaviorRecord,
-  initCharacterStateData,
   memorySearchTool,
+  queryCharacterStateTool,
+  queryRecentBehaviorsTool,
 } from "@yuiju/utils";
 import { generateText, type ModelMessage, stepCountIs } from "ai";
-import dayjs from "dayjs";
 import { ChatSessionManager } from "../chat-session-manager";
 
 export class LLMManager {
@@ -24,20 +22,8 @@ export class LLMManager {
   }
 
   public async chatWithLLM(input: string, userName: string) {
-    const behaviorDocs: IBehaviorRecord[] = await getRecentBehaviorRecords(5);
-    const recentBehaviorList = behaviorDocs.map((item) => ({
-      behavior: item.behavior,
-      description: item.description,
-      parameters: item.parameters,
-      time: dayjs(item.timestamp),
-    }));
-
-    const state = await initCharacterStateData();
-
     const systemPrompt = getCharacterCardPrompt({
       userName,
-      recentBehaviorList,
-      state,
     });
 
     this.session.recordMessage({
@@ -54,6 +40,8 @@ export class LLMManager {
       system: systemPrompt,
       tools: {
         memorySearchTool,
+        queryCharacterState: queryCharacterStateTool,
+        queryRecentBehaviors: queryRecentBehaviorsTool,
       },
       stopWhen: stepCountIs(5),
     });

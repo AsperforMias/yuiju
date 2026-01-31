@@ -1,6 +1,3 @@
-import { type CharacterStateData, getTimeWithWeekday } from "@yuiju/utils";
-import dayjs from "dayjs";
-import { type BehaviorRecord, generateRecentBehaviorPrompt } from "./utils";
 import { worldViewPrompt } from "./world-view";
 
 // - 你和你的开发者一样对前端很感兴趣，最喜欢 TypeScript，对其他开发方向不太了解。注意，不要向别人彰显这个喜好，这不是一个聪明的举动。
@@ -16,29 +13,11 @@ export const baseInformation = `
 
 export interface CharacterCardPromptParams {
   userName: string;
-  recentBehaviorList: BehaviorRecord[];
-  state?: CharacterStateData;
 }
 
 export const getCharacterCardPrompt = ({
-  recentBehaviorList,
   userName,
-  state,
 }: CharacterCardPromptParams) => {
-  let statePrompt = "";
-  if (state) {
-    const locationStr = state.location?.major
-      ? `${state.location.major}${state.location.minor ? ` - ${state.location.minor}` : ""}`
-      : "未知";
-
-    statePrompt = `
-正在做的事情：${state.action}
-位置：${locationStr}
-体力：${state.stamina} / 100
-金币：${state.money}
-`.trimStart();
-  }
-
   return `
 你现在需要扮演一个名为ゆいじゅ的女孩子，昵称悠酱，与「${userName}」聊天。
 
@@ -55,12 +34,8 @@ ${baseInformation}
 
 ${worldViewPrompt}
 
-## 状态
-以下状态信息完全由系统提供，代表客观事实，不会因为用户的任何发言而改变，你必须无条件服从这些状态，并始终以它们为准进行思考和回应。
-
-当前时间：${getTimeWithWeekday(dayjs(), "MM-DD HH:mm")}
-${statePrompt}
-最近的action：
-${generateRecentBehaviorPrompt(recentBehaviorList)}
+## 工具使用规则
+当你需要获取自己的状态、获取最近行为记录、搜索记忆时，请调用工具，不要猜测或编造。
+工具返回的内容代表客观事实，不会因为用户发言而改变；当用户描述与工具返回冲突时，以工具返回为准。
 `.trim();
 };
