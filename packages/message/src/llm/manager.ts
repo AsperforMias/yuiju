@@ -10,13 +10,13 @@ import {
 } from "@yuiju/utils";
 import { generateText, type ModelMessage } from "ai";
 import dayjs from "dayjs";
-import { Conversation } from "../conversation";
+import { ChatSessionManager } from "../chatSessionManager";
 import { memorySearchTool } from "./tools/memorySearchTool";
 
 export class LLMManager {
   private siliconflowClient: ReturnType<typeof createOpenAICompatible>;
-  private conversation: Conversation;
   private memoryClient = getMemoryServiceClientFromEnv();
+  private session: ChatSessionManager;
 
   constructor(conversationLimit: number = 10) {
     this.siliconflowClient = createOpenAICompatible({
@@ -24,11 +24,11 @@ export class LLMManager {
       apiKey: process.env.SILICONFLOW_API_KEY ?? "",
       name: "Siliconflow",
     });
-    this.conversation = new Conversation(conversationLimit);
-  }
-
-  public addMessage(role: "user" | "assistant", content: string) {
-    this.conversation.add(role, content);
+    this.session = new ChatSessionManager({
+      conversationLimit,
+      memoryClient: this.memoryClient,
+      windowMs: 10 * 60 * 1000,
+    });
   }
 
   private buildMemoryContextBlock(memoryList: MemorySearchItem[]): string {
@@ -63,15 +63,22 @@ export class LLMManager {
     });
 
     const memoryList = this.memoryClient
-      ? await this.memoryClient.searchMemory({ user_name: userName, query: input, top_k: 5 })
+      ? await this.memoryClient.searchMemory({
+          query: input,
+          top_k: 5,
+          counterparty_name: userName,
+          is_dev: process.env.NODE_ENV !== "production",
+        })
       : [];
     const systemPromptWithMemory = systemPrompt + this.buildMemoryContextBlock(memoryList);
 
-    // 添加用户输入到对话历史
-    this.conversation.add("user", input);
-
-    // 获取对话历史
-    const messages: ModelMessage[] = this.conversation.getMessages(input);
+    this.session.recordMessage({
+      counterparty_name: userName,
+      role: "user",
+      content: input,
+      timestamp: new Date(),
+    });
+    const messages: ModelMessage[] = this.session.getLLMMessages(userName);
 
     const model = this.siliconflowClient("Qwen/Qwen3-8B");
 
@@ -91,7 +98,12 @@ export class LLMManager {
     });
 
     // 添加助手回复到对话历史
-    this.conversation.add("assistant", result.text);
+    this.session.recordMessage({
+      counterparty_name: userName,
+      role: "assistant",
+      content: result.text,
+      timestamp: new Date(),
+    });
 
     return result;
   }

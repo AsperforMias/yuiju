@@ -20,6 +20,8 @@ logging.basicConfig(
 )
 logging.getLogger("neo4j.notifications").setLevel(logging.WARNING)
 
+SUBJECT_NAME = "ゆいじゅ"
+
 
 class EpisodeWriteRequest(BaseModel):
   """
@@ -28,12 +30,15 @@ class EpisodeWriteRequest(BaseModel):
   注意：
   - content 允许是 string 或任意 JSON object；服务端会统一序列化为字符串写入 Graphiti。
   - reference_time 用于 Graphiti 的 valid_at，决定时间相关性。
+  - is_dev 用于区分测试与线上环境，服务端会映射为 Graphiti 的 group_id（namespace）。
+  - counterparty_name 为“对话对方/关联对象”，用于帮助检索到与某人相关的记忆。
   """
 
-  user_name: str = Field(min_length=1)
   type: str = Field(min_length=1)
+  counterparty_name: str | None = Field(default=None)
   content: Any
   reference_time: datetime
+  is_dev: bool = Field(default=False)
 
 
 class EpisodeWriteResponse(BaseModel):
@@ -47,8 +52,9 @@ class MemorySearchRequest(BaseModel):
   filters 为可选的 Graphiti SearchFilters 原始字典（首期不要求必须传）。
   """
 
-  user_name: str = Field(min_length=1)
   query: str = Field(min_length=1)
+  counterparty_name: str | None = Field(default=None)
+  is_dev: bool = Field(default=False)
   top_k: int = Field(default=5, ge=1, le=50)
   filters: dict[str, Any] | None = None
 
@@ -73,18 +79,32 @@ async def healthz() -> dict[str, str]:
   return {"status": "ok"}
 
 
-def _stringify_episode_content(user_name: str, type_: str, reference_time: datetime, content: Any) -> str:
+def _namespace_group_id(is_dev: bool) -> str:
+  return "dev" if is_dev else "prod"
+
+
+def _stringify_episode_content(
+  type_: str,
+  reference_time: datetime,
+  content: Any,
+  counterparty_name: str | None,
+) -> str:
   """
   将 episode 内容统一转换为字符串写入 Graphiti。
 
-  这里会把 user_name/type/reference_time 作为 meta 混入内容，确保在语义检索上具备“按用户隔离”的倾向。
+  这里会把主体与关键元信息混入内容，帮助语义检索时更稳地命中：
+  - subject_name 固定为「ゆいじゅ」
+  - counterparty_name 为“对话对方/关联对象”（可选）
+  - type/reference_time
   """
 
   meta = {
-    "user_name": user_name,
+    "subject_name": SUBJECT_NAME,
     "type": type_,
     "reference_time": reference_time.astimezone(timezone.utc).isoformat(),
   }
+  if counterparty_name:
+    meta["counterparty_name"] = counterparty_name
 
   if isinstance(content, str):
     return (
@@ -106,12 +126,16 @@ async def write_episode(payload: EpisodeWriteRequest) -> EpisodeWriteResponse:
     reference_time = reference_time.replace(tzinfo=timezone.utc)
 
   episode_body = _stringify_episode_content(
-    user_name=payload.user_name,
     type_=payload.type,
     reference_time=reference_time,
     content=payload.content,
+    counterparty_name=payload.counterparty_name,
   )
-  name = f"{payload.user_name}-{payload.type}-{reference_time.isoformat()}"
+  name_parts = [SUBJECT_NAME, payload.type]
+  if payload.counterparty_name:
+    name_parts.append(payload.counterparty_name)
+  name_parts.append(reference_time.isoformat())
+  name = "-".join(name_parts)
 
   episode_type = EpisodeType.text if isinstance(payload.content, str) else EpisodeType.json
 
@@ -121,6 +145,7 @@ async def write_episode(payload: EpisodeWriteRequest) -> EpisodeWriteResponse:
     source_description=payload.type,
     reference_time=reference_time,
     source=episode_type,
+    group_id=_namespace_group_id(payload.is_dev),
   )
   return EpisodeWriteResponse(ok=True)
 
@@ -139,12 +164,11 @@ async def search_memory(payload: MemorySearchRequest) -> list[MemorySearchItem]:
     except Exception as e:
       raise HTTPException(status_code=400, detail=f"Invalid filters: {e}") from e
 
-  scoped_query = f"{payload.query}\n只检索 user_name={payload.user_name} 的相关事实"
-
   results = await graphiti.search_(
-    query=scoped_query,
+    query=payload.query,
     config=config,
     search_filter=search_filter,
+    group_ids=[_namespace_group_id(payload.is_dev)],
   )
 
   items: list[MemorySearchItem] = []

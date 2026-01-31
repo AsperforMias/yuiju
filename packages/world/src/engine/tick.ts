@@ -145,7 +145,6 @@ export async function tick(params: TickParams): Promise<TickReturn> {
         }
 
         await memoryClient.writeEpisode({
-          user_name: "ゆいじゅ",
           type: "world_action",
           reference_time: now,
           content: {

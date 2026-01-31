@@ -1,4 +1,4 @@
-# yuiju-memory
+# python 服务
 
 悠酱项目的长期记忆服务，基于 [Graphiti](https://github.com/getgether/graphiti-core) 构建的图知识库记忆系统。
 
@@ -21,26 +21,6 @@
 - 时间相关性（reference_time）
 - 自动语义提取与关系构建
 
-### 2. 语义检索
-
-基于向量检索 + 重排序的混合搜索：
-
-- 支持自然语言查询
-- 返回相关性评分的记忆片段
-- 可选的 Graphiti SearchFilters 过滤
-
-## 技术架构
-
-```
-Graphiti (图知识库)
-    ├── Neo4j (图数据库)
-    ├── OpenAI-compatible LLM (语义提取)
-    ├── OpenAI-compatible Embedding (向量化)
-    └── Cross-encoder Reranker (重排序)
-         ↓
-FastAPI HTTP 服务
-```
-
 ## API 接口
 
 ### POST /v1/episodes - 写入 Episode
@@ -50,6 +30,7 @@ FastAPI HTTP 服务
 ```json
 {
   "user_name": "yuiju",
+  "is_dev": true,
   "type": "chat_message",
   "content": "今天天气真好，想去公园散步",
   "reference_time": "2025-01-28T12:00:00Z"
@@ -71,6 +52,7 @@ FastAPI HTTP 服务
 ```json
 {
   "user_name": "yuiju",
+  "is_dev": true,
   "query": "悠酱最近喜欢做什么？",
   "top_k": 5,
   "filters": null
@@ -89,39 +71,6 @@ FastAPI HTTP 服务
   }
 ]
 ```
-
-## 环境变量配置
-
-处于早期开发阶段：Neo4j 与模型相关配置固定写在代码中，减少配置项；仅 API Key 这类敏感信息从环境变量读取。
-
-### Neo4j 配置（可选）
-
-默认值在代码里：
-
-- URI: bolt://localhost:7687
-- USER: neo4j
-- PASSWORD: neo4j
-
-如果你的本地 Neo4j 配置不同，可用环境变量覆盖：
-
-```bash
-NEO4J_URI=bolt://localhost:7687
-NEO4J_USER=neo4j
-NEO4J_PASSWORD=your_password
-```
-
-### SiliconFlow API Key（必需）
-
-```bash
-SILICONFLOW_API_KEY=sk-xxx
-```
-
-### 代码内置模型配置
-
-- base_url: https://api.siliconflow.cn/v1
-- LLM: Qwen/Qwen3-8B
-- Embedding: BAAI/bge-large-zh-v1.5
-- Reranker: BAAI/bge-reranker-v2-m3
 
 ## 目录结构
 
@@ -149,17 +98,10 @@ cd packages/memory
 uv sync
 ```
 
-### 本地验证（使用 main.py）
-
-```bash
-# 确保已配置所有环境变量（见上方"环境变量配置"章节）
-uv run python main.py
-```
-
 ### 启动服务（使用 server.py）
 
 ```bash
-uv run uvicorn server:app --host 0.0.0.0 --port 8000
+uv run uvicorn server:app --host 0.0.0.0 --port 8096
 ```
 
 ### 健康检查

@@ -1,14 +1,16 @@
 export interface WriteEpisodeInput {
-  user_name: string;
+  is_dev?: boolean;
   type: string;
+  counterparty_name?: string;
   content: unknown;
   reference_time: Date | string;
 }
 
 export interface SearchMemoryInput {
-  user_name: string;
   query: string;
+  is_dev?: boolean;
   top_k?: number;
+  counterparty_name?: string;
   filters?: Record<string, unknown>;
 }
 
@@ -33,8 +35,9 @@ export class MemoryServiceClient {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        user_name: input.user_name,
+        is_dev: input.is_dev,
         type: input.type,
+        counterparty_name: input.counterparty_name,
         content: input.content,
         reference_time:
           input.reference_time instanceof Date
@@ -57,9 +60,10 @@ export class MemoryServiceClient {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        user_name: input.user_name,
         query: input.query,
+        is_dev: input.is_dev,
         top_k: input.top_k ?? 5,
+        counterparty_name: input.counterparty_name,
         filters: input.filters,
       }),
     });
