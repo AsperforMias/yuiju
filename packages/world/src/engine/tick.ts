@@ -2,8 +2,9 @@ import {
   type ActionContext,
   ActionId,
   type ActionParameter,
-  getRecentBehaviorRecords,
   getMemoryServiceClientFromEnv,
+  getRecentBehaviorRecords,
+  isDev,
   isProd,
   saveBehaviorRecord,
 } from "@yuiju/utils";
@@ -145,6 +146,7 @@ export async function tick(params: TickParams): Promise<TickReturn> {
         }
 
         await memoryClient.writeEpisode({
+          is_dev: isDev,
           type: "world_action",
           reference_time: now,
           content: {

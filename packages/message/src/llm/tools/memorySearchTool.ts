@@ -1,12 +1,11 @@
-import process from "node:process";
-import { getMemoryServiceClientFromEnv } from "@yuiju/utils";
+import { getMemoryServiceClientFromEnv, isDev } from "@yuiju/utils";
 import type { Tool } from "ai";
 import { z } from "zod";
 
 export const memorySearchTool: Tool = {
-  description: "通过向量查询，搜索相关记忆（主体固定为 ゆいじゅ）",
+  description: "搜索相关记忆。",
   inputSchema: z.object({
-    query: z.string().describe("搜索内容"),
+    query: z.string().describe("具体的搜索内容，例如：ゆいじゅ 喜欢草莓吗？"),
   }),
   execute: async ({ query }) => {
     const client = getMemoryServiceClientFromEnv();
@@ -15,7 +14,7 @@ export const memorySearchTool: Tool = {
     const memoryList = await client.searchMemory({
       query,
       top_k: 5,
-      is_dev: process.env.NODE_ENV !== "production",
+      is_dev: isDev,
     });
 
     return memoryList;

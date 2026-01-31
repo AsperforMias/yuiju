@@ -4,6 +4,8 @@ import type { ModelMessage } from "ai";
 
 type Role = "user" | "assistant";
 
+const SUBJECT_NAME = "ゆいじゅ";
+
 interface ConversationEntry {
   role: Role;
   content: string;
@@ -18,7 +20,7 @@ export interface ChatMessageInput {
 }
 
 interface ChatWindowMessageItem {
-  role: Role;
+  speaker_name: string;
   content: string;
   timestamp: string;
 }
@@ -108,6 +110,7 @@ export class ChatSessionManager {
   private appendWindowMessage(input: ChatMessageInput) {
     const tsMs = input.timestamp.getTime();
     const state = this.windowStateByCounterparty.get(input.counterparty_name);
+    const speaker_name = input.role === "user" ? input.counterparty_name : SUBJECT_NAME;
 
     if (!state) {
       this.windowStateByCounterparty.set(input.counterparty_name, {
@@ -115,7 +118,7 @@ export class ChatSessionManager {
         lastTsMs: tsMs,
         messages: [
           {
-            role: input.role,
+            speaker_name,
             content: input.content,
             timestamp: input.timestamp.toISOString(),
           },
@@ -134,7 +137,7 @@ export class ChatSessionManager {
         lastTsMs: tsMs,
         messages: [
           {
-            role: input.role,
+            speaker_name,
             content: input.content,
             timestamp: input.timestamp.toISOString(),
           },
@@ -145,7 +148,7 @@ export class ChatSessionManager {
 
     state.lastTsMs = tsMs;
     state.messages.push({
-      role: input.role,
+      speaker_name,
       content: input.content,
       timestamp: input.timestamp.toISOString(),
     });
@@ -158,6 +161,7 @@ export class ChatSessionManager {
     const windowEnd = new Date(state.lastTsMs);
 
     const episodeContent = {
+      subject_name: SUBJECT_NAME,
       counterparty_name,
       window_start: windowStart.toISOString(),
       window_end: windowEnd.toISOString(),

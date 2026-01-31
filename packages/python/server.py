@@ -7,7 +7,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
 from graphiti_core.nodes import EpisodeType
-from graphiti_core.search.search_config_recipes import COMBINED_HYBRID_SEARCH_CROSS_ENCODER
+from graphiti_core.search.search_config_recipes import COMBINED_HYBRID_SEARCH_RRF
 from graphiti_core.search.search_filters import SearchFilters
 
 from graphiti_client import close_graphiti, get_graphiti
@@ -63,6 +63,7 @@ class MemorySearchItem(BaseModel):
   memory: str
   time: str | None = None
   source: str | None = None
+  # 范围 (0-2]
   score: float | None = None
 
 
@@ -102,6 +103,7 @@ def _stringify_episode_content(
     "subject_name": SUBJECT_NAME,
     "type": type_,
     "reference_time": reference_time.astimezone(timezone.utc).isoformat(),
+    "fact_language_hint": "尽量使用中文表述 fact",
   }
   if counterparty_name:
     meta["counterparty_name"] = counterparty_name
@@ -154,7 +156,7 @@ async def write_episode(payload: EpisodeWriteRequest) -> EpisodeWriteResponse:
 async def search_memory(payload: MemorySearchRequest) -> list[MemorySearchItem]:
   graphiti = await get_graphiti()
 
-  config = COMBINED_HYBRID_SEARCH_CROSS_ENCODER.model_copy(deep=True)
+  config = COMBINED_HYBRID_SEARCH_RRF.model_copy(deep=True)
   config.limit = payload.top_k
 
   search_filter: SearchFilters | None = None
@@ -172,7 +174,8 @@ async def search_memory(payload: MemorySearchRequest) -> list[MemorySearchItem]:
   )
 
   items: list[MemorySearchItem] = []
-  for edge, score in zip(results.edges, results.edge_reranker_scores, strict=False):
+  for idx, edge in enumerate(results.edges):
+    score = results.edge_reranker_scores[idx] if idx < len(results.edge_reranker_scores) else None
     items.append(
       MemorySearchItem(
         memory=edge.fact,

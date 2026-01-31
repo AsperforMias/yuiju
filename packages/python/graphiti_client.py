@@ -80,7 +80,7 @@ def load_graphiti_env() -> GraphitiEnv:
   default_llm_model = "Pro/deepseek-ai/DeepSeek-V3.2"
   default_llm_small_model = "Qwen/Qwen3-8B"
   default_embedding_model = "Qwen/Qwen3-Embedding-0.6B"
-  default_reranker_model = "Qwen/Qwen3-Reranker-0.6B"
+  default_reranker_model = "Qwen/Qwen3-8B"
 
   llm_api_key = _require_env("SILICONFLOW_API_KEY")
 
