@@ -1,9 +1,10 @@
-import { getMemoryServiceClientFromEnv, isDev } from "@yuiju/utils";
+import { isDev } from "../../env";
+import { getMemoryServiceClientFromEnv } from "../../memory";
 import type { Tool } from "ai";
 import { z } from "zod";
 
 export const memorySearchTool: Tool = {
-  description: "搜索相关记忆。",
+  description: "搜索相关记忆",
   inputSchema: z.object({
     query: z.string().describe("具体的搜索内容，例如：ゆいじゅ 喜欢草莓吗？"),
   }),

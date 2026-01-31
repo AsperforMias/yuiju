@@ -1,29 +1,21 @@
-import process from "node:process";
 import { deepseek } from "@ai-sdk/deepseek";
-import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { getCharacterCardPrompt } from "@yuiju/source";
 import {
   getMemoryServiceClientFromEnv,
   getRecentBehaviorRecords,
   type IBehaviorRecord,
   initCharacterStateData,
+  memorySearchTool,
 } from "@yuiju/utils";
 import { generateText, type ModelMessage, stepCountIs } from "ai";
 import dayjs from "dayjs";
-import { ChatSessionManager } from "../chatSessionManager";
-import { memorySearchTool } from "./tools/memorySearchTool";
+import { ChatSessionManager } from "../chat-session-manager";
 
 export class LLMManager {
-  private siliconflowClient: ReturnType<typeof createOpenAICompatible>;
   private memoryClient = getMemoryServiceClientFromEnv();
   private session: ChatSessionManager;
 
   constructor(conversationLimit: number = 10) {
-    this.siliconflowClient = createOpenAICompatible({
-      baseURL: "https://api.siliconflow.cn/v1",
-      apiKey: process.env.SILICONFLOW_API_KEY ?? "",
-      name: "Siliconflow",
-    });
     this.session = new ChatSessionManager({
       conversationLimit,
       memoryClient: this.memoryClient,
@@ -55,8 +47,6 @@ export class LLMManager {
       timestamp: new Date(),
     });
     const messages: ModelMessage[] = this.session.getLLMMessages(userName);
-
-    const model = this.siliconflowClient("Qwen/Qwen3-8B");
 
     const result = await generateText({
       model: deepseek("deepseek-chat"),

@@ -1,9 +1,9 @@
+import { spawn } from "node:child_process";
+import { promises as fs } from "node:fs";
+import os from "node:os";
+import { join } from "node:path";
+import { URL } from "node:url";
 import { config } from "@/config";
-import { promises as fs } from "fs";
-import os from "os";
-import { join } from "path";
-import { spawn } from "child_process";
-import { URL } from "url";
 
 function sanitizeForTTS(text: string) {
   const removed = text.replace(/\([^)]*\)|（[^）]*）|\[[^\]]*\]/g, "");

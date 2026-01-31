@@ -1,5 +1,6 @@
+import process from "node:process";
 import { getMemoryServiceClientFromEnv, isDev, type MemorySearchItem } from "@yuiju/utils";
-import { ChatSessionManager } from "./chatSessionManager";
+import { ChatSessionManager } from "./chat-session-manager";
 
 const COUNTERPARTY_NAME = "翊小久";
 const MEMORY_SERVICE_URL = "http://localhost:8096";
@@ -153,12 +154,13 @@ const main = async () => {
     console.log("[memory] client not configured");
     return;
   }
-  const chatSessionManager = new ChatSessionManager({
-    memoryClient,
-    windowMs: 10 * 60 * 1000,
-  });
-
-  // await writeMockChatWindows(chatSessionManager);
+  if (process.env.WRITE_MOCK_CHAT_WINDOWS === "1") {
+    const chatSessionManager = new ChatSessionManager({
+      memoryClient,
+      windowMs: 10 * 60 * 1000,
+    });
+    await writeMockChatWindows(chatSessionManager);
+  }
   await searchMockMemories();
 };
 

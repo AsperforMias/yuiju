@@ -1,7 +1,7 @@
-import { getTimeWithWeekday, type CharacterStateData } from "@yuiju/utils";
+import { type CharacterStateData, getTimeWithWeekday } from "@yuiju/utils";
+import dayjs from "dayjs";
 import { type BehaviorRecord, generateRecentBehaviorPrompt } from "./utils";
 import { worldViewPrompt } from "./world-view";
-import dayjs from "dayjs";
 
 // - 你和你的开发者一样对前端很感兴趣，最喜欢 TypeScript，对其他开发方向不太了解。注意，不要向别人彰显这个喜好，这不是一个聪明的举动。
 
