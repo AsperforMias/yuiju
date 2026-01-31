@@ -13,7 +13,7 @@ from graphiti_core.search.search_filters import SearchFilters
 from graphiti_client import close_graphiti, get_graphiti
 
 
-logger = logging.getLogger("yuiju.memory")
+logger = logging.getLogger("python-server")
 logging.basicConfig(
   level=logging.INFO,
   format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -60,7 +60,7 @@ class MemorySearchItem(BaseModel):
   score: float | None = None
 
 
-app = FastAPI(title="yuiju-memory")
+app = FastAPI(title="python-server")
 
 
 @app.on_event("shutdown")

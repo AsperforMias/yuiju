@@ -1,6 +1,7 @@
 import asyncio
 import os
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Optional
 
 from graphiti_core import Graphiti
@@ -10,14 +11,37 @@ from graphiti_core.llm_client.config import LLMConfig
 from graphiti_core.llm_client.openai_generic_client import OpenAIGenericClient
 
 
+_dotenv_loaded = False
+
+
+def _load_root_dotenv() -> None:
+  global _dotenv_loaded
+  if _dotenv_loaded:
+    return
+  _dotenv_loaded = True
+
+  try:
+    from dotenv import load_dotenv
+  except Exception:
+    return
+
+  repo_root = Path(__file__).resolve().parents[2]
+  dotenv_path = repo_root / ".env"
+  if not dotenv_path.exists():
+    return
+
+  load_dotenv(dotenv_path=dotenv_path, override=False)
+
+
 @dataclass(frozen=True)
 class GraphitiEnv:
   """
-  Graphiti 初始化配置（全部来自环境变量）。
+  Graphiti 初始化配置。
 
   说明：
   - 本项目使用 OpenAI-compatible 协议的 LLM/Embedding（例如 SiliconFlow）。
-  - 不在代码里写任何 key/密码，避免泄露。
+  - 处于早期开发阶段：Neo4j 与模型相关配置固定写在代码中，减少配置项。
+  - 仅敏感信息（如 key/密码）从环境变量读取，避免泄露。
   """
 
   neo4j_uri: str
@@ -28,13 +52,7 @@ class GraphitiEnv:
   llm_base_url: str
   llm_model: str
   llm_small_model: str
-
-  embedding_api_key: str
-  embedding_base_url: str
   embedding_model: str
-
-  reranker_api_key: str
-  reranker_base_url: str
   reranker_model: str
 
 
@@ -50,45 +68,32 @@ def load_graphiti_env() -> GraphitiEnv:
   从环境变量读取 Graphiti 初始化配置。
 
   约定的环境变量：
-  - NEO4J_URI / NEO4J_USER / NEO4J_PASSWORD
-  - MEMORY_LLM_API_KEY / MEMORY_LLM_BASE_URL / MEMORY_LLM_MODEL / MEMORY_LLM_SMALL_MODEL
-  - MEMORY_EMBEDDING_API_KEY / MEMORY_EMBEDDING_BASE_URL / MEMORY_EMBEDDING_MODEL
-  - MEMORY_RERANKER_API_KEY / MEMORY_RERANKER_BASE_URL / MEMORY_RERANKER_MODEL
-
-  为了降低配置成本：Embedding/Reranker 的 key/base_url 默认复用 LLM 的配置。
+  - SILICONFLOW_API_KEY
   """
 
-  neo4j_uri = _require_env("NEO4J_URI")
-  neo4j_user = _require_env("NEO4J_USER")
-  neo4j_password = _require_env("NEO4J_PASSWORD")
+  _load_root_dotenv()
 
-  llm_api_key = _require_env("MEMORY_LLM_API_KEY")
-  llm_base_url = _require_env("MEMORY_LLM_BASE_URL")
-  llm_model = _require_env("MEMORY_LLM_MODEL")
-  llm_small_model = os.getenv("MEMORY_LLM_SMALL_MODEL") or llm_model
+  default_neo4j_uri = "bolt://192.168.31.10:7687"
+  default_neo4j_user = "neo4j"
+  default_neo4j_password = "neo4j123456"
+  default_llm_base_url = "https://api.siliconflow.cn/v1"
+  default_llm_model = "Pro/deepseek-ai/DeepSeek-V3.2"
+  default_llm_small_model = "Qwen/Qwen3-8B"
+  default_embedding_model = "Qwen/Qwen3-Embedding-0.6B"
+  default_reranker_model = "Qwen/Qwen3-Reranker-0.6B"
 
-  embedding_api_key = os.getenv("MEMORY_EMBEDDING_API_KEY") or llm_api_key
-  embedding_base_url = os.getenv("MEMORY_EMBEDDING_BASE_URL") or llm_base_url
-  embedding_model = _require_env("MEMORY_EMBEDDING_MODEL")
-
-  reranker_api_key = os.getenv("MEMORY_RERANKER_API_KEY") or llm_api_key
-  reranker_base_url = os.getenv("MEMORY_RERANKER_BASE_URL") or llm_base_url
-  reranker_model = os.getenv("MEMORY_RERANKER_MODEL") or llm_small_model
+  llm_api_key = _require_env("SILICONFLOW_API_KEY")
 
   return GraphitiEnv(
-    neo4j_uri=neo4j_uri,
-    neo4j_user=neo4j_user,
-    neo4j_password=neo4j_password,
+    neo4j_uri=default_neo4j_uri,
+    neo4j_user=default_neo4j_user,
+    neo4j_password=default_neo4j_password,
     llm_api_key=llm_api_key,
-    llm_base_url=llm_base_url,
-    llm_model=llm_model,
-    llm_small_model=llm_small_model,
-    embedding_api_key=embedding_api_key,
-    embedding_base_url=embedding_base_url,
-    embedding_model=embedding_model,
-    reranker_api_key=reranker_api_key,
-    reranker_base_url=reranker_base_url,
-    reranker_model=reranker_model,
+    llm_base_url=default_llm_base_url,
+    llm_model=default_llm_model,
+    llm_small_model=default_llm_small_model,
+    embedding_model=default_embedding_model,
+    reranker_model=default_reranker_model,
   )
 
 
@@ -121,15 +126,15 @@ async def get_graphiti() -> Graphiti:
     )
 
     embedder_config = OpenAIEmbedderConfig(
-      api_key=env.embedding_api_key,
+      api_key=env.llm_api_key,
       embedding_model=env.embedding_model,
-      base_url=env.embedding_base_url,
+      base_url=env.llm_base_url,
     )
 
     reranker_config = LLMConfig(
-      api_key=env.reranker_api_key,
+      api_key=env.llm_api_key,
       model=env.reranker_model,
-      base_url=env.reranker_base_url,
+      base_url=env.llm_base_url,
     )
 
     _graphiti = Graphiti(

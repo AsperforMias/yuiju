@@ -88,7 +88,5 @@ export class MemoryServiceClient {
  * - 该函数返回 null，用于让调用方（world/message）在未配置时选择跳过写入/检索。
  */
 export function getMemoryServiceClientFromEnv(): MemoryServiceClient | null {
-  const baseUrl = process.env.MEMORY_SERVICE_URL;
-  if (!baseUrl || baseUrl.trim() === "") return null;
-  return new MemoryServiceClient(baseUrl);
+  return new MemoryServiceClient("http://localhost:8096");
 }

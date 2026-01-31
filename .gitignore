@@ -143,3 +143,7 @@ vite.config.ts.timestamp-*
 build
 
 **/*.db
+
+.trae/documents/*
+
+packages/python/__pycache__/

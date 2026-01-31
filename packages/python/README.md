@@ -92,9 +92,17 @@ FastAPI HTTP 服务
 
 ## 环境变量配置
 
-所有敏感配置均从环境变量读取，**禁止在代码中硬编码**。
+处于早期开发阶段：Neo4j 与模型相关配置固定写在代码中，减少配置项；仅 API Key 这类敏感信息从环境变量读取。
 
-### Neo4j 配置（必需）
+### Neo4j 配置（可选）
+
+默认值在代码里：
+
+- URI: bolt://localhost:7687
+- USER: neo4j
+- PASSWORD: neo4j
+
+如果你的本地 Neo4j 配置不同，可用环境变量覆盖：
 
 ```bash
 NEO4J_URI=bolt://localhost:7687
@@ -102,30 +110,18 @@ NEO4J_USER=neo4j
 NEO4J_PASSWORD=your_password
 ```
 
-### LLM 配置（必需）
+### SiliconFlow API Key（必需）
 
 ```bash
-MEMORY_LLM_API_KEY=sk-xxx
-MEMORY_LLM_BASE_URL=https://api.siliconflow.cn/v1
-MEMORY_LLM_MODEL=Qwen/Qwen2.5-72B-Instruct
-MEMORY_LLM_SMALL_MODEL=Qwen/Qwen2.5-7B-Instruct  # 可选，默认使用 LLM_MODEL
+SILICONFLOW_API_KEY=sk-xxx
 ```
 
-### Embedding 配置（必需）
+### 代码内置模型配置
 
-```bash
-MEMORY_EMBEDDING_API_KEY=sk-xxx  # 可选，默认复用 LLM_API_KEY
-MEMORY_EMBEDDING_BASE_URL=https://api.siliconflow.cn/v1  # 可选，默认复用 LLM_BASE_URL
-MEMORY_EMBEDDING_MODEL=BAAI/bge-large-zh-v1.5
-```
-
-### Reranker 配置（可选）
-
-```bash
-MEMORY_RERANKER_API_KEY=sk-xxx  # 可选，默认复用 LLM_API_KEY
-MEMORY_RERANKER_BASE_URL=https://api.siliconflow.cn/v1  # 可选，默认复用 LLM_BASE_URL
-MEMORY_RERANKER_MODEL=BAAI/bge-reranker-v2-m3  # 可选，默认使用 LLM_SMALL_MODEL
-```
+- base_url: https://api.siliconflow.cn/v1
+- LLM: Qwen/Qwen3-8B
+- Embedding: BAAI/bge-large-zh-v1.5
+- Reranker: BAAI/bge-reranker-v2-m3
 
 ## 目录结构
 
