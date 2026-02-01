@@ -4,10 +4,12 @@ import {
   type ActionParameter,
   getMemoryServiceClientFromEnv,
   getRecentBehaviorRecords,
+  getTimeWithWeekday,
   isDev,
   isProd,
   saveBehaviorRecord,
 } from "@yuiju/utils";
+import dayjs from "dayjs";
 import { getActionList } from "@/action";
 import { getActionById } from "@/action/utils";
 import { coordinatorAgent } from "@/llm/coordinator";
@@ -145,23 +147,20 @@ export async function tick(params: TickParams): Promise<TickReturn> {
           description += ` ${executionResult}`;
         }
 
+        const parameterList =
+          selectedParameter?.parameters?.map((p) => `${p.value}${p.quantity ?? 1}个`).join("，") ??
+          "（无）";
+
         await memoryClient.writeEpisode({
           is_dev: isDev,
-          type: "world_action",
+          type: "ゆいじゅ的 Behavior",
           reference_time: now,
           content: {
-            ts: now.toISOString(),
+            time: getTimeWithWeekday(dayjs(now)),
             action: selectedAction.action,
-            reason: selectedAction.reason,
-            description,
-            parameters:
-              selectedParameter?.parameters?.map((p) => ({
-                value: p.value,
-                quantity: p.quantity ?? 1,
-                reason: p.reason,
-                extra: p.extra,
-              })) ?? [],
-            duration_minutes: durationMin,
+            reason: description,
+            parameters: parameterList ? `选择了：${parameterList}` : undefined,
+            duration_minutes: `持续了${durationMin}分钟`,
           },
         });
       } catch (e) {

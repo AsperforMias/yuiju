@@ -1,7 +1,7 @@
-import { isDev } from "../../env";
-import { getMemoryServiceClientFromEnv } from "../../memory";
 import type { Tool } from "ai";
 import { z } from "zod";
+import { isDev } from "../../env";
+import { getMemoryServiceClientFromEnv } from "../../memory";
 
 export const memorySearchTool: Tool = {
   description: "搜索相关记忆",

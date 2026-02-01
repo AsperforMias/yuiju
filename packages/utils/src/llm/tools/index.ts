@@ -1,3 +1,3 @@
-export * from "./memorySearchTool";
-export * from "./queryCharacterStateTool";
-export * from "./queryRecentBehaviorsTool";
+export * from "./memory-search";
+export * from "./query-character-state";
+export * from "./query-recent-behaviors";

@@ -1,8 +1,8 @@
-import { initCharacterStateData } from "../../redis";
-import { getTimeWithWeekday } from "../../time";
 import type { Tool } from "ai";
 import dayjs from "dayjs";
 import { z } from "zod";
+import { initCharacterStateData } from "../../redis";
+import { getTimeWithWeekday } from "../../time";
 
 export const queryCharacterStateTool: Tool = {
   description:
@@ -11,16 +11,10 @@ export const queryCharacterStateTool: Tool = {
   execute: async () => {
     const state = await initCharacterStateData();
 
-    const locationText = state.location?.major
-      ? `${state.location.major}${state.location.minor ? ` - ${state.location.minor}` : ""}`
-      : "未知";
-
     const now = dayjs();
 
     return {
-      currentTimeText: getTimeWithWeekday(now, "MM-DD HH:mm"),
-      currentTimeISO: now.toISOString(),
-      locationText,
+      currentTime: getTimeWithWeekday(now, "MM-DD HH:mm"),
       state,
     };
   },

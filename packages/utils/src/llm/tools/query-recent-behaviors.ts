@@ -1,8 +1,8 @@
-import { getRecentBehaviorRecords } from "../../db";
-import { getTimeWithWeekday } from "../../time";
 import type { Tool } from "ai";
 import dayjs from "dayjs";
 import { z } from "zod";
+import { getRecentBehaviorRecords } from "../../db";
+import { getTimeWithWeekday } from "../../time";
 
 export const queryRecentBehaviorsTool: Tool = {
   description:

@@ -86,7 +86,6 @@ def _namespace_group_id(is_dev: bool) -> str:
 
 def _stringify_episode_content(
   type_: str,
-  reference_time: datetime,
   content: Any,
   counterparty_name: str | None,
 ) -> str:
@@ -102,7 +101,6 @@ def _stringify_episode_content(
   meta = {
     "subject_name": SUBJECT_NAME,
     "type": type_,
-    "reference_time": reference_time.astimezone(timezone.utc).isoformat(),
     "fact_language_hint": "尽量使用中文表述 fact",
   }
   if counterparty_name:
@@ -129,7 +127,6 @@ async def write_episode(payload: EpisodeWriteRequest) -> EpisodeWriteResponse:
 
   episode_body = _stringify_episode_content(
     type_=payload.type,
-    reference_time=reference_time,
     content=payload.content,
     counterparty_name=payload.counterparty_name,
   )

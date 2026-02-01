@@ -1,6 +1,7 @@
 import type { MemoryServiceClient, WriteEpisodeInput } from "@yuiju/utils";
-import { isDev } from "@yuiju/utils";
+import { getTimeWithWeekday, isDev } from "@yuiju/utils";
 import type { ModelMessage } from "ai";
+import dayjs from "dayjs";
 
 type Role = "user" | "assistant";
 
@@ -49,9 +50,9 @@ export class ChatSessionManager {
   private isDev: boolean;
 
   constructor(options: ChatSessionManagerOptions = {}) {
-    this.conversationLimit = options.conversationLimit ?? 10;
+    this.conversationLimit = options.conversationLimit ?? 20;
     this.conversationTtlMs = options.conversationTtlMs ?? 3600 * 1000;
-    this.windowMs = options.windowMs ?? 10 * 60 * 1000;
+    this.windowMs = options.windowMs ?? 20 * 60 * 1000;
     this.memoryClient = options.memoryClient ?? null;
     this.isDev = isDev;
   }
@@ -76,7 +77,14 @@ export class ChatSessionManager {
       this.conversationByCounterparty.set(counterparty_name, trimmed);
     }
 
-    return trimmed.map((e) => ({ role: e.role, content: e.content }));
+    return trimmed.map((e) => {
+      if (e.role === "user") {
+        const timeText = getTimeWithWeekday(dayjs(e.timeMs));
+        return { role: e.role, content: `${e.content}\n\n[用户发送时间：${timeText}]` };
+      }
+
+      return { role: e.role, content: e.content };
+    });
   }
 
   async flushUserWindow(counterparty_name: string) {
@@ -120,7 +128,7 @@ export class ChatSessionManager {
           {
             speaker_name,
             content: input.content,
-            timestamp: input.timestamp.toISOString(),
+            timestamp: getTimeWithWeekday(dayjs(input.timestamp)),
           },
         ],
       });
@@ -139,7 +147,7 @@ export class ChatSessionManager {
           {
             speaker_name,
             content: input.content,
-            timestamp: input.timestamp.toISOString(),
+            timestamp: getTimeWithWeekday(dayjs(input.timestamp)),
           },
         ],
       });
@@ -150,12 +158,15 @@ export class ChatSessionManager {
     state.messages.push({
       speaker_name,
       content: input.content,
-      timestamp: input.timestamp.toISOString(),
+      timestamp: getTimeWithWeekday(dayjs(input.timestamp)),
     });
   }
 
   private async writeChatWindowEpisode(counterparty_name: string, state: UserWindowState) {
-    if (!this.memoryClient) return;
+    if (!this.memoryClient) {
+      console.error("No memory client provided");
+      return;
+    }
 
     const windowStart = new Date(state.windowStartMs);
     const windowEnd = new Date(state.lastTsMs);
@@ -163,13 +174,13 @@ export class ChatSessionManager {
     const episodeContent = {
       subject_name: SUBJECT_NAME,
       counterparty_name,
-      window_start: windowStart.toISOString(),
-      window_end: windowEnd.toISOString(),
+      window_start: getTimeWithWeekday(dayjs(windowStart)),
+      window_end: getTimeWithWeekday(dayjs(windowEnd)),
       messages: state.messages,
     };
 
     const payload: WriteEpisodeInput = {
-      type: "chat_window",
+      type: "对话",
       counterparty_name,
       content: episodeContent,
       reference_time: windowEnd,
@@ -178,7 +189,8 @@ export class ChatSessionManager {
 
     try {
       await this.memoryClient.writeEpisode(payload);
-    } catch {
+    } catch (error) {
+      console.error("Failed to write chat window episode:", error);
       return;
     }
   }
