@@ -12,7 +12,7 @@ import dayjs from "dayjs";
 import { z } from "zod";
 import { logger } from "@/utils/logger";
 import { queryAvailableFood } from "./tools";
-import { model_deepseek_reasoner, model_qwen3_8B } from "./utils";
+import { model_deepseek_reasoner } from "./utils";
 
 const RETRY_COUNT = 3;
 
@@ -104,12 +104,12 @@ export async function chooseFoodAgent(
   for (let i = 0; i < RETRY_COUNT; i++) {
     try {
       const { output } = await generateText({
-        model: model_qwen3_8B,
-        providerOptions: {
-          Siliconflow: {
-            enable_thinking: true,
-          },
-        },
+        model: model_deepseek_reasoner,
+        // providerOptions: {
+        //   Siliconflow: {
+        //     enable_thinking: true,
+        //   },
+        // },
         output: Output.object({
           schema: z.array(
             z.object({
@@ -161,12 +161,7 @@ export async function chooseShopProductAgent(
   for (let i = 0; i < RETRY_COUNT; i++) {
     try {
       const { output } = await generateText({
-        model: model_qwen3_8B,
-        providerOptions: {
-          Siliconflow: {
-            enable_thinking: true,
-          },
-        },
+        model: model_deepseek_reasoner,
         output: Output.object({
           schema: z.object({
             value: z.enum(productList.map((item) => item.value)).describe("选择的商品名称"),

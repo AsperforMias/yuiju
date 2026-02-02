@@ -66,7 +66,7 @@ export const homeAction: ActionMetadata[] = [
     action: ActionId.Go_To_Shop_From_Home,
     description: "从家前往商店。消耗体力5点。耗时20分钟。",
     precondition(context) {
-      return context.characterState.stamina >= 5;
+      return context.characterState.stamina >= 5 && !isNight(context);
     },
     async executor(context) {
       await context.characterState.setAction(ActionId.Go_To_Shop_From_Home);

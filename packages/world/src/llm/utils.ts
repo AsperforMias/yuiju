@@ -1,13 +1,13 @@
 import { deepseek } from "@ai-sdk/deepseek";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { type LanguageModelMiddleware, wrapLanguageModel } from "ai";
-import { logger } from "@/utils/logger";
+// import { logger } from "@/utils/logger";
 
 export const logMiddleware: LanguageModelMiddleware = {
   wrapGenerate: async ({ doGenerate }) => {
     const result = await doGenerate();
 
-    logger.info(result.content);
+    // logger.info(result.content);
 
     return result;
   },

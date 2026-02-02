@@ -83,10 +83,6 @@ export class MemoryServiceClient {
 }
 
 /**
- * 从环境变量创建 MemoryServiceClient。
- *
- * 约定：
- * - MEMORY_SERVICE_URL: e.g. http://127.0.0.1:8001
  *
  * 说明：
  * - 该函数返回 null，用于让调用方（world/message）在未配置时选择跳过写入/检索。
