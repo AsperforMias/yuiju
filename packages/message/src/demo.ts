@@ -1,9 +1,8 @@
-import process from "node:process";
+import "@yuiju/utils/env";
 import { getMemoryServiceClientFromEnv, isDev, type MemorySearchItem } from "@yuiju/utils";
 import { ChatSessionManager } from "./chat-session-manager";
 
 const COUNTERPARTY_NAME = "翊小久";
-const MEMORY_SERVICE_URL = "http://localhost:8096";
 
 const printSearchResults = (query: string, items: MemorySearchItem[]) => {
   console.log(`\n=== search: ${query} ===`);
@@ -24,18 +23,6 @@ const printSearchResults = (query: string, items: MemorySearchItem[]) => {
         2,
       ),
     );
-  }
-};
-
-const checkMemoryServiceHealth = async () => {
-  try {
-    const res = await fetch(new URL("/healthz", MEMORY_SERVICE_URL));
-    const text = await res.text().catch(() => "");
-    console.log(`[memory] healthz: ${res.status} ${text}`);
-    return res.ok;
-  } catch (err) {
-    console.log(`[memory] healthz error: ${(err as Error).message}`);
-    return false;
   }
 };
 
@@ -144,24 +131,19 @@ const searchMockMemories = async () => {
 };
 
 const main = async () => {
-  const ok = await checkMemoryServiceHealth();
-  if (!ok) {
-    console.log(`[memory] service not ready at ${MEMORY_SERVICE_URL}`);
-  }
-
   const memoryClient = getMemoryServiceClientFromEnv();
   if (!memoryClient) {
     console.log("[memory] client not configured");
     return;
   }
-  if (process.env.WRITE_MOCK_CHAT_WINDOWS === "1") {
-    const chatSessionManager = new ChatSessionManager({
-      memoryClient,
-      windowMs: 10 * 60 * 1000,
-    });
-    await writeMockChatWindows(chatSessionManager);
-  }
-  await searchMockMemories();
+
+  const chatSessionManager = new ChatSessionManager({
+    memoryClient,
+    windowMs: 10 * 60 * 1000,
+  });
+  await writeMockChatWindows(chatSessionManager);
+
+  // await searchMockMemories();
 };
 
 void main();
