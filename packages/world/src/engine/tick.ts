@@ -118,7 +118,7 @@ export async function tick(params: TickParams): Promise<TickReturn> {
     );
 
     // 保存行为记录（包含持续时间）
-    if (isProd) {
+    if (isProd()) {
       let description = selectedAction.reason;
       if (executionResult) {
         description += ` ${executionResult}`;
@@ -152,7 +152,7 @@ export async function tick(params: TickParams): Promise<TickReturn> {
           "（无）";
 
         await memoryClient.writeEpisode({
-          is_dev: isDev,
+          is_dev: isDev(),
           type: "ゆいじゅ的 Behavior",
           reference_time: now,
           content: {

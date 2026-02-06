@@ -54,7 +54,7 @@ export class ChatSessionManager {
     this.conversationTtlMs = options.conversationTtlMs ?? 3600 * 1000;
     this.windowMs = options.windowMs ?? 20 * 60 * 1000;
     this.memoryClient = options.memoryClient ?? null;
-    this.isDev = isDev;
+    this.isDev = isDev();
   }
 
   recordMessage(input: ChatMessageInput) {

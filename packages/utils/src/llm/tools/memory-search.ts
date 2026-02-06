@@ -15,7 +15,7 @@ export const memorySearchTool: Tool = {
     const memoryList = await client.searchMemory({
       query,
       top_k: 5,
-      is_dev: isDev,
+      is_dev: isDev(),
     });
 
     return memoryList;

@@ -20,7 +20,8 @@
     "dev:web": "pnpm --filter @yuiju/web run dev",
     "test:world": "pnpm --filter @yuiju/world run test",
     "type-check:world": "pnpm --filter @yuiju/world run type-check",
-    "type-check:message": "pnpm --filter @yuiju/message run type-check"
+    "type-check:message": "pnpm --filter @yuiju/message run type-check",
+    "type-check:utils": "pnpm --filter @yuiju/utils run type-check"
   },
   "repository": {
     "type": "git",

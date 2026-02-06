@@ -18,5 +18,5 @@ const findDotEnvPath = (startDir: string) => {
 const dotEnvPath = findDotEnvPath(process.cwd());
 if (dotEnvPath) dotenv.config({ path: dotEnvPath });
 
-export const isDev = process.env.NODE_ENV === "development";
-export const isProd = process.env.NODE_ENV === "production";
+export const isDev = () => process.env.NODE_ENV === "development";
+export const isProd = () => process.env.NODE_ENV === "production";

@@ -121,7 +121,7 @@ const searchMockMemories = async () => {
         query,
         top_k: 5,
         counterparty_name: COUNTERPARTY_NAME,
-        is_dev: isDev,
+        is_dev: isDev(),
       });
       printSearchResults(query, items);
     } catch (err) {

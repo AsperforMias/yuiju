@@ -126,7 +126,7 @@ stateRoute.post("/allowance", async (context) => {
       : `翊小久设置金币：${previousMoney} -> ${currentMoney}`;
 
   try {
-    if (isProd) {
+    if (isProd()) {
       await saveBehaviorRecord({
         behavior: "金币变动",
         description: reason ? `${descriptionBase}；原因：${reason}` : descriptionBase,

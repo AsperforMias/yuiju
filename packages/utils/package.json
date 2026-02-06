@@ -8,7 +8,7 @@
     "./env": "./src/env.ts"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "type-check": "tsc --noEmit"
   },
   "keywords": [],
   "author": "",
