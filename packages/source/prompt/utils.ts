@@ -25,13 +25,7 @@ export function generateRecentBehaviorPrompt(behaviorRecordList: BehaviorRecord[
 
   return behaviorRecordList
     .map((item) => {
-      const parameterList = item.parameters
-        ?.map((parameter) => {
-          return `${parameter.value + (parameter.quantity ?? 1)}个`;
-        })
-        .join("，");
-
-      return `- [${item.behavior}] (时间 ${getTimeWithWeekday(item.time, "HH:mm")})：${item.description} (${parameterList ? "选择了：" + parameterList : ""})`;
+      return `- [${item.behavior}] (时间 ${getTimeWithWeekday(item.time, "HH:mm")})：${item.description}`;
     })
     .join("\n");
 }

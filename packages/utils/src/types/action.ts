@@ -76,29 +76,21 @@ export interface ActionAgentDecision {
   updateLongTermPlan?: string;
 }
 
-export interface ParameterAgentDecision {
-  selectedList: Array<{
-    value: string;
-    quantity: number;
-    reason: string;
-  }>;
-}
-
-export interface ActionMetadata {
-  action: ActionId;
+export abstract class ActionMetadata {
+  abstract action: ActionId;
   /** action 描述 */
-  description: string;
+  abstract description: string;
   /** 前置条件 */
-  precondition: (context: ActionContext) => boolean | Promise<boolean>;
-
-  /** 参数选择 Agent（可选，用于参数化行为） */
-  parameterResolver?: (context: ActionContext) => Promise<ActionParameter[]>;
+  abstract precondition: (context: ActionContext) => boolean | Promise<boolean>;
 
   /** 执行器，支持接收参数，返回执行结果 */
-  executor: (context: ActionContext, parameters?: ActionParameter[]) => Promise<void | string>;
+  abstract executor: (
+    context: ActionContext,
+    parameters?: ActionParameter[],
+  ) => Promise<void | string>;
 
   /** 行动耗时 min，支持参数化计算 */
-  durationMin:
+  abstract durationMin:
     | number
     | ((
         context: ActionContext,
@@ -111,7 +103,7 @@ export interface ActionMetadata {
    * 该描述将作为事件 context 输入给下一次 tick 的 LLM，用于说明上一个动作结束时的状态或发生的事件。
    * 示例："闹钟响了，该起床了" 或 (ctx) => `你结束了${ctx.action}，感觉焕然一新`
    */
-  completionEvent?:
+  abstract completionEvent?:
     | string
     | ((context: ActionContext, parameters?: ActionParameter[]) => string | Promise<string>);
 }

@@ -21,6 +21,9 @@ export const siliconflow = createOpenAICompatible({
   name: "Siliconflow",
 });
 
+/**
+ * 废物
+ */
 export const model_qwen3_8B = wrapLanguageModel({
   model: siliconflow("Qwen/Qwen3-8B"),
   middleware: [logMiddleware],

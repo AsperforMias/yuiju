@@ -1,4 +1,5 @@
 import { ActionId, type ActionMetadata, allTrue, MajorScene } from "@yuiju/utils";
+import { chooseShopProductAgent } from "@/llm/agent";
 import { logger } from "@/utils/logger";
 
 type ShopProduct = {
@@ -55,37 +56,34 @@ export const shopAction: ActionMetadata[] = [
         () => context.characterState.money >= SHOP_MIN_PRICE,
       ]);
     },
-    parameterResolver: async (_context) => {
-      return SHOP_PRODUCTS.map((product) => {
+    /**
+     * parameters 的 length 为 1
+     */
+    async executor(context) {
+      await context.characterState.setAction(ActionId.Buy_Item_At_Shop);
+
+      let remainingMoney = context.characterState.money;
+
+      const productList = SHOP_PRODUCTS.map((product) => {
         return {
           value: product.name,
           description: formatProductDescription(product),
         };
       });
-    },
-    /**
-     * parameters 的 length 为 1
-     */
-    async executor(context, parameters) {
-      if (!parameters || parameters.length === 0) {
+
+      const selectedProduct = await chooseShopProductAgent(productList, context, []);
+      if (!selectedProduct) {
         logger.error("[Buy_Item_At_Shop] 没有选择商品");
         return "购买失败，没有选择商品。";
       }
 
-      await context.characterState.setAction(ActionId.Buy_Item_At_Shop);
-
-      let remainingMoney = context.characterState.money;
-
-      // parameters 的 length 为 1
-      const [selectedParameter] = parameters;
-
-      const product = SHOP_PRODUCTS.find((p) => p.name === selectedParameter.value);
+      const product = SHOP_PRODUCTS.find((p) => p.name === selectedProduct.value);
       if (!product) {
-        logger.error(`[Buy_Item_At_Shop] 未找到商品: ${selectedParameter.value}`);
+        logger.error(`[Buy_Item_At_Shop] 未找到商品: ${selectedProduct.value}`);
         return "购买失败，未找到商品。";
       }
 
-      const desiredQuantity = selectedParameter.quantity ?? 1;
+      const desiredQuantity = selectedProduct.quantity ?? 1;
       const maxAffordable = Math.floor(remainingMoney / product.price);
       if (maxAffordable <= 0) {
         logger.info(
@@ -118,6 +116,8 @@ export const shopAction: ActionMetadata[] = [
       logger.info(
         `[Buy_Item_At_Shop] 购买成功: ${product.name} x${quantity}，花费${cost}元，剩余${remainingMoney}元`,
       );
+
+      return `买了${product.name}${quantity}个，花费${cost}元`;
     },
     durationMin: 10,
   },

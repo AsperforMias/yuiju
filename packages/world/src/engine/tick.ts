@@ -12,7 +12,7 @@ import {
 import dayjs from "dayjs";
 import { getActionList } from "@/action";
 import { getActionById } from "@/action/utils";
-import { coordinatorAgent } from "@/llm/coordinator";
+import { chooseActionAgent } from "@/llm/agent";
 import { characterState } from "@/state/character-state";
 import { worldState } from "@/state/world-state";
 import { logger } from "@/utils/logger";
@@ -71,21 +71,13 @@ export async function tick(params: TickParams): Promise<TickReturn> {
   );
 
   const recentBehaviors = await getRecentBehaviorRecords(10);
-  const history = recentBehaviors.map((b) => ({
-    behavior: b.behavior as ActionId,
-    description: b.description,
-    parameters: b.parameters?.map((p) => ({
-      value: p.value,
-      quantity: p.quantity ?? 1,
-    })),
-    timestamp: b.timestamp.getTime(),
+  const history = recentBehaviors.map((behavior) => ({
+    behavior: behavior.behavior as ActionId,
+    description: behavior.description,
+    timestamp: behavior.timestamp.getTime(),
   }));
 
-  const { selectedAction, selectedParameter } = await coordinatorAgent(
-    actionList,
-    context,
-    history,
-  );
+  const selectedAction = await chooseActionAgent(actionList, context, history);
   const actionMetadata = actionList.find((item) => item.action === selectedAction?.action);
 
   if (actionMetadata && selectedAction) {
@@ -104,7 +96,7 @@ export async function tick(params: TickParams): Promise<TickReturn> {
     }
 
     // 执行行为
-    const executionResult = await actionMetadata.executor(context, selectedParameter?.parameters);
+    const executionResult = await actionMetadata.executor(context);
 
     // 更新世界时间（第一次）
     await context.worldState.updateTime();
@@ -114,7 +106,6 @@ export async function tick(params: TickParams): Promise<TickReturn> {
       actionMetadata.durationMin,
       context,
       selectedAction.durationMinute,
-      selectedParameter?.parameters,
     );
 
     // 保存行为记录（包含持续时间）
@@ -129,12 +120,6 @@ export async function tick(params: TickParams): Promise<TickReturn> {
         description,
         timestamp: new Date(),
         trigger: "agent",
-        parameters: selectedParameter?.parameters?.map((p) => ({
-          value: p.value,
-          quantity: p.quantity ?? 1,
-          reason: p.reason,
-          extra: p.extra,
-        })),
         duration_minutes: durationMin,
       });
     }
@@ -147,10 +132,6 @@ export async function tick(params: TickParams): Promise<TickReturn> {
           description += ` ${executionResult}`;
         }
 
-        const parameterList =
-          selectedParameter?.parameters?.map((p) => `${p.value}${p.quantity ?? 1}个`).join("，") ??
-          "（无）";
-
         await memoryClient.writeEpisode({
           is_dev: isDev(),
           type: "ゆいじゅ的 Behavior",
@@ -159,7 +140,6 @@ export async function tick(params: TickParams): Promise<TickReturn> {
             time: getTimeWithWeekday(dayjs(now)),
             action: selectedAction.action,
             reason: description,
-            parameters: parameterList ? `选择了：${parameterList}` : undefined,
             duration_minutes: `持续了${durationMin}分钟`,
           },
         });
@@ -170,7 +150,7 @@ export async function tick(params: TickParams): Promise<TickReturn> {
 
     const completionEvent =
       typeof actionMetadata.completionEvent === "function"
-        ? await actionMetadata.completionEvent(context, selectedParameter?.parameters)
+        ? await actionMetadata.completionEvent(context)
         : actionMetadata.completionEvent;
 
     logger.info(

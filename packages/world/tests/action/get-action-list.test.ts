@@ -113,7 +113,7 @@ describe("getActionList", () => {
       time: "2025-01-01T23:00:00",
     });
     const list = getActionList(context).map((a) => a.action);
-    expect(list).toEqual([ActionId.Go_To_Shop_From_Home, ActionId.Sleep, ActionId.Idle]);
+    expect(list).toEqual([ActionId.Sleep, ActionId.Idle]);
   });
 
   it("Home weekend afternoon Sunday 15:00 returns stay at home, idle", () => {
@@ -178,12 +178,7 @@ describe("getActionList", () => {
       time: "2025-01-05T23:00:00",
     });
     const list = getActionList(context).map((a) => a.action);
-    expect(list).toEqual([
-      ActionId.Go_To_Shop_From_Home,
-      ActionId.Stay_At_Home,
-      ActionId.Sleep,
-      ActionId.Idle,
-    ]);
+    expect(list).toEqual([ActionId.Stay_At_Home, ActionId.Sleep, ActionId.Idle]);
   });
   it("School weekday 10:00 returns study, idle", () => {
     const context = createContext({

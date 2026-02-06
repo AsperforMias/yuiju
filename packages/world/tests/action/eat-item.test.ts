@@ -1,8 +1,13 @@
 import dayjs from "dayjs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("@/llm/agent", () => ({
+  chooseFoodAgent: vi.fn(),
+}));
+
 import { anywhereAction } from "@/action/anywhere";
-import { ActionId, type ActionParameter, type InventoryItem } from "@yuiju/utils";
+import { chooseFoodAgent } from "@/llm/agent";
+import { ActionId, type InventoryItem } from "@yuiju/utils";
 
 process.env.NODE_ENV = "development";
 
@@ -218,81 +223,12 @@ describe("Eat_Item Action", () => {
     });
   });
 
-  describe("parameterResolver - 参数解析", () => {
-    it("返回可用食物列表", async () => {
-      const characterState = createMockCharacterState({
-        inventory: [createFoodItem("苹果", 3, 10), createFoodItem("面包", 5, 15)],
-        action: ActionId.Idle,
-      });
-      const worldState = createMockWorldState();
-
-      const context: any = {
-        characterState,
-        worldState,
-      };
-
-      if (!eatItemAction.parameterResolver) {
-        throw new Error("parameterResolver not found");
-      }
-      const result = await eatItemAction.parameterResolver(context);
-
-      expect(result).toHaveLength(2);
-      expect(result[0]).toEqual({
-        value: "苹果",
-        description: "苹果可以恢复10点体力（剩余3个）",
-        extra: { stamina: 10 },
-      });
-      expect(result[1]).toEqual({
-        value: "面包",
-        description: "面包可以恢复15点体力（剩余5个）",
-        extra: { stamina: 15 },
-      });
-    });
-
-    it("空背包返回空数组", async () => {
-      const characterState = createMockCharacterState({
-        inventory: [],
-        action: ActionId.Idle,
-      });
-      const worldState = createMockWorldState();
-
-      const context: any = {
-        characterState,
-        worldState,
-      };
-
-      if (!eatItemAction.parameterResolver) {
-        throw new Error("parameterResolver not found");
-      }
-      const result = await eatItemAction.parameterResolver(context);
-
-      expect(result).toEqual([]);
-    });
-
-    it("过滤掉数量为 0 的食物", async () => {
-      const characterState = createMockCharacterState({
-        inventory: [createFoodItem("苹果", 2, 10), createFoodItem("面包", 0, 15)],
-        action: ActionId.Idle,
-      });
-      const worldState = createMockWorldState();
-
-      const context: any = {
-        characterState,
-        worldState,
-      };
-
-      if (!eatItemAction.parameterResolver) {
-        throw new Error("parameterResolver not found");
-      }
-      const result = await eatItemAction.parameterResolver(context);
-
-      expect(result).toHaveLength(1);
-      expect(result[0].value).toBe("苹果");
-    });
-  });
-
   describe("executor - 执行器", () => {
     it("消费单个食物（默认数量 1）", async () => {
+      vi.mocked(chooseFoodAgent).mockResolvedValue([
+        { value: "苹果", quantity: 1, reason: "有点饿" },
+      ] as any);
+
       const characterState = createMockCharacterState({
         inventory: [createFoodItem("苹果", 1, 10)],
         stamina: 50,
@@ -304,23 +240,20 @@ describe("Eat_Item Action", () => {
         characterState,
         worldState,
       };
-
-      const parameters: ActionParameter[] = [
-        {
-          value: "苹果",
-          extra: { stamina: 10 },
-        },
-      ];
-
-      await eatItemAction.executor(context, parameters);
+      const result = await eatItemAction.executor(context);
 
       // 验证状态变更
       expect(characterState.action).toBe(ActionId.Eat_Item);
       expect(characterState.stamina).toBe(60);
       expect(characterState.inventory).toHaveLength(0); // 苹果被消费完，从背包移除
+      expect(result).toContain("苹果");
     });
 
     it("消费多个食物（指定数量）", async () => {
+      vi.mocked(chooseFoodAgent).mockResolvedValue([
+        { value: "面包", quantity: 3, reason: "需要补充体力" },
+      ] as any);
+
       const characterState = createMockCharacterState({
         inventory: [createFoodItem("面包", 5, 15)],
         stamina: 40,
@@ -332,24 +265,21 @@ describe("Eat_Item Action", () => {
         characterState,
         worldState,
       };
-
-      const parameters: ActionParameter[] = [
-        {
-          value: "面包",
-          quantity: 3,
-          extra: { stamina: 15 },
-        },
-      ];
-
-      await eatItemAction.executor(context, parameters);
+      const result = await eatItemAction.executor(context);
 
       // 验证状态变更
       expect(characterState.action).toBe(ActionId.Eat_Item);
       expect(characterState.stamina).toBe(85); // 40 + 15 * 3
       expect(characterState.inventory[0].quantity).toBe(2); // 5 - 3 = 2
+      expect(result).toContain("面包");
     });
 
     it("消费多个不同食物", async () => {
+      vi.mocked(chooseFoodAgent).mockResolvedValue([
+        { value: "苹果", quantity: 2, reason: "先吃水果" },
+        { value: "蛋糕", quantity: 1, reason: "想吃甜的" },
+      ] as any);
+
       const characterState = createMockCharacterState({
         inventory: [createFoodItem("苹果", 2, 10), createFoodItem("蛋糕", 1, 25)],
         stamina: 30,
@@ -361,31 +291,19 @@ describe("Eat_Item Action", () => {
         characterState,
         worldState,
       };
-
-      const parameters: ActionParameter[] = [
-        {
-          value: "苹果",
-          quantity: 2,
-          extra: { stamina: 10 },
-        },
-        {
-          value: "蛋糕",
-          quantity: 1,
-          extra: { stamina: 25 },
-        },
-      ];
-
-      await eatItemAction.executor(context, parameters);
+      const result = await eatItemAction.executor(context);
 
       // 验证状态变更
       expect(characterState.action).toBe(ActionId.Eat_Item);
       expect(characterState.stamina).toBe(75); // 30 + 10 * 2 + 25
       expect(characterState.inventory).toHaveLength(0); // 所有食物都被消费完
+      expect(result).toContain("苹果");
+      expect(result).toContain("蛋糕");
     });
 
-    it("无参数时抛出错误", async () => {
+    it("无食物时返回提示", async () => {
       const characterState = createMockCharacterState({
-        inventory: [createFoodItem("苹果", 1, 10)],
+        inventory: [createMaterialItem("木材", 5)],
         action: ActionId.Idle,
       });
       const worldState = createMockWorldState();
@@ -395,16 +313,14 @@ describe("Eat_Item Action", () => {
         worldState,
       };
 
-      // 无参数
-      await expect(eatItemAction.executor(context, [])).rejects.toThrow("没有可用的食物参数");
-
-      // undefined 参数
-      await expect(eatItemAction.executor(context, undefined as any)).rejects.toThrow(
-        "没有可用的食物参数",
-      );
+      const result = await eatItemAction.executor(context);
+      expect(result).toContain("没有可吃的食物");
+      expect(characterState.action).toBe(ActionId.Idle);
     });
 
-    it("物品不存在时记录错误并继续执行", async () => {
+    it("agent 未选择时返回提示", async () => {
+      vi.mocked(chooseFoodAgent).mockResolvedValue([] as any);
+
       const characterState = createMockCharacterState({
         inventory: [createFoodItem("苹果", 1, 10)],
         stamina: 50,
@@ -417,28 +333,46 @@ describe("Eat_Item Action", () => {
         worldState,
       };
 
-      const parameters: ActionParameter[] = [
-        {
-          value: "不存在的食物",
-          extra: { stamina: 10 },
-        },
-      ];
+      const result = await eatItemAction.executor(context);
+      expect(result).toContain("没有选择");
+      expect(characterState.action).toBe(ActionId.Eat_Item);
+      expect(characterState.stamina).toBe(50);
+    });
 
-      await eatItemAction.executor(context, parameters);
+    it("物品不存在时记录错误并继续执行", async () => {
+      vi.mocked(chooseFoodAgent).mockResolvedValue([
+        { value: "不存在的食物", quantity: 1, reason: "试试" },
+      ] as any);
 
-      // 验证记录了错误日志
-      expect(logger.error).toHaveBeenCalledWith(
-        expect.stringContaining("[Eat_Item] 消费食物失败: 不存在的食物"),
-      );
+      const characterState = createMockCharacterState({
+        inventory: [createFoodItem("苹果", 1, 10)],
+        stamina: 50,
+        action: ActionId.Idle,
+      });
+      const worldState = createMockWorldState();
+
+      const context: any = {
+        characterState,
+        worldState,
+      };
+      const result = await eatItemAction.executor(context);
 
       // action 仍被设置
       expect(characterState.action).toBe(ActionId.Eat_Item);
 
       // 体力没有变化
       expect(characterState.stamina).toBe(50);
+      expect(result).toContain("没有选择");
+      expect(logger.error).not.toHaveBeenCalled();
     });
 
     it("处理部分物品不存在的情况", async () => {
+      vi.mocked(chooseFoodAgent).mockResolvedValue([
+        { value: "苹果", quantity: 1, reason: "先吃水果" },
+        { value: "不存在的食物", quantity: 1, reason: "试试" },
+        { value: "面包", quantity: 1, reason: "再吃点" },
+      ] as any);
+
       const characterState = createMockCharacterState({
         inventory: [createFoodItem("苹果", 2, 10), createFoodItem("面包", 1, 15)],
         stamina: 40,
@@ -450,23 +384,7 @@ describe("Eat_Item Action", () => {
         characterState,
         worldState,
       };
-
-      const parameters: ActionParameter[] = [
-        {
-          value: "苹果",
-          extra: { stamina: 10 },
-        },
-        {
-          value: "不存在的食物",
-          extra: { stamina: 20 },
-        },
-        {
-          value: "面包",
-          extra: { stamina: 15 },
-        },
-      ];
-
-      await eatItemAction.executor(context, parameters);
+      await eatItemAction.executor(context);
 
       // 验证状态变更
       expect(characterState.action).toBe(ActionId.Eat_Item);
@@ -474,11 +392,7 @@ describe("Eat_Item Action", () => {
       expect(characterState.inventory).toHaveLength(1); // 苹果和面包被消费，不存在的食物不在背包中
       expect(characterState.inventory[0].name).toBe("苹果"); // 苹果剩 1 个
       expect(characterState.inventory[0].quantity).toBe(1);
-
-      // 验证记录了错误日志
-      expect(logger.error).toHaveBeenCalledWith(
-        expect.stringContaining("[Eat_Item] 消费食物失败: 不存在的食物"),
-      );
+      expect(logger.error).not.toHaveBeenCalled();
     });
   });
 

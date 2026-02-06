@@ -18,6 +18,9 @@
         "noEmptyInterface": "warn",
         "noExplicitAny": "off"
       },
+      "style": {
+        "noNonNullAssertion": "off"
+      },
       "correctness": {
         "noUnusedVariables": "warn"
       }

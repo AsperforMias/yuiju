@@ -5,7 +5,6 @@ import type {
   ActionMetadata,
   ActionParameter,
   BehaviorRecord,
-  ParameterAgentDecision,
 } from "@yuiju/utils";
 import { generateText, Output, stepCountIs } from "ai";
 import dayjs from "dayjs";
@@ -16,6 +15,23 @@ import { model_deepseek_reasoner } from "./utils";
 
 const RETRY_COUNT = 3;
 
+type ParameterAgentSelectedItem = {
+  value: string;
+  quantity: number;
+};
+
+export type FoodAgentDecision = {
+  selectedList: ParameterAgentSelectedItem[];
+};
+
+export type ShopProductAgentDecision = {
+  selectedList: ParameterAgentSelectedItem[];
+};
+
+/**
+ *
+ * 选择 Action
+ */
 export async function chooseActionAgent(
   actionList: ActionMetadata[],
   context: ActionContext,
@@ -30,7 +46,6 @@ export async function chooseActionAgent(
     recentBehaviorList: actionMemoryList.map((item) => ({
       behavior: item.behavior,
       description: item.description,
-      parameters: item.parameters,
       time: dayjs(item.timestamp),
     })),
     location: `${context.characterState.location.major}${
@@ -68,7 +83,7 @@ export async function chooseActionAgent(
           }),
         }),
         prompt: systemPrompt,
-        stopWhen: stepCountIs(5),
+        stopWhen: stepCountIs(20),
       });
       logger.info("[chooseActionAgent] 选择行动结果", output);
       logger.info("[chooseActionAgent reasoning]: ", reasoningText);
@@ -79,11 +94,15 @@ export async function chooseActionAgent(
   }
 }
 
+/**
+ *
+ * 选择食物
+ */
 export async function chooseFoodAgent(
   foodList: ActionParameter[],
   context: ActionContext,
   actionMemoryList: BehaviorRecord[],
-): Promise<ParameterAgentDecision | undefined> {
+) {
   const systemPrompt = chooseFoodPrompt({
     availableFood: foodList,
     location: `${context.characterState.location.major}${
@@ -96,7 +115,6 @@ export async function chooseFoodAgent(
     recentBehaviorList: actionMemoryList.map((item) => ({
       behavior: item.behavior,
       description: item.description,
-      parameters: item.parameters,
       time: dayjs(item.timestamp),
     })),
   });
@@ -114,7 +132,6 @@ export async function chooseFoodAgent(
           schema: z.array(
             z.object({
               value: z.enum(foodList.map((item) => item.value)).describe("选择的食物名称"),
-              reason: z.string().describe("简短的理由"),
               quantity: z.number().describe("选择的数量"),
             }),
           ),
@@ -122,20 +139,23 @@ export async function chooseFoodAgent(
         prompt: systemPrompt,
       });
       // LLM 返回的是数组，需要包装成 selectedList 格式
-      const result = { selectedList: output };
-      logger.info("[chooseFoodAgent] 选择食物结果", result);
-      return result;
+      logger.info("[chooseFoodAgent] 选择食物结果", output);
+      return output;
     } catch (error) {
       logger.error("[chooseFoodAgent] 选择食物失败", error);
     }
   }
 }
 
+/**
+ *
+ * 选择购买商品
+ */
 export async function chooseShopProductAgent(
   productList: ActionParameter[],
   context: ActionContext,
   actionMemoryList: BehaviorRecord[],
-): Promise<ParameterAgentDecision | undefined> {
+) {
   if (productList.length === 0) {
     return;
   }
@@ -153,7 +173,6 @@ export async function chooseShopProductAgent(
     recentBehaviorList: actionMemoryList.map((item) => ({
       behavior: item.behavior,
       description: item.description,
-      parameters: item.parameters,
       time: dayjs(item.timestamp),
     })),
   });
@@ -165,16 +184,14 @@ export async function chooseShopProductAgent(
         output: Output.object({
           schema: z.object({
             value: z.enum(productList.map((item) => item.value)).describe("选择的商品名称"),
-            reason: z.string().describe("简短的理由"),
             quantity: z.number().describe("购买数量"),
           }),
         }),
         prompt: systemPrompt,
       });
 
-      const result = { selectedList: [output] };
-      logger.info("[chooseShopProductAgent] 选择商品结果", result);
-      return result;
+      logger.info("[chooseShopProductAgent] 选择商品结果", output);
+      return output;
     } catch (error) {
       logger.error("[chooseShopProductAgent] 选择商品失败", error);
     }

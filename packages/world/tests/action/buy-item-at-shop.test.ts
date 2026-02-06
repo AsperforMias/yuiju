@@ -2,9 +2,14 @@ import dayjs from "dayjs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { shopAction } from "@/action/shop";
-import { ActionId, MajorScene, type ActionParameter, type InventoryItem } from "@yuiju/utils";
+import { chooseShopProductAgent } from "@/llm/agent";
+import { ActionId, MajorScene, type InventoryItem } from "@yuiju/utils";
 
 process.env.NODE_ENV = "development";
+
+vi.mock("@/llm/agent", () => ({
+  chooseShopProductAgent: vi.fn(),
+}));
 
 vi.mock("@/utils/logger", () => ({
   logger: {
@@ -151,29 +156,14 @@ describe("Buy_Item_At_Shop Action", () => {
     });
   });
 
-  describe("parameterResolver - 参数解析", () => {
-    it("返回 4 个商品候选", async () => {
-      if (!buyItemAtShopAction.parameterResolver) {
-        throw new Error("parameterResolver not found");
-      }
-
-      const context: any = {
-        characterState: createMockCharacterState({
-          money: 100,
-          locationMajor: MajorScene.Shop,
-        }),
-        worldState: createMockWorldState(),
-      };
-
-      const list = await buyItemAtShopAction.parameterResolver(context);
-      expect(list).toHaveLength(4);
-      expect(list.map((p) => p.value)).toEqual(["百奇", "纯软糖", "弹珠汽水糖", "抹茶布丁"]);
-      expect(list[0].extra).toBeUndefined();
-    });
-  });
-
   describe("executor - 执行器", () => {
     it("余额足够时扣钱并入包（支持 quantity>1）", async () => {
+      vi.mocked(chooseShopProductAgent).mockResolvedValue({
+        value: "百奇",
+        quantity: 2,
+        reason: "想吃甜的",
+      } as any);
+
       const characterState = createMockCharacterState({
         money: 200,
         locationMajor: MajorScene.Shop,
@@ -182,22 +172,21 @@ describe("Buy_Item_At_Shop Action", () => {
         characterState,
         worldState: createMockWorldState(),
       };
-
-      const parameters: ActionParameter[] = [
-        {
-          value: "百奇",
-          quantity: 2,
-        },
-      ];
-
-      await buyItemAtShopAction.executor(context, parameters);
+      const result = await buyItemAtShopAction.executor(context);
 
       expect(characterState.action).toBe(ActionId.Buy_Item_At_Shop);
       expect(characterState.money).toBe(0);
       expect(characterState.getItemQuantity("百奇")).toBe(2);
+      expect(result).toContain("百奇");
     });
 
     it("余额不足时跳过购买，不扣钱不入包", async () => {
+      vi.mocked(chooseShopProductAgent).mockResolvedValue({
+        value: "百奇",
+        quantity: 1,
+        reason: "试试",
+      } as any);
+
       const characterState = createMockCharacterState({
         money: 50,
         locationMajor: MajorScene.Shop,
@@ -206,21 +195,20 @@ describe("Buy_Item_At_Shop Action", () => {
         characterState,
         worldState: createMockWorldState(),
       };
-
-      const parameters: ActionParameter[] = [
-        {
-          value: "百奇",
-          quantity: 1,
-        },
-      ];
-
-      await buyItemAtShopAction.executor(context, parameters);
+      const result = await buyItemAtShopAction.executor(context);
 
       expect(characterState.money).toBe(50);
       expect(characterState.getItemQuantity("百奇")).toBe(0);
+      expect(result).toContain("余额不足");
     });
 
     it("购买数量超过余额上限时会裁剪到可承受数量", async () => {
+      vi.mocked(chooseShopProductAgent).mockResolvedValue({
+        value: "纯软糖",
+        quantity: 10,
+        reason: "多买点",
+      } as any);
+
       const characterState = createMockCharacterState({
         money: 120,
         locationMajor: MajorScene.Shop,
@@ -229,18 +217,11 @@ describe("Buy_Item_At_Shop Action", () => {
         characterState,
         worldState: createMockWorldState(),
       };
-
-      const parameters: ActionParameter[] = [
-        {
-          value: "纯软糖",
-          quantity: 10,
-        },
-      ];
-
-      await buyItemAtShopAction.executor(context, parameters);
+      const result = await buyItemAtShopAction.executor(context);
 
       expect(characterState.money).toBe(20);
       expect(characterState.getItemQuantity("纯软糖")).toBe(2);
+      expect(result).toContain("纯软糖");
     });
   });
 });
