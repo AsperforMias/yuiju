@@ -78,6 +78,21 @@ export const homeAction: ActionMetadata[] = [
     durationMin: 20,
   },
   {
+    action: ActionId.Go_To_Cafe_From_Home,
+    description: "从家去咖啡店。消耗体力5点。耗时20分钟。",
+    precondition(context) {
+      return context.characterState.stamina >= 5 && !isNight(context);
+    },
+    async executor(context) {
+      await context.characterState.setAction(ActionId.Go_To_Cafe_From_Home);
+      await context.characterState.setLocation({
+        major: MajorScene.Cafe,
+      });
+      await context.characterState.changeStamina(-5);
+    },
+    durationMin: 20,
+  },
+  {
     action: ActionId.Eat_Dinner,
     description: "吃晚餐。体力增加50点。耗时20分钟。",
     precondition(context) {

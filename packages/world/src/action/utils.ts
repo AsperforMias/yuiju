@@ -1,11 +1,13 @@
 import { type ActionContext, ActionId } from "@yuiju/utils";
 import { anywhereAction } from "./anywhere";
+import { cafeAction } from "./cafe";
 import { homeAction } from "./home";
 import { schoolAction } from "./school";
 import { shopAction } from "./shop";
 
 export const PrecheckActionMap: Record<string, ActionId[]> = {
   [ActionId.Sleep]: [ActionId.Wake_Up, ActionId.Sleep_For_A_Little],
+  [ActionId.Order_Coffee]: [ActionId.Drink_Coffee],
 };
 
 export function precheckAction(context: ActionContext) {
@@ -23,7 +25,7 @@ export const isNotDoing = (context: ActionContext, action: ActionId) =>
   context.characterState.action !== action;
 
 export const getActionById = (action: ActionId) => {
-  return [...anywhereAction, ...homeAction, ...schoolAction, ...shopAction].find(
+  return [...anywhereAction, ...homeAction, ...schoolAction, ...shopAction, ...cafeAction].find(
     (item) => item.action === action,
   )!;
 };

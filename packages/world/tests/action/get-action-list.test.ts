@@ -82,6 +82,7 @@ describe("getActionList", () => {
       ActionId.Eat_Breakfast,
       ActionId.Go_To_School_From_Home,
       ActionId.Go_To_Shop_From_Home,
+      ActionId.Go_To_Cafe_From_Home,
       ActionId.Idle,
     ]);
   });
@@ -93,7 +94,12 @@ describe("getActionList", () => {
       time: "2025-01-01T12:00:00",
     });
     const list = getActionList(context).map((a) => a.action);
-    expect(list).toEqual([ActionId.Go_To_Shop_From_Home, ActionId.Idle, ActionId.Eat_Lunch]);
+    expect(list).toEqual([
+      ActionId.Go_To_Shop_From_Home,
+      ActionId.Go_To_Cafe_From_Home,
+      ActionId.Idle,
+      ActionId.Eat_Lunch,
+    ]);
   });
 
   it("Home evening weekday 19:00 returns eat dinner, idle", () => {
@@ -103,7 +109,12 @@ describe("getActionList", () => {
       time: "2025-01-01T19:00:00",
     });
     const list = getActionList(context).map((a) => a.action);
-    expect(list).toEqual([ActionId.Go_To_Shop_From_Home, ActionId.Eat_Dinner, ActionId.Idle]);
+    expect(list).toEqual([
+      ActionId.Go_To_Shop_From_Home,
+      ActionId.Go_To_Cafe_From_Home,
+      ActionId.Eat_Dinner,
+      ActionId.Idle,
+    ]);
   });
 
   it("Home night weekday 23:00 returns sleep, idle", () => {
@@ -123,7 +134,12 @@ describe("getActionList", () => {
       time: "2025-01-05T15:00:00",
     });
     const list = getActionList(context).map((a) => a.action);
-    expect(list).toEqual([ActionId.Go_To_Shop_From_Home, ActionId.Stay_At_Home, ActionId.Idle]);
+    expect(list).toEqual([
+      ActionId.Go_To_Shop_From_Home,
+      ActionId.Go_To_Cafe_From_Home,
+      ActionId.Stay_At_Home,
+      ActionId.Idle,
+    ]);
   });
 
   it("Home weekend morning Sunday 08:00 returns breakfast, go to school, stay at home, idle", () => {
@@ -136,6 +152,7 @@ describe("getActionList", () => {
     expect(list).toEqual([
       ActionId.Eat_Breakfast,
       ActionId.Go_To_Shop_From_Home,
+      ActionId.Go_To_Cafe_From_Home,
       ActionId.Stay_At_Home,
       ActionId.Idle,
     ]);
@@ -150,6 +167,7 @@ describe("getActionList", () => {
     const list = getActionList(context).map((a) => a.action);
     expect(list).toEqual([
       ActionId.Go_To_Shop_From_Home,
+      ActionId.Go_To_Cafe_From_Home,
       ActionId.Stay_At_Home,
       ActionId.Idle,
       ActionId.Eat_Lunch,
@@ -165,6 +183,7 @@ describe("getActionList", () => {
     const list = getActionList(context).map((a) => a.action);
     expect(list).toEqual([
       ActionId.Go_To_Shop_From_Home,
+      ActionId.Go_To_Cafe_From_Home,
       ActionId.Eat_Dinner,
       ActionId.Stay_At_Home,
       ActionId.Idle,
@@ -191,6 +210,7 @@ describe("getActionList", () => {
     expect(list).toEqual([
       ActionId.Study_At_School,
       ActionId.Go_To_Shop_From_School,
+      ActionId.Go_To_Cafe_From_School,
       ActionId.Idle,
     ]);
   });
@@ -206,8 +226,50 @@ describe("getActionList", () => {
     expect(list).toEqual([
       ActionId.Go_Home_From_School,
       ActionId.Go_To_Shop_From_School,
+      ActionId.Go_To_Cafe_From_School,
       ActionId.Idle,
     ]);
+  });
+
+  it("Cafe noon 12:00 returns order coffee, work, go home/school, idle, eat lunch", () => {
+    const context = createContext({
+      action: ActionId.Idle,
+      major: MajorScene.Cafe,
+      time: "2025-01-01T12:00:00",
+      money: 100,
+    });
+    const list = getActionList(context).map((a) => a.action);
+    expect(list).toEqual([
+      ActionId.Order_Coffee,
+      ActionId.Work_At_Cafe,
+      ActionId.Go_Home_From_Cafe,
+      ActionId.Go_To_School_From_Cafe,
+      ActionId.Idle,
+      ActionId.Eat_Lunch,
+    ]);
+  });
+
+  it("Cafe 16:30 returns no work action", () => {
+    const context = createContext({
+      action: ActionId.Idle,
+      major: MajorScene.Cafe,
+      time: "2025-01-01T16:30:00",
+      money: 100,
+    });
+    const list = getActionList(context).map((a) => a.action);
+    expect(list).toEqual([
+      ActionId.Order_Coffee,
+      ActionId.Go_Home_From_Cafe,
+      ActionId.Go_To_School_From_Cafe,
+      ActionId.Idle,
+    ]);
+  });
+
+  it("returns only Drink_Coffee when current action is Order_Coffee", () => {
+    const context = createContext({ action: ActionId.Order_Coffee, major: MajorScene.Cafe });
+    const list = getActionList(context).map((a) => a.action);
+    expect(list.length).toBe(1);
+    expect(list).toEqual([ActionId.Drink_Coffee]);
   });
 
   it("Shop noon 12:00 returns buy, go home, go school, idle, eat lunch", () => {

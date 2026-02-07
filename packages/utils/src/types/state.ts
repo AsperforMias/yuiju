@@ -6,6 +6,7 @@ export enum MajorScene {
   Home = "家",
   School = "学校",
   Shop = "商店",
+  Cafe = "咖啡店",
 }
 
 // 家的小场景
@@ -23,7 +24,8 @@ export enum ShopSubScene {}
 export type Location =
   | { major: MajorScene.Home; minor?: HomeSubScene }
   | { major: MajorScene.School; minor?: SchoolSubScene }
-  | { major: MajorScene.Shop; minor?: ShopSubScene };
+  | { major: MajorScene.Shop; minor?: ShopSubScene }
+  | { major: MajorScene.Cafe; minor?: undefined };
 
 /**
  * 食物元数据

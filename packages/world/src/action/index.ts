@@ -1,5 +1,6 @@
 import { type ActionContext, type ActionMetadata, MajorScene } from "@yuiju/utils";
 import { anywhereAction } from "./anywhere";
+import { cafeAction } from "./cafe";
 import { homeAction } from "./home";
 import { schoolAction } from "./school";
 import { shopAction } from "./shop";
@@ -22,6 +23,9 @@ export function getActionList(context: ActionContext) {
       break;
     case MajorScene.Shop:
       locationAction = shopAction;
+      break;
+    case MajorScene.Cafe:
+      locationAction = cafeAction;
       break;
     default:
       break;

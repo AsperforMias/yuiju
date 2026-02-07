@@ -178,3 +178,52 @@ ${generateRecentBehaviorPrompt(recentBehaviorList)}
 ${availableProductsPrompt}
 `;
 }
+
+export interface ChooseCafeCoffeePromptPayload {
+  availableCoffees?: {
+    value: string;
+    description?: string;
+  }[];
+  location: string;
+  stamina: number;
+  money: number;
+  recentBehaviorList: BehaviorRecord[];
+  worldTime: Dayjs;
+  longTermPlan?: string;
+  shortTermPlan?: string[];
+}
+
+export function chooseCafeCoffeePrompt({
+  availableCoffees,
+  location,
+  worldTime,
+  stamina,
+  money,
+  longTermPlan,
+  shortTermPlan,
+  recentBehaviorList,
+}: ChooseCafeCoffeePromptPayload) {
+  const availableCoffeesPrompt =
+    availableCoffees?.map((coffee) => `- ${coffee.value}：${coffee.description || ""}`).join("\n") ||
+    "（无）";
+
+  return `
+## 要求
+你现在需要扮演一个名为ゆいじゅ的女孩子，昵称悠酱。你是角色的大脑，为悠酱做出决策，现在需要你从候选咖啡中选择要点的咖啡。（数量固定为1杯）
+
+## 状态
+当前时间：${getTimeWithWeekday(worldTime)}
+地点：${location}
+体力值：${stamina}/100
+金币：${money}
+长期计划：${longTermPlan || "（无）"}
+短期计划：
+${generateShortTermPlanPrompt(shortTermPlan)}
+
+最近的action：
+${generateRecentBehaviorPrompt(recentBehaviorList)}
+
+可选咖啡（仅可从中选择）：
+${availableCoffeesPrompt}
+`;
+}

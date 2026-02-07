@@ -65,4 +65,20 @@ export const schoolAction: ActionMetadata[] = [
     },
     durationMin: 10,
   },
+  {
+    action: ActionId.Go_To_Cafe_From_School,
+    description: "从学校去咖啡店。消耗体力5点。耗时10分钟。",
+    precondition(context) {
+      return context.characterState.stamina >= 5 && !isNight(context);
+    },
+    async executor(context) {
+      await context.characterState.setAction(ActionId.Go_To_Cafe_From_School);
+      await context.characterState.setLocation({
+        major: MajorScene.Cafe,
+      });
+
+      await context.characterState.changeStamina(-5);
+    },
+    durationMin: 10,
+  },
 ];

@@ -1,4 +1,9 @@
-import { chooseActionPrompt, chooseFoodPrompt, chooseShopProductPrompt } from "@yuiju/source";
+import {
+  chooseActionPrompt,
+  chooseCafeCoffeePrompt,
+  chooseFoodPrompt,
+  chooseShopProductPrompt,
+} from "@yuiju/source";
 import type {
   ActionAgentDecision,
   ActionContext,
@@ -194,6 +199,57 @@ export async function chooseShopProductAgent(
       return output;
     } catch (error) {
       logger.error("[chooseShopProductAgent] 选择商品失败", error);
+    }
+  }
+}
+
+/**
+ *
+ * 选择咖啡
+ */
+export async function chooseCafeCoffeeAgent(
+  coffeeList: ActionParameter[],
+  context: ActionContext,
+  actionMemoryList: BehaviorRecord[],
+) {
+  if (coffeeList.length === 0) {
+    return;
+  }
+
+  const systemPrompt = chooseCafeCoffeePrompt({
+    availableCoffees: coffeeList,
+    location: `${context.characterState.location.major}${
+      context.characterState.location.minor ? "-" + context.characterState.location.minor : ""
+    }`,
+    stamina: context.characterState.stamina,
+    money: context.characterState.money,
+    worldTime: context.worldState.time,
+    longTermPlan: context.characterState.longTermPlan,
+    shortTermPlan: context.characterState.shortTermPlan,
+    recentBehaviorList: actionMemoryList.map((item) => ({
+      behavior: item.behavior,
+      description: item.description,
+      time: dayjs(item.timestamp),
+    })),
+  });
+
+  for (let i = 0; i < RETRY_COUNT; i++) {
+    try {
+      const { output } = await generateText({
+        model: model_deepseek_reasoner,
+        output: Output.object({
+          schema: z.object({
+            value: z.enum(coffeeList.map((item) => item.value)).describe("选择的咖啡名称"),
+            quantity: z.number().describe("点单数量"),
+          }),
+        }),
+        prompt: systemPrompt,
+      });
+
+      logger.info("[chooseCafeCoffeeAgent] 选择咖啡结果", output);
+      return output;
+    } catch (error) {
+      logger.error("[chooseCafeCoffeeAgent] 选择咖啡失败", error);
     }
   }
 }
