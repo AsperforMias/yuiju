@@ -2,21 +2,6 @@ import dayjs from "dayjs";
 import mongoose, { type Document, Schema } from "mongoose";
 
 /**
- * 行为参数
- * 用于存储 ParameterAgent 选择的具体参数
- */
-export interface BehaviorParameter {
-  /** 参数值，如："苹果"、"面包" */
-  value: string;
-  /** 数量，默认为 1 */
-  quantity?: number;
-  /** 选择原因 */
-  reason?: string;
-  /** 额外信息，如：{ stamina: 15, price: 5 } */
-  extra?: Record<string, any>;
-}
-
-/**
  * 行为记录接口
  */
 export interface IBehaviorRecord extends Document {
@@ -28,8 +13,6 @@ export interface IBehaviorRecord extends Document {
   timestamp: Date;
   /** 触发来源：agent（LLM）、user（用户）、system（系统） */
   trigger: "agent" | "user" | "system";
-  /** Agent 选择的行为参数 */
-  parameters?: BehaviorParameter[];
   /** 行为持续时间（分钟） */
   duration_minutes?: number;
 }
@@ -46,14 +29,6 @@ const BehaviorRecordSchema = new Schema<IBehaviorRecord>({
     default: "agent",
     index: true,
   },
-  parameters: [
-    {
-      value: { type: String, required: true },
-      quantity: { type: Number, default: 1 },
-      reason: { type: String, required: false },
-      extra: { type: Schema.Types.Mixed, default: {} },
-    },
-  ],
   duration_minutes: { type: Number },
 });
 
