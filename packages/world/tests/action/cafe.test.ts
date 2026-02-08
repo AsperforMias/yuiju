@@ -140,7 +140,7 @@ describe("Cafe Actions", () => {
     it("在咖啡店且金币足够时返回 true", () => {
       const context: any = {
         characterState: createMockCharacterState({
-          money: 18,
+          money: 80,
           locationMajor: MajorScene.Cafe,
         }),
         worldState: createMockWorldState(),
@@ -166,7 +166,7 @@ describe("Cafe Actions", () => {
       const result = await orderCoffeeAction.executor(context);
 
       expect(characterState.action).toBe(ActionId.Order_Coffee);
-      expect(characterState.money).toBe(82);
+      expect(characterState.money).toBe(20);
       expect(characterState.getItemQuantity("拼配热咖啡")).toBe(1);
       expect(result).toContain("拼配热咖啡");
     });
@@ -184,7 +184,7 @@ describe("Cafe Actions", () => {
             description: "店家每日拼配，香气温和，口感顺口。",
             category: "food",
             quantity: 1,
-            metadata: { stamina: 10 },
+            metadata: { stamina: 8 },
           },
         ],
       });
@@ -197,8 +197,8 @@ describe("Cafe Actions", () => {
 
       expect(characterState.action).toBe(ActionId.Drink_Coffee);
       expect(characterState.getItemQuantity("拼配热咖啡")).toBe(0);
-      expect(characterState.stamina).toBe(60);
-      expect(result).toContain("恢复10点体力");
+      expect(characterState.stamina).toBe(58);
+      expect(result).toContain("恢复8点体力");
     });
   });
 
@@ -224,9 +224,9 @@ describe("Cafe Actions", () => {
 
       const result = await workAtCafeAction.executor(context1600);
       expect(characterState.action).toBe(ActionId.Work_At_Cafe);
-      expect(characterState.money).toBe(20);
+      expect(characterState.money).toBe(200);
       expect(characterState.stamina).toBe(40);
-      expect(result).toContain("20元");
+      expect(result).toContain("200元");
     });
   });
 });

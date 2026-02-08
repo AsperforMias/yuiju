@@ -12,8 +12,8 @@ type ShopProduct = {
 const SHOP_PRODUCTS: ShopProduct[] = [
   {
     name: "百奇",
-    price: 100,
-    stamina: 10,
+    price: 50,
+    stamina: 5,
     description: "涂层饼干棒，草莓口味。",
   },
   {

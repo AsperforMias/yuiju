@@ -175,7 +175,7 @@ describe("Buy_Item_At_Shop Action", () => {
       const result = await buyItemAtShopAction.executor(context);
 
       expect(characterState.action).toBe(ActionId.Buy_Item_At_Shop);
-      expect(characterState.money).toBe(0);
+      expect(characterState.money).toBe(100);
       expect(characterState.getItemQuantity("百奇")).toBe(2);
       expect(result).toContain("百奇");
     });
@@ -188,7 +188,7 @@ describe("Buy_Item_At_Shop Action", () => {
       } as any);
 
       const characterState = createMockCharacterState({
-        money: 50,
+        money: 49,
         locationMajor: MajorScene.Shop,
       });
       const context: any = {
@@ -197,7 +197,7 @@ describe("Buy_Item_At_Shop Action", () => {
       };
       const result = await buyItemAtShopAction.executor(context);
 
-      expect(characterState.money).toBe(50);
+      expect(characterState.money).toBe(49);
       expect(characterState.getItemQuantity("百奇")).toBe(0);
       expect(result).toContain("余额不足");
     });

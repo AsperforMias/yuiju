@@ -12,32 +12,32 @@ type CafeCoffee = {
 const CAFE_COFFEES: CafeCoffee[] = [
   {
     name: "拼配热咖啡",
-    price: 18,
-    stamina: 10,
+    price: 80,
+    stamina: 8,
     description: "店家每日拼配，香气温和，口感顺口。",
   },
   {
     name: "冰咖啡",
-    price: 20,
-    stamina: 10,
+    price: 90,
+    stamina: 9,
     description: "冰镇清爽，适合夏天。",
   },
   {
     name: "美式咖啡",
-    price: 20,
-    stamina: 10,
+    price: 90,
+    stamina: 9,
     description: "清透不腻，带一点点苦。",
   },
   {
     name: "咖啡欧蕾",
-    price: 24,
+    price: 100,
     stamina: 10,
     description: "牛奶与咖啡的温柔平衡。",
   },
   {
     name: "拿铁",
-    price: 26,
-    stamina: 10,
+    price: 110,
+    stamina: 11,
     description: "奶泡细腻，口感更醇厚。",
   },
 ];
@@ -130,7 +130,7 @@ export const cafeAction: ActionMetadata[] = [
   },
   {
     action: ActionId.Drink_Coffee,
-    description: "喝咖啡，恢复10点体力。点单后只能选择这个行为。耗时10分钟。",
+    description: "喝咖啡，恢复体力（恢复值=咖啡价格/10）。点单后只能选择这个行为。耗时10分钟。",
     precondition(_context) {
       return false;
     },
@@ -148,14 +148,16 @@ export const cafeAction: ActionMetadata[] = [
         return `喝咖啡失败，没有喝到${coffeeName}。`;
       }
 
-      await context.characterState.changeStamina(10);
-      return `喝了${coffeeName}，恢复10点体力`;
+      const coffee = CAFE_COFFEES.find((item) => item.name === coffeeName);
+      const staminaRecovered = coffee?.stamina ?? 10;
+      await context.characterState.changeStamina(staminaRecovered);
+      return `喝了${coffeeName}，恢复${staminaRecovered}点体力`;
     },
     durationMin: 10,
   },
   {
     action: ActionId.Work_At_Cafe,
-    description: "在咖啡店打工。可打工时间段为10:00-17:00，每小时20块钱。持续60分钟。",
+    description: "在咖啡店打工。可打工时间段为10:00-17:00，每小时200块钱。持续60分钟。",
     precondition(context) {
       return allTrue([
         () => isAtCafe(context.characterState.location.major),
@@ -164,9 +166,9 @@ export const cafeAction: ActionMetadata[] = [
     },
     async executor(context) {
       await context.characterState.setAction(ActionId.Work_At_Cafe);
-      await context.characterState.changeMoney(20);
+      await context.characterState.changeMoney(200);
       await context.characterState.changeStamina(-10);
-      return "打工1小时，赚了20元";
+      return "打工1小时，赚了200元";
     },
     durationMin: 60,
   },
