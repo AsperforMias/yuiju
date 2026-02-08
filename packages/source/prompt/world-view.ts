@@ -204,8 +204,9 @@ export function chooseCafeCoffeePrompt({
   recentBehaviorList,
 }: ChooseCafeCoffeePromptPayload) {
   const availableCoffeesPrompt =
-    availableCoffees?.map((coffee) => `- ${coffee.value}：${coffee.description || ""}`).join("\n") ||
-    "（无）";
+    availableCoffees
+      ?.map((coffee) => `- ${coffee.value}：${coffee.description || ""}`)
+      .join("\n") || "（无）";
 
   return `
 ## 要求

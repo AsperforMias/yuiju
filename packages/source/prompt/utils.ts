@@ -25,7 +25,7 @@ export function generateRecentBehaviorPrompt(behaviorRecordList: BehaviorRecord[
 
   return behaviorRecordList
     .map((item) => {
-      return `- [${item.behavior}] (时间 ${getTimeWithWeekday(item.time, "HH:mm")})：${item.description}`;
+      return `- [${item.behavior}] (${getTimeWithWeekday(item.time)}) ${item.description}`;
     })
     .join("\n");
 }

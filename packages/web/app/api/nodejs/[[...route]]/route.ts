@@ -1,5 +1,5 @@
 import "@yuiju/utils/env";
-import { connectDB } from "@yuiju/utils";
+import { connectDB, initWorldStateData } from "@yuiju/utils";
 import { Hono } from "hono";
 import { handle } from "hono/vercel";
 import { stateRoute } from "./state";
