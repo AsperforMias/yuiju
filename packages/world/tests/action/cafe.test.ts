@@ -197,7 +197,7 @@ describe("Cafe Actions", () => {
   });
 
   describe("Drink_Coffee", () => {
-    it("喝咖啡会消费背包咖啡并恢复体力10", async () => {
+    it("喝咖啡会消费背包咖啡并恢复体力", async () => {
       const characterState = createMockCharacterState({
         money: 0,
         stamina: 50,
@@ -221,8 +221,8 @@ describe("Cafe Actions", () => {
 
       expect(characterState.action).toBe(ActionId.Drink_Coffee);
       expect(characterState.getItemQuantity("拼配热咖啡")).toBe(0);
-      expect(characterState.stamina).toBe(58);
-      expect(result).toContain("恢复8点体力");
+      expect(characterState.stamina).toBe(55);
+      expect(result).toContain("[体力+5]");
     });
   });
 

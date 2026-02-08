@@ -35,6 +35,8 @@ export interface FoodMetadata {
   stamina: number;
   /** 饱腹度恢复值 */
   satiety?: number;
+  /** 心情恢复值 */
+  mood?: number;
 }
 
 /**
@@ -64,7 +66,9 @@ export interface CharacterStateData {
   location: Location;
   /**体力值 */
   stamina: number;
+  /** 饱腹度 */
   satiety: number;
+  /** 心情 */
   mood: number;
   /** 金钱 */
   money: number;

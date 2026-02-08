@@ -1,46 +1,14 @@
-import { ActionId, type ActionMetadata, allTrue, MajorScene } from "@yuiju/utils";
+import {
+  ActionId,
+  CAFE_COFFEES,
+  CafeCoffeeName,
+  type ActionMetadata,
+  type CafeCoffee,
+  allTrue,
+  MajorScene,
+} from "@yuiju/utils";
 import { chooseCafeCoffeeAgent } from "@/llm/agent";
 import { logger } from "@/utils/logger";
-
-type CafeCoffee = {
-  name: string;
-  price: number;
-  stamina: number;
-  description: string;
-};
-
-const CAFE_COFFEES: CafeCoffee[] = [
-  {
-    name: "拼配热咖啡",
-    price: 80,
-    stamina: 8,
-    description: "店家每日拼配，香气温和，口感顺口。",
-  },
-  {
-    name: "冰咖啡",
-    price: 90,
-    stamina: 9,
-    description: "冰镇清爽，适合夏天。",
-  },
-  {
-    name: "美式咖啡",
-    price: 90,
-    stamina: 9,
-    description: "清透不腻，带一点点苦。",
-  },
-  {
-    name: "咖啡欧蕾",
-    price: 100,
-    stamina: 10,
-    description: "牛奶与咖啡的温柔平衡。",
-  },
-  {
-    name: "拿铁",
-    price: 110,
-    stamina: 11,
-    description: "奶泡细腻，口感更醇厚。",
-  },
-];
 
 const CAFE_MIN_PRICE = Math.min(...CAFE_COFFEES.map((p) => p.price));
 
@@ -49,7 +17,18 @@ function isAtCafe(major: MajorScene) {
 }
 
 function formatCoffeeDescription(coffee: CafeCoffee) {
-  return `${coffee.price}元，恢复${coffee.stamina}体力、2饱腹；${coffee.description}`;
+  const description: string[] = [];
+  if (coffee.stamina) {
+    description.push(`[体力+${coffee.stamina}]`);
+  }
+  if (coffee.satiety) {
+    description.push(`[饱腹+${coffee.satiety}]`);
+  }
+  if (coffee.mood) {
+    description.push(`[心情+${coffee.mood}]`);
+  }
+
+  return `${coffee.description}${description.join("")}`;
 }
 
 function isCafeWorkTimeWithAtLeastOneHourLeft(time: { hour: () => number; minute: () => number }) {
@@ -57,21 +36,34 @@ function isCafeWorkTimeWithAtLeastOneHourLeft(time: { hour: () => number; minute
   return minutesSinceMidnight >= 10 * 60 && minutesSinceMidnight <= 16 * 60;
 }
 
-function getAvailableCafeCoffeeNames(context: { characterState: { inventory?: any[] } }) {
+/**
+ * 判断字符串是否为咖啡店的合法咖啡名。
+ *
+ * 说明：
+ * - 背包 item.name 的类型是 string（来源可能很多），这里通过清单做一次收窄；
+ * - 这样后续 find/消费逻辑可以使用 CafeCoffeeName 的强类型。
+ */
+function isCafeCoffeeName(name: string): name is CafeCoffeeName {
+  return CAFE_COFFEES.some((coffee) => coffee.name === name);
+}
+
+/**
+ * 从背包中找出“可以喝的咖啡名”列表（强类型）。
+ */
+function getAvailableCafeCoffeeNames(context: {
+  characterState: { inventory?: Array<{ name: string; category: string; quantity: number }> };
+}): CafeCoffeeName[] {
   const inventory = context.characterState.inventory || [];
-  const available = inventory.filter(
-    (item) =>
-      item.category === "food" &&
-      item.quantity > 0 &&
-      CAFE_COFFEES.some((coffee) => coffee.name === item.name),
-  );
-  return available.map((item) => item.name);
+  return inventory
+    .filter((item) => item.category === "food" && item.quantity > 0)
+    .map((item) => item.name)
+    .filter(isCafeCoffeeName);
 }
 
 export const cafeAction: ActionMetadata[] = [
   {
     action: ActionId.Order_Coffee,
-    description: "在咖啡店点单。点咖啡并放入背包。结束后提示咖啡制作完成。",
+    description: "在咖啡店点单。[金币-?][耗时10分钟]",
     precondition(context) {
       return allTrue([
         () => isAtCafe(context.characterState.location.major),
@@ -130,7 +122,7 @@ export const cafeAction: ActionMetadata[] = [
   },
   {
     action: ActionId.Drink_Coffee,
-    description: "喝咖啡，恢复体力（恢复值=咖啡价格/10）。点单后只能选择这个行为。耗时10分钟。",
+    description: "喝咖啡。[体力+?][饱腹+?][心情+?][耗时30分钟]",
     precondition(_context) {
       return false;
     },
@@ -149,17 +141,27 @@ export const cafeAction: ActionMetadata[] = [
       }
 
       const coffee = CAFE_COFFEES.find((item) => item.name === coffeeName);
-      const staminaRecovered = coffee?.stamina ?? 10;
-      await context.characterState.changeStamina(staminaRecovered);
-      await context.characterState.changeSatiety(2);
-      await context.characterState.changeMood(5);
-      return `喝了${coffeeName}，恢复${staminaRecovered}点体力`;
+      const result: string[] = [];
+      if (coffee?.stamina) {
+        await context.characterState.changeStamina(coffee?.stamina);
+        result.push(`[体力+${coffee?.stamina}]`);
+      }
+      if (coffee?.satiety) {
+        await context.characterState.changeSatiety(coffee?.satiety);
+        result.push(`[饱腹+${coffee?.satiety}]`);
+      }
+      if (coffee?.mood) {
+        await context.characterState.changeMood(coffee?.mood);
+        result.push(`[心情+${coffee?.mood}]`);
+      }
+
+      return `喝了${coffeeName}${result.join(",")}`;
     },
-    durationMin: 10,
+    durationMin: 30,
   },
   {
     action: ActionId.Work_At_Cafe,
-    description: "在咖啡店打工。可打工时间段为10:00-17:00，每小时200块钱。持续60分钟。",
+    description: "在咖啡店打工。[金币+200][体力-10][心情-5][耗时60分钟]",
     precondition(context) {
       return allTrue([
         () => isAtCafe(context.characterState.location.major),
@@ -177,7 +179,7 @@ export const cafeAction: ActionMetadata[] = [
   },
   {
     action: ActionId.Go_Home_From_Cafe,
-    description: "从咖啡店回家。消耗体力5点。耗时20分钟。",
+    description: "从咖啡店回家。[体力-5][耗时20分钟]",
     precondition(context) {
       return isAtCafe(context.characterState.location.major);
     },
@@ -190,7 +192,7 @@ export const cafeAction: ActionMetadata[] = [
   },
   {
     action: ActionId.Go_To_School_From_Cafe,
-    description: "从咖啡店去学校。消耗体力5点。耗时10分钟。",
+    description: "从咖啡店去学校。[体力-5][耗时10分钟]",
     precondition(context) {
       return isAtCafe(context.characterState.location.major);
     },

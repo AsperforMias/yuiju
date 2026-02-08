@@ -5,7 +5,7 @@ export const schoolAction: ActionMetadata[] = [
   {
     // TODO：逻辑优化，上课时间应该是固定的时间段，而不是随时可以上课
     action: ActionId.Study_At_School,
-    description: "在学校上课。每次消耗体力30点。",
+    description: "在学校上课。[体力-20][饱腹-20][心情-5][耗时动态]",
     precondition(context) {
       return allTrue([
         () => {
@@ -18,7 +18,8 @@ export const schoolAction: ActionMetadata[] = [
     },
     async executor(context) {
       await context.characterState.setAction(ActionId.Study_At_School);
-      await context.characterState.changeStamina(-30);
+      await context.characterState.changeStamina(-20);
+      await context.characterState.changeSatiety(-20);
       await context.characterState.changeMood(-5);
     },
     durationMin: async (context) => {
@@ -36,7 +37,7 @@ export const schoolAction: ActionMetadata[] = [
   },
   {
     action: ActionId.Go_Home_From_School,
-    description: "从学校回家。消耗体力10点。耗时30分钟。",
+    description: "从学校回家。[体力-10][饱腹-5][耗时30分钟]",
     precondition(context) {
       return allTrue([context.characterState.stamina >= 10, isAfternoon(context)]);
     },
@@ -46,13 +47,14 @@ export const schoolAction: ActionMetadata[] = [
         major: MajorScene.Home,
       });
 
-      await context.characterState.changeStamina(-5);
+      await context.characterState.changeStamina(-10);
+      await context.characterState.changeSatiety(-5);
     },
     durationMin: 30,
   },
   {
     action: ActionId.Go_To_Shop_From_School,
-    description: "从学校前往商店。消耗体力5点。耗时10分钟。",
+    description: "从学校前往商店。[体力-5][饱腹-3][耗时10分钟]",
     precondition(context) {
       return context.characterState.stamina >= 5 && !isNight(context);
     },
@@ -63,12 +65,13 @@ export const schoolAction: ActionMetadata[] = [
       });
 
       await context.characterState.changeStamina(-5);
+      await context.characterState.changeSatiety(-3);
     },
     durationMin: 10,
   },
   {
     action: ActionId.Go_To_Cafe_From_School,
-    description: "从学校去咖啡店。消耗体力5点。耗时10分钟。",
+    description: "从学校去咖啡店。[体力-5][饱腹-3][耗时10分钟]",
     precondition(context) {
       return context.characterState.stamina >= 5 && !isNight(context);
     },
@@ -79,6 +82,7 @@ export const schoolAction: ActionMetadata[] = [
       });
 
       await context.characterState.changeStamina(-5);
+      await context.characterState.changeSatiety(-3);
     },
     durationMin: 10,
   },

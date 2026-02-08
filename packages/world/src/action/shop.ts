@@ -1,40 +1,13 @@
-import { ActionId, type ActionMetadata, allTrue, MajorScene } from "@yuiju/utils";
+import {
+  ActionId,
+  SHOP_PRODUCTS,
+  type ActionMetadata,
+  type ShopProduct,
+  allTrue,
+  MajorScene,
+} from "@yuiju/utils";
 import { chooseShopProductAgent } from "@/llm/agent";
 import { logger } from "@/utils/logger";
-
-type ShopProduct = {
-  name: string;
-  price: number;
-  stamina: number;
-  description: string;
-};
-
-const SHOP_PRODUCTS: ShopProduct[] = [
-  {
-    name: "百奇",
-    price: 50,
-    stamina: 5,
-    description: "涂层饼干棒，草莓口味。",
-  },
-  {
-    name: "纯软糖",
-    price: 50,
-    stamina: 5,
-    description: "高果汁含量的软糖，芒果口味。",
-  },
-  {
-    name: "弹珠汽水糖",
-    price: 30,
-    stamina: 3,
-    description: "汽水风味的硬糖，含气泡口感。",
-  },
-  {
-    name: "抹茶布丁",
-    price: 50,
-    stamina: 5,
-    description: "带有抹茶的清香微苦，口感细腻。",
-  },
-];
 
 const SHOP_MIN_PRICE = Math.min(...SHOP_PRODUCTS.map((p) => p.price));
 
@@ -43,23 +16,32 @@ function isAtShop(major: MajorScene) {
 }
 
 function formatProductDescription(product: ShopProduct) {
-  const satiety = Math.round(product.price / 5);
-  return `${product.price}元，恢复${product.stamina}体力、${satiety}饱腹；${product.description}`;
+  const description: string[] = [];
+  if (product.stamina) {
+    description.push(`[体力+${product.stamina}]`);
+  }
+
+  if (product.satiety) {
+    description.push(`[饱腹+${product.satiety}]`);
+  }
+
+  if (product.mood) {
+    description.push(`[心情+${product.mood}]`);
+  }
+
+  return `${product.description}${description.join("")}`;
 }
 
 export const shopAction: ActionMetadata[] = [
   {
     action: ActionId.Buy_Item_At_Shop,
-    description: "在商店购买零食并放入背包，一次只能购买一件商品",
+    description: "在商店购买零食，一次只能购买一件商品。[耗时10分钟]",
     precondition(context) {
       return allTrue([
         () => isAtShop(context.characterState.location.major),
         () => context.characterState.money >= SHOP_MIN_PRICE,
       ]);
     },
-    /**
-     * parameters 的 length 为 1
-     */
     async executor(context) {
       await context.characterState.setAction(ActionId.Buy_Item_At_Shop);
 
@@ -124,20 +106,21 @@ export const shopAction: ActionMetadata[] = [
   },
   {
     action: ActionId.Go_Home_From_Shop,
-    description: "从商店回家。消耗体力5点。耗时20分钟。",
+    description: "从商店回家。[体力-8][饱腹-5][耗时20分钟]",
     precondition(context) {
       return isAtShop(context.characterState.location.major);
     },
     async executor(context) {
       await context.characterState.setAction(ActionId.Go_Home_From_Shop);
       await context.characterState.setLocation({ major: MajorScene.Home });
-      await context.characterState.changeStamina(-5);
+      await context.characterState.changeStamina(-8);
+      await context.characterState.changeSatiety(-5);
     },
     durationMin: 20,
   },
   {
     action: ActionId.Go_To_School_From_Shop,
-    description: "从商店前往学校。消耗体力5点。耗时10分钟。",
+    description: "从商店前往学校。[体力-5][饱腹-3][耗时10分钟]",
     precondition(context) {
       return isAtShop(context.characterState.location.major);
     },
@@ -145,6 +128,7 @@ export const shopAction: ActionMetadata[] = [
       await context.characterState.setAction(ActionId.Go_To_School_From_Shop);
       await context.characterState.setLocation({ major: MajorScene.School });
       await context.characterState.changeStamina(-5);
+      await context.characterState.changeSatiety(-3);
     },
     durationMin: 10,
   },
