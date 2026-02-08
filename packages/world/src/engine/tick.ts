@@ -108,6 +108,11 @@ export async function tick(params: TickParams): Promise<TickReturn> {
       selectedAction.durationMinute,
     );
 
+    const satietyDecay = Math.ceil((durationMin / 60) * 5);
+    if (satietyDecay > 0) {
+      await context.characterState.changeSatiety(-satietyDecay);
+    }
+
     // 保存行为记录（包含持续时间）
     if (isProd()) {
       let description = selectedAction.reason;

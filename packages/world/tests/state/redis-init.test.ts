@@ -28,6 +28,8 @@ describe("Redis 状态初始化/格式化", () => {
       action: ActionId.Idle,
       location: { major: MajorScene.Home },
       stamina: 100,
+      satiety: 70,
+      mood: 60,
       money: 0,
       dailyActionsDoneToday: [],
       inventory: [],
@@ -71,6 +73,8 @@ describe("Redis 状态初始化/格式化", () => {
     expect(data.action).toBe(ActionId.Idle);
     expect(data.location).toEqual({ major: MajorScene.Home });
     expect(data.stamina).toBe(100);
+    expect(data.satiety).toBe(70);
+    expect(data.mood).toBe(60);
     expect(data.money).toBe(5);
     expect(data.dailyActionsDoneToday).toEqual([ActionId.Idle]);
     expect(data.longTermPlan).toBeUndefined();

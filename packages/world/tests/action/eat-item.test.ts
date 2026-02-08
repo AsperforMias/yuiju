@@ -60,9 +60,13 @@ function createMaterialItem(name: string, quantity: number): InventoryItem {
 function createMockCharacterState(opts: {
   inventory: InventoryItem[];
   stamina?: number;
+  satiety?: number;
+  mood?: number;
   action?: ActionId;
 }) {
   let currentStamina = opts.stamina ?? 100;
+  let currentSatiety = opts.satiety ?? 70;
+  let currentMood = opts.mood ?? 60;
   let currentAction = opts.action ?? ActionId.Idle;
   let currentInventory = [...opts.inventory];
 
@@ -70,6 +74,8 @@ function createMockCharacterState(opts: {
     action: currentAction,
     location: { major: "home" as const },
     stamina: currentStamina,
+    satiety: currentSatiety,
+    mood: currentMood,
     money: 0,
     dailyActionsDoneToday: [],
     longTermPlan: undefined,
@@ -88,6 +94,22 @@ function createMockCharacterState(opts: {
     async changeStamina(delta: number) {
       currentStamina = Math.min(100, Math.max(0, currentStamina + delta));
       this.stamina = currentStamina;
+    },
+    async setSatiety(satiety: number) {
+      currentSatiety = Math.min(100, Math.max(0, satiety));
+      this.satiety = currentSatiety;
+    },
+    async changeSatiety(delta: number) {
+      currentSatiety = Math.min(100, Math.max(0, currentSatiety + delta));
+      this.satiety = currentSatiety;
+    },
+    async setMood(mood: number) {
+      currentMood = Math.min(100, Math.max(0, mood));
+      this.mood = currentMood;
+    },
+    async changeMood(delta: number) {
+      currentMood = Math.min(100, Math.max(0, currentMood + delta));
+      this.mood = currentMood;
     },
     async changeMoney(_delta: number) {},
     async markActionDoneToday(_action: ActionId) {},
@@ -122,6 +144,8 @@ function createMockCharacterState(opts: {
         action: currentAction,
         location: this.location,
         stamina: currentStamina,
+        satiety: currentSatiety,
+        mood: currentMood,
         money: this.money,
         dailyActionsDoneToday: [],
         longTermPlan: undefined,

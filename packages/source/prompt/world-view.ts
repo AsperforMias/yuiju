@@ -32,6 +32,8 @@ export interface ChooseActionPromptPayload {
   location: string;
   money: number;
   stamina: number;
+  satiety: number;
+  mood: number;
   recentBehaviorList: BehaviorRecord[];
   worldTime: Dayjs;
   eventDescription?: string;
@@ -46,6 +48,8 @@ export function chooseActionPrompt({
   money,
   recentBehaviorList,
   stamina,
+  satiety,
+  mood,
   worldTime,
   eventDescription,
   longTermPlan,
@@ -72,6 +76,8 @@ ${eventDescription ? `当前事件：${eventDescription}` : ""}
 地点：${location}
 当前Action：${currentAction}
 体力值：${stamina} / 100
+饱腹：${satiety} / 100
+心情：${mood} / 100
 金币：${money}
 长期计划：${longTermPlan || "（无）"}
 短期计划：
@@ -90,6 +96,8 @@ export interface ChooseFoodPromptPayload {
   }[];
   location: string;
   stamina: number;
+  satiety: number;
+  mood: number;
   recentBehaviorList: BehaviorRecord[];
   worldTime: Dayjs;
   longTermPlan?: string;
@@ -101,6 +109,8 @@ export function chooseFoodPrompt({
   location,
   worldTime,
   stamina,
+  satiety,
+  mood,
   longTermPlan,
   shortTermPlan,
   recentBehaviorList,
@@ -117,6 +127,8 @@ export function chooseFoodPrompt({
 当前时间：${getTimeWithWeekday(worldTime)}
 地点：${location}
 体力值：${stamina}/100
+饱腹：${satiety}/100
+心情：${mood}/100
 长期计划：${longTermPlan || "（无）"}
 短期计划：
 ${generateShortTermPlanPrompt(shortTermPlan)}
@@ -136,6 +148,8 @@ export interface ChooseShopProductPromptPayload {
   }[];
   location: string;
   stamina: number;
+  satiety: number;
+  mood: number;
   money: number;
   recentBehaviorList: BehaviorRecord[];
   worldTime: Dayjs;
@@ -148,6 +162,8 @@ export function chooseShopProductPrompt({
   location,
   worldTime,
   stamina,
+  satiety,
+  mood,
   money,
   longTermPlan,
   shortTermPlan,
@@ -166,6 +182,8 @@ export function chooseShopProductPrompt({
 当前时间：${getTimeWithWeekday(worldTime)}
 地点：${location}
 体力值：${stamina}/100
+饱腹：${satiety}/100
+心情：${mood}/100
 金币：${money}
 长期计划：${longTermPlan || "（无）"}
 短期计划：
@@ -186,6 +204,8 @@ export interface ChooseCafeCoffeePromptPayload {
   }[];
   location: string;
   stamina: number;
+  satiety: number;
+  mood: number;
   money: number;
   recentBehaviorList: BehaviorRecord[];
   worldTime: Dayjs;
@@ -198,6 +218,8 @@ export function chooseCafeCoffeePrompt({
   location,
   worldTime,
   stamina,
+  satiety,
+  mood,
   money,
   longTermPlan,
   shortTermPlan,
@@ -216,6 +238,8 @@ export function chooseCafeCoffeePrompt({
 当前时间：${getTimeWithWeekday(worldTime)}
 地点：${location}
 体力值：${stamina}/100
+饱腹：${satiety}/100
+心情：${mood}/100
 金币：${money}
 长期计划：${longTermPlan || "（无）"}
 短期计划：

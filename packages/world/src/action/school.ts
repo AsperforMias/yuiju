@@ -19,6 +19,7 @@ export const schoolAction: ActionMetadata[] = [
     async executor(context) {
       await context.characterState.setAction(ActionId.Study_At_School);
       await context.characterState.changeStamina(-30);
+      await context.characterState.changeMood(-5);
     },
     durationMin: async (context) => {
       const now = context.worldState.time.clone();

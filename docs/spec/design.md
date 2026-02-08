@@ -121,13 +121,6 @@ message（聊天）侧：
 - 工具实现层面会自动包含新字段（工具返回 `initCharacterStateData()` 的 state），但建议更新工具描述避免模型忽略：
   - [query-character-state.ts](file:///Users/yixiaojiu/Code/everything/yuiju/packages/utils/src/llm/tools/query-character-state.ts)
 
-### 7) Web 调参接口（可选）
-
-当前 Web 仅提供改钱接口（[state.ts](file:///Users/yixiaojiu/Code/everything/yuiju/packages/web/app/api/nodejs/[[...route]]/state.ts)）。
-
-- 若需要在 Web 上手动调试 satiety/mood，可追加对应 API
-- 若不需要，暂不做，保持最小改动
-
 ## 测试与验收
 
 需要更新的测试类型：

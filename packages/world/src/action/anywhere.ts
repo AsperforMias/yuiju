@@ -43,6 +43,8 @@ export const anywhereAction: ActionMetadata[] = [
     async executor(context) {
       await context.characterState.setAction(ActionId.Eat_Lunch);
       await context.characterState.changeStamina(50);
+      await context.characterState.changeSatiety(30);
+      await context.characterState.changeMood(2);
       await context.characterState.markActionDoneToday(ActionId.Eat_Lunch);
     },
     durationMin: 20,
@@ -100,8 +102,15 @@ export const anywhereAction: ActionMetadata[] = [
         const totalStamina = staminaPerUnit * quantity;
         await context.characterState.changeStamina(totalStamina);
 
+        const satietyPerUnit =
+          selectedFood.extra?.satiety ?? Math.max(1, Math.round(staminaPerUnit * 2));
+        const totalSatiety = satietyPerUnit * quantity;
+        await context.characterState.changeSatiety(totalSatiety);
+
+        await context.characterState.changeMood(quantity);
+
         logger.info(
-          `[Eat_Item] 成功消费 ${selectedFood.value} x${quantity}，恢复 ${totalStamina} 点体力`,
+          `[Eat_Item] 成功消费 ${selectedFood.value} x${quantity}，恢复 ${totalStamina} 点体力，恢复 ${totalSatiety} 点饱腹`,
         );
 
         eatenSummary.push(`${selectedFood.value}${quantity}个`);

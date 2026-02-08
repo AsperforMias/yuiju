@@ -43,6 +43,8 @@ export const homeAction: ActionMetadata[] = [
     async executor(context) {
       await context.characterState.setAction(ActionId.Eat_Breakfast);
       await context.characterState.changeStamina(50);
+      await context.characterState.changeSatiety(30);
+      await context.characterState.changeMood(2);
       await context.characterState.markActionDoneToday(ActionId.Eat_Breakfast);
     },
     durationMin: 20,
@@ -101,6 +103,8 @@ export const homeAction: ActionMetadata[] = [
     async executor(context) {
       await context.characterState.setAction(ActionId.Eat_Dinner);
       await context.characterState.changeStamina(50);
+      await context.characterState.changeSatiety(30);
+      await context.characterState.changeMood(2);
       await context.characterState.markActionDoneToday(ActionId.Eat_Dinner);
     },
     durationMin: 20,
@@ -117,6 +121,7 @@ export const homeAction: ActionMetadata[] = [
     },
     async executor(context) {
       await context.characterState.setAction(ActionId.Stay_At_Home);
+      await context.characterState.changeMood(5);
     },
     durationMin: 60,
   },

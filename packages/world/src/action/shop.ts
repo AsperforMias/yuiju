@@ -43,7 +43,8 @@ function isAtShop(major: MajorScene) {
 }
 
 function formatProductDescription(product: ShopProduct) {
-  return `${product.price}元，恢复${product.stamina}体力；${product.description}`;
+  const satiety = Math.round(product.price / 5);
+  return `${product.price}元，恢复${product.stamina}体力、${satiety}饱腹；${product.description}`;
 }
 
 export const shopAction: ActionMetadata[] = [
@@ -108,7 +109,7 @@ export const shopAction: ActionMetadata[] = [
           name: product.name,
           description: product.description,
           category: "food",
-          metadata: { stamina: product.stamina },
+          metadata: { stamina: product.stamina, satiety: Math.round(product.price / 5) },
         },
         quantity,
       );

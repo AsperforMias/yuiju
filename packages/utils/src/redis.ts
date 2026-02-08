@@ -36,6 +36,8 @@ const DEFAULT_CHARACTER_STATE_DATA: CharacterStateData = {
   action: ActionId.Idle,
   location: { major: MajorScene.Home },
   stamina: 100,
+  satiety: 70,
+  mood: 60,
   money: 0,
   dailyActionsDoneToday: [],
   inventory: [],
@@ -58,6 +60,8 @@ export const initCharacterStateData = async (): Promise<CharacterStateData> => {
       action: DEFAULT_CHARACTER_STATE_DATA.action,
       location: JSON.stringify(DEFAULT_CHARACTER_STATE_DATA.location),
       stamina: DEFAULT_CHARACTER_STATE_DATA.stamina,
+      satiety: DEFAULT_CHARACTER_STATE_DATA.satiety,
+      mood: DEFAULT_CHARACTER_STATE_DATA.mood,
       money: DEFAULT_CHARACTER_STATE_DATA.money,
       dailyActionsDoneToday: JSON.stringify(DEFAULT_CHARACTER_STATE_DATA.dailyActionsDoneToday),
       longTermPlan: "",
@@ -93,6 +97,16 @@ export const initCharacterStateData = async (): Promise<CharacterStateData> => {
   if (raw.stamina) {
     const stamina = Number.parseInt(raw.stamina, 10);
     if (Number.isFinite(stamina)) state.stamina = stamina;
+  }
+
+  if (raw.satiety) {
+    const satiety = Number.parseInt(raw.satiety, 10);
+    if (Number.isFinite(satiety)) state.satiety = satiety;
+  }
+
+  if (raw.mood) {
+    const mood = Number.parseInt(raw.mood, 10);
+    if (Number.isFinite(mood)) state.mood = mood;
   }
 
   if (raw.money) {

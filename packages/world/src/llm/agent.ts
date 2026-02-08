@@ -47,6 +47,8 @@ export async function chooseActionAgent(
     currentAction: context.characterState.action,
     money: context.characterState.money,
     stamina: context.characterState.stamina,
+    satiety: context.characterState.satiety,
+    mood: context.characterState.mood,
     worldTime: context.worldState.time,
     recentBehaviorList: actionMemoryList.map((item) => ({
       behavior: item.behavior,
@@ -114,6 +116,8 @@ export async function chooseFoodAgent(
       context.characterState.location.minor ? "-" + context.characterState.location.minor : ""
     }`,
     stamina: context.characterState.stamina,
+    satiety: context.characterState.satiety,
+    mood: context.characterState.mood,
     worldTime: context.worldState.time,
     longTermPlan: context.characterState.longTermPlan,
     shortTermPlan: context.characterState.shortTermPlan,
@@ -171,6 +175,8 @@ export async function chooseShopProductAgent(
       context.characterState.location.minor ? "-" + context.characterState.location.minor : ""
     }`,
     stamina: context.characterState.stamina,
+    satiety: context.characterState.satiety,
+    mood: context.characterState.mood,
     money: context.characterState.money,
     worldTime: context.worldState.time,
     longTermPlan: context.characterState.longTermPlan,
@@ -222,6 +228,8 @@ export async function chooseCafeCoffeeAgent(
       context.characterState.location.minor ? "-" + context.characterState.location.minor : ""
     }`,
     stamina: context.characterState.stamina,
+    satiety: context.characterState.satiety,
+    mood: context.characterState.mood,
     money: context.characterState.money,
     worldTime: context.worldState.time,
     longTermPlan: context.characterState.longTermPlan,

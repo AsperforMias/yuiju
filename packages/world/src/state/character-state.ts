@@ -12,6 +12,8 @@ import {
 import { cloneDeep } from "lodash-es";
 
 const MAX_STAMINA = 100;
+const MAX_SATIETY = 100;
+const MAX_MOOD = 100;
 
 export class CharacterState implements ICharacterState {
   private static instance: CharacterState | null = null;
@@ -19,6 +21,8 @@ export class CharacterState implements ICharacterState {
   public action: ActionId = ActionId.Idle;
   public location: Location = { major: MajorScene.Home };
   public stamina: number = 100;
+  public satiety: number = 70;
+  public mood: number = 60;
   public money: number = 0;
   // 仅作内存缓存或只读展示，实际数据源为 Redis String (JSON)
   public dailyActionsDoneToday: ActionId[] = [];
@@ -40,6 +44,8 @@ export class CharacterState implements ICharacterState {
     this.action = data.action;
     this.location = data.location;
     this.stamina = data.stamina;
+    this.satiety = data.satiety;
+    this.mood = data.mood;
     this.money = data.money;
     this.dailyActionsDoneToday = [...data.dailyActionsDoneToday];
     this.longTermPlan = data.longTermPlan;
@@ -53,6 +59,8 @@ export class CharacterState implements ICharacterState {
       action: this.action,
       location: JSON.stringify(this.location),
       stamina: this.stamina,
+      satiety: this.satiety,
+      mood: this.mood,
       money: this.money,
       dailyActionsDoneToday: JSON.stringify(this.dailyActionsDoneToday),
       longTermPlan: this.longTermPlan || "",
@@ -76,8 +84,28 @@ export class CharacterState implements ICharacterState {
     await this.save();
   }
 
+  async setSatiety(satiety: number) {
+    this.satiety = Math.min(MAX_SATIETY, Math.max(0, satiety));
+    await this.save();
+  }
+
+  async setMood(mood: number) {
+    this.mood = Math.min(MAX_MOOD, Math.max(0, mood));
+    await this.save();
+  }
+
   async changeStamina(delta: number) {
     this.stamina = Math.min(MAX_STAMINA, Math.max(0, this.stamina + delta));
+    await this.save();
+  }
+
+  async changeSatiety(delta: number) {
+    this.satiety = Math.min(MAX_SATIETY, Math.max(0, this.satiety + delta));
+    await this.save();
+  }
+
+  async changeMood(delta: number) {
+    this.mood = Math.min(MAX_MOOD, Math.max(0, this.mood + delta));
     await this.save();
   }
 
@@ -182,6 +210,8 @@ export class CharacterState implements ICharacterState {
       action: this.action,
       location: this.location,
       stamina: this.stamina,
+      satiety: this.satiety,
+      mood: this.mood,
       money: this.money,
       dailyActionsDoneToday: this.dailyActionsDoneToday,
       longTermPlan: this.longTermPlan,

@@ -33,6 +33,8 @@ export type Location =
 export interface FoodMetadata {
   /** 体力恢复值 */
   stamina: number;
+  /** 饱腹度恢复值 */
+  satiety?: number;
 }
 
 /**
@@ -62,6 +64,8 @@ export interface CharacterStateData {
   location: Location;
   /**体力值 */
   stamina: number;
+  satiety: number;
+  mood: number;
   /** 金钱 */
   money: number;
   /** 今日已执行的动作列表 */
@@ -78,9 +82,13 @@ export interface ICharacterState extends CharacterStateData {
   setAction(action: ActionId): Promise<void>;
   /** 设置体力值 */
   setStamina(stamina: number): Promise<void>;
+  setSatiety(satiety: number): Promise<void>;
+  setMood(mood: number): Promise<void>;
   setLocation(location: Location): Promise<void>;
   /** 改变体力值 */
   changeStamina(delta: number): Promise<void>;
+  changeSatiety(delta: number): Promise<void>;
+  changeMood(delta: number): Promise<void>;
   /** 改变金钱 */
   changeMoney(delta: number): Promise<void>;
   /** 标记该动作已在今天执行 */

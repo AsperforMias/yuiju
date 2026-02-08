@@ -36,11 +36,15 @@ if (!workAtCafeAction) {
 function createMockCharacterState(opts: {
   money: number;
   stamina?: number;
+  satiety?: number;
+  mood?: number;
   inventory?: InventoryItem[];
   locationMajor: MajorScene;
 }) {
   let currentMoney = opts.money;
   let currentStamina = opts.stamina ?? 100;
+  let currentSatiety = opts.satiety ?? 70;
+  let currentMood = opts.mood ?? 60;
   let currentInventory = [...(opts.inventory ?? [])];
   let currentAction: ActionId = ActionId.Idle;
   let currentLocationMajor = opts.locationMajor;
@@ -49,6 +53,8 @@ function createMockCharacterState(opts: {
     action: currentAction,
     location: { major: currentLocationMajor },
     stamina: currentStamina,
+    satiety: currentSatiety,
+    mood: currentMood,
     money: currentMoney,
     dailyActionsDoneToday: [],
     longTermPlan: undefined,
@@ -70,6 +76,22 @@ function createMockCharacterState(opts: {
     async changeStamina(delta: number) {
       currentStamina = Math.min(100, Math.max(0, currentStamina + delta));
       this.stamina = currentStamina;
+    },
+    async setSatiety(satiety: number) {
+      currentSatiety = Math.min(100, Math.max(0, satiety));
+      this.satiety = currentSatiety;
+    },
+    async changeSatiety(delta: number) {
+      currentSatiety = Math.min(100, Math.max(0, currentSatiety + delta));
+      this.satiety = currentSatiety;
+    },
+    async setMood(mood: number) {
+      currentMood = Math.min(100, Math.max(0, mood));
+      this.mood = currentMood;
+    },
+    async changeMood(delta: number) {
+      currentMood = Math.min(100, Math.max(0, currentMood + delta));
+      this.mood = currentMood;
     },
     async changeMoney(delta: number) {
       currentMoney = Math.max(0, currentMoney + delta);
@@ -110,6 +132,8 @@ function createMockCharacterState(opts: {
         action: currentAction,
         location: this.location,
         stamina: currentStamina,
+        satiety: currentSatiety,
+        mood: currentMood,
         money: currentMoney,
         dailyActionsDoneToday: [],
         longTermPlan: undefined,

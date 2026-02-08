@@ -49,7 +49,7 @@ function isAtCafe(major: MajorScene) {
 }
 
 function formatCoffeeDescription(coffee: CafeCoffee) {
-  return `${coffee.price}元，恢复${coffee.stamina}体力；${coffee.description}`;
+  return `${coffee.price}元，恢复${coffee.stamina}体力、2饱腹；${coffee.description}`;
 }
 
 function isCafeWorkTimeWithAtLeastOneHourLeft(time: { hour: () => number; minute: () => number }) {
@@ -116,7 +116,7 @@ export const cafeAction: ActionMetadata[] = [
           name: coffee.name,
           description: coffee.description,
           category: "food",
-          metadata: { stamina: coffee.stamina },
+          metadata: { stamina: coffee.stamina, satiety: 2 },
         },
         1,
       );
@@ -151,6 +151,8 @@ export const cafeAction: ActionMetadata[] = [
       const coffee = CAFE_COFFEES.find((item) => item.name === coffeeName);
       const staminaRecovered = coffee?.stamina ?? 10;
       await context.characterState.changeStamina(staminaRecovered);
+      await context.characterState.changeSatiety(2);
+      await context.characterState.changeMood(5);
       return `喝了${coffeeName}，恢复${staminaRecovered}点体力`;
     },
     durationMin: 10,
@@ -168,6 +170,7 @@ export const cafeAction: ActionMetadata[] = [
       await context.characterState.setAction(ActionId.Work_At_Cafe);
       await context.characterState.changeMoney(200);
       await context.characterState.changeStamina(-10);
+      await context.characterState.changeMood(-5);
       return "打工1小时，赚了200元";
     },
     durationMin: 60,

@@ -19,22 +19,9 @@ export const queryRecentBehaviorsTool: Tool = {
 
     const text = docs
       .map((item) => {
-        const parameterList = item.parameters
-          ?.map((parameter: any) => {
-            const value = typeof parameter?.value === "string" ? parameter.value : "";
-            const quantity =
-              typeof parameter?.quantity === "number" && Number.isFinite(parameter.quantity)
-                ? parameter.quantity
-                : 1;
-
-            return `${value + quantity}个`;
-          })
-          .filter((line) => line !== "")
-          .join("，");
-
         const timeText = getTimeWithWeekday(dayjs(item.timestamp), "HH:mm");
 
-        return `- [${item.behavior}] (时间 ${timeText})：${item.description} (${parameterList ? "选择了：" + parameterList : ""})`;
+        return `- [${item.behavior}] (时间 ${timeText})：${item.description}`;
       })
       .join("\n");
 
