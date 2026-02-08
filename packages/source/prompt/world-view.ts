@@ -1,6 +1,7 @@
 import { getTimeWithWeekday } from "@yuiju/utils";
 import type { Dayjs } from "dayjs";
 import { baseInformation } from "./character-card";
+import { worldMapPrompt } from "./world-map";
 import { type BehaviorRecord, generateRecentBehaviorPrompt } from "./utils";
 
 export const worldViewPrompt = `
@@ -13,6 +14,8 @@ export const worldViewPrompt = `
 - 学校：一所日式高中学校，悠酱上学的地方。上课时间为9点-12点、14点-16点。
 - 商店：星见町的便利商店/零食铺，可以花金币购买零食。
 - 咖啡店：一间小咖啡店，可以兼职打工，也可以在这里享受咖啡
+
+${worldMapPrompt}
 
 ### 设备
 1. 手机：可以接收到来自现实世界的信息。

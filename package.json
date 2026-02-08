@@ -9,6 +9,7 @@
     "lint": "biome lint . --diagnostic-level=error",
     "format:write": "biome format . --write",
     "demo:message": "pnpm --filter @yuiju/message run demo",
+    "demo:world": "pnpm --filter @yuiju/world run demo",
     "start:message": "pnpm --filter @yuiju/message run start",
     "start:world": "pnpm --filter @yuiju/world run start",
     "start:web": "pnpm --filter @yuiju/web run start",
