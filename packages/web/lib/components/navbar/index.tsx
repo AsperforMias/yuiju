@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 
 const navItems = [
   { href: '/', label: '首页' },
+  { href: '/activity', label: '动态' },
   { href: '/settings', label: '设置' },
 ];
 
