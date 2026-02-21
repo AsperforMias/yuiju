@@ -1,6 +1,7 @@
 import { ActivityPageHeader } from './activity-page-header';
 import { ActivityTimelineCard } from './activity-timeline-card';
 import { ActivityCareCard } from './activity-care-card';
+import { ActivityDetailPreviewCard } from './activity-detail-preview-card';
 
 export default function ActivityPage() {
   return (
@@ -9,7 +10,10 @@ export default function ActivityPage() {
 
       <div className="activity-grid">
         <ActivityTimelineCard />
-        <ActivityCareCard />
+        <div className="activity-right-stack">
+          <ActivityCareCard />
+          <ActivityDetailPreviewCard />
+        </div>
       </div>
     </main>
   );

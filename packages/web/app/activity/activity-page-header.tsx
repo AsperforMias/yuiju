@@ -7,8 +7,7 @@ export function ActivityPageHeader() {
       </div>
 
       <div className="activity-pill">
-        <span className="activity-muted">筛选：</span>
-        <strong>最近 7 条</strong>
+        <span className="activity-muted">今日记录</span>&nbsp;<strong>8 条</strong>
       </div>
     </div>
   );
