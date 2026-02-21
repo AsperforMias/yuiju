@@ -1,21 +1,15 @@
-import { XXXCard } from './xxx-card';
+import { AboutCard } from './about-card';
+import { SettingsHeader } from './settings-header';
+import { UserNameCard } from './user-name-card';
 
 export default function SettingsPage() {
   return (
-    <div>
+    <main>
+      <SettingsHeader />
       <div>
-        <h1>Settings</h1>
-        <p>只展示 UI，不写入浏览器存储</p>
+        <UserNameCard />
+        <AboutCard />
       </div>
-      <XXXCard />
-      {/* <AboutCard /> */}
-    </div>
+    </main>
   );
 }
-
-// jsx: React fiber 链
-// jsx，虚拟DOM
-const jsx = SettingsPage();
-
-// nextjs 的 NodeJS 环境下的 React 会将 jsx 转换成字符串
-// const htmlStr = jsxTransform(jsx);
