@@ -4,9 +4,9 @@ import { UserNameCard } from './user-name-card';
 
 export default function SettingsPage() {
   return (
-    <main>
+    <main className='settings-page'>
       <SettingsHeader />
-      <div>
+      <div className='settings-grid'>
         <UserNameCard />
         <AboutCard />
       </div>
