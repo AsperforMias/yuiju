@@ -2,6 +2,7 @@ import { HomeMapCard } from './home/home-map-card';
 import { HomePageHeader } from './home/home-page-header';
 import { HomeStatusCard } from './home/home-status-card';
 import { HomeWorldCard } from './home/home-world-card';
+import './home.css';
 
 export default function HomePage() {
   return (
