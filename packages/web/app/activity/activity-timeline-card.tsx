@@ -54,28 +54,40 @@ export function ActivityTimelineCard() {
   ];
 
   return (
-    <section className={styles["activity-card"]}>
-      <div className={`${styles["activity-card-body"]} ${styles["activity-timeline"]}`}>
-        <div className={styles["activity-card-head"]}>
-          <h3 className={styles["activity-card-title"]}>行为时间线</h3>
-          <span className={`${styles["activity-badge"]} ${styles["activity-badge-secondary"]}`}>
+    <section className="border border-[#d9e6f5] rounded-2xl bg-[rgba(255,255,255,0.88)] shadow-[0_10px_25px_rgba(21,33,54,0.06)] overflow-hidden">
+      <div className="p-[14px] grid gap-3">
+        <div className="flex items-center justify-between gap-3">
+          <h3 className="m-0 text-[14px] font-black">行为时间线</h3>
+          <span className="inline-flex items-center gap-[6px] px-[10px] py-2 rounded-full text-[12px] border border-[rgba(217,230,245,0.85)] bg-[rgba(255,255,255,0.85)] text-[#2b2f36] bg-[rgba(175,122,197,0.12)] border-[rgba(175,122,197,0.25)]">
             仅展示库字段
           </span>
         </div>
 
-        <div className={styles["activity-filters"]}>
-          <div className={styles["activity-field"]}>
-            <label htmlFor="timeRange">时间范围</label>
-            <select id="timeRange" className={styles["activity-input"]} disabled>
+        <div className="grid grid-cols-3 gap-[10px] max-[520px]:grid-cols-1">
+          <div className="grid gap-[6px]">
+            <label className="text-[12px] text-[#6b7480]" htmlFor="timeRange">
+              时间范围
+            </label>
+            <select
+              id="timeRange"
+              className="w-full rounded-xl border border-[rgba(217,230,245,0.95)] bg-[rgba(255,255,255,0.85)] px-3 py-[10px] outline-none transition-[border-color,box-shadow] duration-[160ms] ease focus:border-[rgba(145,196,238,0.55)] focus:shadow-[0_0_0_4px_rgba(145,196,238,0.18)] text-[#2b2f36]"
+              disabled
+            >
               <option>今天</option>
               <option>近 7 天</option>
               <option>自定义</option>
             </select>
           </div>
 
-          <div className={styles["activity-field"]}>
-            <label htmlFor="trigger">trigger</label>
-            <select id="trigger" className={styles["activity-input"]} disabled>
+          <div className="grid gap-[6px]">
+            <label className="text-[12px] text-[#6b7480]" htmlFor="trigger">
+              trigger
+            </label>
+            <select
+              id="trigger"
+              className="w-full rounded-xl border border-[rgba(217,230,245,0.95)] bg-[rgba(255,255,255,0.85)] px-3 py-[10px] outline-none transition-[border-color,box-shadow] duration-[160ms] ease focus:border-[rgba(145,196,238,0.55)] focus:shadow-[0_0_0_4px_rgba(145,196,238,0.18)] text-[#2b2f36]"
+              disabled
+            >
               <option>全部</option>
               <option>agent</option>
               <option>user</option>
@@ -83,38 +95,47 @@ export function ActivityTimelineCard() {
             </select>
           </div>
 
-          <div className={styles["activity-field"]}>
-            <label htmlFor="keyword">behavior 搜索</label>
+          <div className="grid gap-[6px]">
+            <label className="text-[12px] text-[#6b7480]" htmlFor="keyword">
+              behavior 搜索
+            </label>
             <input
               id="keyword"
-              className={styles["activity-input"]}
+              className="w-full rounded-xl border border-[rgba(217,230,245,0.95)] bg-[rgba(255,255,255,0.85)] px-3 py-[10px] outline-none transition-[border-color,box-shadow] duration-[160ms] ease focus:border-[rgba(145,196,238,0.55)] focus:shadow-[0_0_0_4px_rgba(145,196,238,0.18)] text-[#2b2f36]"
               placeholder="例如：吃东西 / 购物 / 发呆"
               disabled
             />
           </div>
         </div>
 
-        <div className={styles["activity-events"]}>
+        <div className="relative pl-[18px] grid gap-3 before:content-[''] before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-[rgba(145,196,238,0.6)] before:rounded-full">
           {events.map((item) => {
             const tone =
               item.trigger === "agent"
-                ? styles["activity-tag-agent"]
+                ? "bg-[rgba(145,196,238,0.18)] border-[rgba(145,196,238,0.3)]"
                 : item.trigger === "user"
-                  ? styles["activity-tag-user"]
-                  : styles["activity-tag-system"];
+                  ? "bg-[rgba(250,227,190,0.75)] border-[rgba(250,227,190,0.85)]"
+                  : "bg-[rgba(175,122,197,0.14)] border-[rgba(175,122,197,0.25)]";
 
             return (
-              <article key={`${item.time}-${item.behavior}`} className={styles["activity-event"]}>
-                <div className={styles["activity-event-top"]}>
-                  <div className={styles["activity-mini"]}>
-                    <h3 className={styles["activity-event-title"]}>{item.behavior}</h3>
-                    <span className={`${styles["activity-tag"]} ${tone}`}>{item.trigger}</span>
+              <article
+                key={`${item.time}-${item.behavior}`}
+                className="relative rounded-2xl border border-[rgba(217,230,245,0.9)] bg-[rgba(255,255,255,0.84)] shadow-[0_10px_25px_rgba(21,33,54,0.06)] p-3 grid gap-2 before:content-[''] before:absolute before:-left-3.5 before:top-[18px] before:w-2.5 before:h-2.5 before:rounded-full before:bg-[rgba(145,196,238,0.9)] before:border-2 before:border-[rgba(247,251,255,1)]"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="inline-flex items-center gap-2">
+                    <h3 className="m-0 text-[14px] font-black">{item.behavior}</h3>
+                    <span
+                      className={`text-[12px] px-[10px] py-[7px] rounded-full border border-[rgba(217,230,245,0.85)] bg-[rgba(247,251,255,0.9)] text-[#6b7480] ${tone}`}
+                    >
+                      {item.trigger}
+                    </span>
                   </div>
-                  <span className={styles["activity-event-time"]}>
+                  <span className="text-[12px] text-[#6b7480]">
                     {item.time} · {item.duration}min
                   </span>
                 </div>
-                <p className={styles["activity-event-desc"]}>{item.desc}</p>
+                <p className="m-0 text-[13px] text-[#6b7480]">{item.desc}</p>
               </article>
             );
           })}

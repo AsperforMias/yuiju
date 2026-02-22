@@ -2,12 +2,12 @@ import styles from "../home.module.css";
 
 export function HomePageHeader() {
   return (
-    <div className={styles["home-page-head"]}>
+    <div className="flex items-end justify-between gap-[16px] mt-[18px] mb-[14px]">
       <div>
-        <h1 className={styles["home-page-title"]}>首页</h1>
+        <h1 className="m-0 text-[18px] font-extrabold tracking-[0.2px]">首页</h1>
       </div>
 
-      <div className={styles["home-page-actions"]}>
+      <div className="flex items-center gap-[10px] flex-wrap">
         <div className={styles["home-pill"]}>
           <span className={styles["home-muted"]}>一句话：</span>
           <strong>悠酱现在在【家】，正在【发呆】</strong>

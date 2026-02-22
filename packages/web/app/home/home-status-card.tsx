@@ -2,16 +2,16 @@ import styles from "../home.module.css";
 
 export function HomeStatusCard() {
   return (
-    <section className={styles["home-card"]}>
-      <div className={styles["home-card-body"]}>
-        <div className={styles["home-card-head"]}>
-          <h3 className={styles["home-card-title"]}>角色状态</h3>
+    <section className="border border-[#d9e6f5] rounded-2xl bg-white/90 shadow-[0_10px_25px_rgba(21,33,54,0.06)] overflow-hidden">
+      <div className="p-[14px] grid gap-[14px]">
+        <div className="flex items-center justify-between gap-[10px]">
+          <h3 className="m-0 text-[14px] font-black tracking-[0.2px]">角色状态</h3>
           <button className={styles["home-btn"]} type="button">
             刷新
           </button>
         </div>
 
-        <div className={styles["home-kvs"]}>
+        <div className="grid grid-cols-2 gap-[10px] mt-[10px]">
           <div className={styles["home-kv"]}>
             <div className={styles["home-k"]}>当前行为</div>
             <div className={styles["home-v"]}>发呆</div>
