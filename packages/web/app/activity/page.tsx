@@ -1,16 +1,17 @@
-import { ActivityPageHeader } from './activity-page-header';
-import { ActivityTimelineCard } from './activity-timeline-card';
-import { ActivityCareCard } from './activity-care-card';
-import { ActivityDetailPreviewCard } from './activity-detail-preview-card';
+import { ActivityPageHeader } from "./activity-page-header";
+import { ActivityTimelineCard } from "./activity-timeline-card";
+import { ActivityCareCard } from "./activity-care-card";
+import { ActivityDetailPreviewCard } from "./activity-detail-preview-card";
+import styles from "./activity.module.css";
 
 export default function ActivityPage() {
   return (
-    <main className="activity-page">
+    <main className={styles["activity-page"]}>
       <ActivityPageHeader />
 
-      <div className="activity-grid">
+      <div className={styles["activity-grid"]}>
         <ActivityTimelineCard />
-        <div className="activity-right-stack">
+        <div className={styles["activity-right-stack"]}>
           <ActivityCareCard />
           <ActivityDetailPreviewCard />
         </div>
