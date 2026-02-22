@@ -1,3 +1,5 @@
+import styles from "./activity.module.css";
+
 const detailPreview = `{
   "behavior": "吃东西",
   "description": "吃了一个苹果，恢复体力",
@@ -11,19 +13,23 @@ const detailPreview = `{
 
 export function ActivityDetailPreviewCard() {
   return (
-    <section className="activity-card">
-      <div className="activity-card-body">
-        <div className="activity-card-head">
-          <h3 className="activity-card-title">详情预览</h3>
-          <span className="activity-badge activity-badge-secondary">Mock</span>
+    <section className="border border-[#d9e6f5] rounded-2xl bg-[rgba(255,255,255,0.88)] shadow-[0_10px_25px_rgba(21,33,54,0.06)] overflow-hidden">
+      <div className="p-[14px] grid gap-3">
+        <div className="flex items-center justify-between gap-3">
+          <h3 className="m-0 text-[14px] font-black">详情预览</h3>
+          <span className="inline-flex items-center gap-[6px] px-[10px] py-2 rounded-full text-[12px] border border-[rgba(175,122,197,0.25)] bg-[rgba(175,122,197,0.12)] text-[#2b2f36]">
+            Mock
+          </span>
         </div>
 
-        <p className="activity-note">
-          选中某条行为后，这里可以打开抽屉/弹窗展示字段：behavior / description / timestamp / trigger /
-          duration_minutes / parameters（JSON）。
+        <p className="m-0 text-[13px] text-[#6b7480] leading-[1.55]">
+          选中某条行为后，这里可以打开抽屉/弹窗展示字段：behavior / description / timestamp /
+          trigger / duration_minutes / parameters（JSON）。
         </p>
 
-        <pre className="activity-pre">{detailPreview}</pre>
+        <pre className="m-3 p-3 rounded-xl border border-[rgba(217,230,245,0.85)] bg-[rgba(247,251,255,0.85)] overflow-auto text-[12px] text-[rgba(43,47,54,0.85)]">
+          {detailPreview}
+        </pre>
       </div>
     </section>
   );
