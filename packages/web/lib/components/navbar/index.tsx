@@ -1,13 +1,40 @@
-import Link from 'next/link';
-import type { ReactNode } from 'react';
+'use client';
 
-type NavbarProps = {};
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+
+const navItems = [
+  { href: '/', label: '首页' },
+  { href: '/activity', label: '动态' },
+  { href: '/settings', label: '设置' },
+];
 
 export const Navbar = () => {
+  const pathname = usePathname();
+  const baseLinkClass = 'rounded-full px-3.5 py-2.5 text-sm transition-colors';
+  const activeLinkClass =
+    'bg-[#91c4ee]/30 text-[#2b2f36] shadow-[inset_0_0_0_1px_rgba(145,196,238,0.25)]';
+  const idleLinkClass = 'text-[#6b7480] hover:bg-[#91c4ee]/20 hover:text-[#2b2f36]';
+
   return (
-    <div className="flex justify-center items-center py-4 border-b-gray-400 border gap-4">
-      <Link href="/">首页</Link>
-      <Link href="/settings">设置</Link>
-    </div>
+    <header className="sticky top-0 z-30 flex justify-center border-b border-[#d9e6f5]/80 bg-[#f7fbff]/80 px-3 py-3.5 backdrop-blur-md">
+      <nav
+        className="inline-flex items-center gap-1.5 rounded-full border border-[#d9e6f5]/90 bg-white/75 p-1.5 shadow-[0_10px_25px_rgba(21,33,54,0.06)]"
+        aria-label="主导航"
+      >
+        {navItems.map(item => {
+          const isActive = pathname === item.href;
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`${baseLinkClass} ${isActive ? activeLinkClass : idleLinkClass}`}
+            >
+              {item.label}
+            </Link>
+          );
+        })}
+      </nav>
+    </header>
   );
 };
