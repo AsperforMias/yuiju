@@ -2,7 +2,7 @@ import { SettingsHeader } from "./settings-header";
 import { UserNameCard } from "./user-name-card";
 import { AboutCard } from "./about-card";
 
-export default function SettingsPage() {
+export default async function SettingsPage() {
   return (
     <main className="max-w-[1200px] mx-auto px-[18px] pt-[24px] pb-[36px]">
       <SettingsHeader />
