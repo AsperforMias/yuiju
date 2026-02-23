@@ -16,7 +16,7 @@ const getBaseUrl = () => {
 };
 
 export default async function SettingsPage() {
-  let profileData: { userName?: string; theme?: string } | null = null;
+  let profileData: { theme?: string } | null = null;
 
   try {
     const response = await fetch(`${getBaseUrl()}/api/nodejs/profile`, { cache: "no-store" });
@@ -32,7 +32,7 @@ export default async function SettingsPage() {
     <main className="max-w-[1200px] mx-auto px-[18px] pt-[24px] pb-[36px]">
       <SettingsHeader theme={profileData?.theme} />
       <div className="grid grid-cols-2 max-[1020px]:grid-cols-1 gap-[14px] items-stretch">
-        <UserNameCard userName={profileData?.userName} />
+        <UserNameCard />
         <AboutCard />
       </div>
     </main>
