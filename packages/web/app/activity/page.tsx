@@ -1,4 +1,3 @@
-import { headers } from "next/headers";
 import {
   ActivityTimelineCard,
   defaultActivityEventsCount,
@@ -8,24 +7,12 @@ import { ActivityCareCard } from "./activity-care-card";
 import { ActivityDetailPreviewCard } from "./activity-detail-preview-card";
 import { ActivityPageHeader } from "./activity-page-header";
 
-const getBaseUrl = () => {
-  const headerList = headers();
-  const protocol = headerList.get("x-forwarded-proto") ?? "http";
-  const host = headerList.get("x-forwarded-host") ?? headerList.get("host");
-
-  if (!host) {
-    return "http://localhost:3010";
-  }
-
-  return `${protocol}://${host}`;
-};
-
 export default async function ActivityPage() {
   let events: ActivityEvent[] | undefined;
   let count: number | undefined;
 
   try {
-    const response = await fetch(`${getBaseUrl()}/api/nodejs/activity`, { cache: "no-store" });
+    const response = await fetch("/api/nodejs/activity", { cache: "no-store" });
     if (response.ok) {
       const payload = (await response.json()) as {
         data?: { events?: ActivityEvent[]; count?: number };

@@ -1,20 +1,7 @@
-import { headers } from "next/headers";
 import { HomeMapCard } from "./home/home-map-card";
 import { HomePageHeader } from "./home/home-page-header";
 import { HomeStatusCard } from "./home/home-status-card";
 import { HomeWorldCard } from "./home/home-world-card";
-
-const getBaseUrl = () => {
-  const headerList = headers();
-  const protocol = headerList.get("x-forwarded-proto") ?? "http";
-  const host = headerList.get("x-forwarded-host") ?? headerList.get("host");
-
-  if (!host) {
-    return "http://localhost:3010";
-  }
-
-  return `${protocol}://${host}`;
-};
 
 export default async function HomePage() {
   let homeData: {
@@ -31,7 +18,7 @@ export default async function HomePage() {
   } | null = null;
 
   try {
-    const response = await fetch(`${getBaseUrl()}/api/nodejs/home`, { cache: "no-store" });
+    const response = await fetch("/api/nodejs/home", { cache: "no-store" });
     if (response.ok) {
       const payload = (await response.json()) as { data?: typeof homeData };
       homeData = payload.data ?? null;
