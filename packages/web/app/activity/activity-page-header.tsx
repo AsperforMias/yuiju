@@ -1,6 +1,11 @@
 import styles from "./activity.module.css";
 
-export function ActivityPageHeader() {
+type ActivityPageHeaderProps = {
+  count?: number;
+};
+
+export function ActivityPageHeader({ count }: ActivityPageHeaderProps) {
+  const displayCount = count ?? 0;
   return (
     <div className={styles["activity-page-head"]}>
       <div>
@@ -9,7 +14,8 @@ export function ActivityPageHeader() {
       </div>
 
       <div className={styles["activity-pill"]}>
-        <span className={styles["activity-muted"]}>今日记录</span>&nbsp;<strong>8 条</strong>
+        <span className={styles["activity-muted"]}>今日记录</span>&nbsp;
+        <strong>{displayCount} 条</strong>
       </div>
     </div>
   );

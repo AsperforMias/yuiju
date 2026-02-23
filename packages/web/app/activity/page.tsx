@@ -1,15 +1,53 @@
-import { ActivityTimelineCard } from "./activity-timeline-card";
+import { headers } from "next/headers";
+import {
+  ActivityTimelineCard,
+  defaultActivityEventsCount,
+  type ActivityEvent,
+} from "./activity-timeline-card";
 import { ActivityCareCard } from "./activity-care-card";
 import { ActivityDetailPreviewCard } from "./activity-detail-preview-card";
 import { ActivityPageHeader } from "./activity-page-header";
 
-export default function ActivityPage() {
+const getBaseUrl = () => {
+  const headerList = headers();
+  const protocol = headerList.get("x-forwarded-proto") ?? "http";
+  const host = headerList.get("x-forwarded-host") ?? headerList.get("host");
+
+  if (!host) {
+    return "http://localhost:3010";
+  }
+
+  return `${protocol}://${host}`;
+};
+
+export default async function ActivityPage() {
+  let events: ActivityEvent[] | undefined;
+  let count: number | undefined;
+
+  try {
+    const response = await fetch(`${getBaseUrl()}/api/nodejs/activity`, { cache: "no-store" });
+    if (response.ok) {
+      const payload = (await response.json()) as {
+        data?: { events?: ActivityEvent[]; count?: number };
+      };
+      events = payload.data?.events;
+      count = payload.data?.count ?? payload.data?.events?.length;
+    }
+  } catch {
+    events = undefined;
+    count = undefined;
+  }
+
+  if (!count) {
+    count = defaultActivityEventsCount;
+  }
+
   return (
     <main className="max-w-[1200px] mx-auto px-[18px] pt-[18px] pb-[36px]">
-      <ActivityPageHeader />
+      <ActivityPageHeader count={count} />
 
       <div className="grid grid-cols-[1fr_360px] max-[1020px]:grid-cols-1 gap-[14px] items-start">
-        <ActivityTimelineCard />
+        <ActivityTimelineCard events={events} />
         <div className="grid gap-[14px]">
           <ActivityCareCard />
           <ActivityDetailPreviewCard />

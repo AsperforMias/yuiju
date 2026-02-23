@@ -1,6 +1,11 @@
 import styles from "../home.module.css";
 
-export function HomePageHeader() {
+type HomePageHeaderProps = {
+  summary?: string;
+};
+
+export function HomePageHeader({ summary }: HomePageHeaderProps) {
+  const displaySummary = summary ?? "悠酱现在在【家】，正在【发呆】";
   return (
     <div className="flex items-end justify-between gap-[16px] mt-[18px] mb-[14px]">
       <div>
@@ -10,7 +15,7 @@ export function HomePageHeader() {
       <div className="flex items-center gap-[10px] flex-wrap">
         <div className={styles["home-pill"]}>
           <span className={styles["home-muted"]}>一句话：</span>
-          <strong>悠酱现在在【家】，正在【发呆】</strong>
+          <strong>{displaySummary}</strong>
         </div>
         <button className={`${styles["home-btn"]} ${styles["home-btn-secondary"]}`} type="button">
           <svg className={styles["home-icon"]} viewBox="0 0 24 24" fill="none" aria-hidden="true">

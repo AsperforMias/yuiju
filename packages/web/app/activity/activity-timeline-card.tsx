@@ -1,7 +1,18 @@
 import styles from "./activity.module.css";
 
-export function ActivityTimelineCard() {
-  const events = [
+export type ActivityEvent = {
+  time: string;
+  behavior: string;
+  desc: string;
+  trigger: "agent" | "user" | "system";
+  duration: number;
+};
+
+type ActivityTimelineCardProps = {
+  events?: ActivityEvent[];
+};
+
+const defaultEvents: ActivityEvent[] = [
     {
       time: "09:12",
       behavior: "吃东西",
@@ -52,6 +63,11 @@ export function ActivityTimelineCard() {
       duration: 20,
     },
   ];
+
+export const defaultActivityEventsCount = defaultEvents.length;
+
+export function ActivityTimelineCard({ events }: ActivityTimelineCardProps) {
+  const displayEvents = events && events.length > 0 ? events : defaultEvents;
 
   return (
     <section className="border border-[#d9e6f5] rounded-2xl bg-[rgba(255,255,255,0.88)] shadow-[0_10px_25px_rgba(21,33,54,0.06)] overflow-hidden">
@@ -109,7 +125,7 @@ export function ActivityTimelineCard() {
         </div>
 
         <div className="relative pl-[18px] grid gap-3 before:content-[''] before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-[rgba(145,196,238,0.6)] before:rounded-full">
-          {events.map((item) => {
+          {displayEvents.map((item) => {
             const tone =
               item.trigger === "agent"
                 ? "bg-[rgba(145,196,238,0.18)] border-[rgba(145,196,238,0.3)]"

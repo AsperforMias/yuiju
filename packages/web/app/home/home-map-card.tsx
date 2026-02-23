@@ -1,6 +1,17 @@
 import styles from "../home.module.css";
 
-export function HomeMapCard() {
+type HomeMapCardProps = {
+  location?: string;
+};
+
+const mapNodes = [
+  { name: "家", left: "22%", top: "62%", tag: "当前" },
+  { name: "学校", left: "55%", top: "48%", tag: "可前往" },
+  { name: "商店", left: "78%", top: "68%", tag: "可前往" },
+];
+
+export function HomeMapCard({ location }: HomeMapCardProps) {
+  const currentLocation = location ?? "家";
   return (
     <section className={styles["home-card"]}>
       <div className={styles["home-map-shell"]}>
@@ -8,7 +19,8 @@ export function HomeMapCard() {
           <h3 className={styles["home-card-title"]}>世界地图（RPG 示意）</h3>
           <div className={styles["home-map-tools"]}>
             <span className={styles["home-pill"]}>
-              <span className={styles["home-muted"]}>当前位置</span>&nbsp;<strong>家</strong>
+              <span className={styles["home-muted"]}>当前位置</span>&nbsp;
+              <strong>{currentLocation}</strong>
             </span>
             <button
               className={`${styles["home-btn"]} ${styles["home-btn-icon"]}`}
@@ -45,27 +57,25 @@ export function HomeMapCard() {
               <line x1="22" y1="62" x2="78" y2="68" />
             </svg>
 
-            <div
-              className={`${styles["home-map-node"]} ${styles["home-map-node-active"]}`}
-              style={{ left: "22%", top: "62%" }}
-            >
-              <div className={styles["home-node-card"]}>
-                <div className={styles["home-node-name"]}>家</div>
-                <div className={styles["home-node-tag"]}>当前</div>
-              </div>
-            </div>
-            <div className={styles["home-map-node"]} style={{ left: "55%", top: "48%" }}>
-              <div className={styles["home-node-card"]}>
-                <div className={styles["home-node-name"]}>学校</div>
-                <div className={styles["home-node-tag"]}>可前往</div>
-              </div>
-            </div>
-            <div className={styles["home-map-node"]} style={{ left: "78%", top: "68%" }}>
-              <div className={styles["home-node-card"]}>
-                <div className={styles["home-node-name"]}>商店</div>
-                <div className={styles["home-node-tag"]}>可前往</div>
-              </div>
-            </div>
+            {mapNodes.map((node) => {
+              const isActive = node.name === currentLocation;
+              return (
+                <div
+                  key={node.name}
+                  className={`${styles["home-map-node"]} ${
+                    isActive ? styles["home-map-node-active"] : ""
+                  }`}
+                  style={{ left: node.left, top: node.top }}
+                >
+                  <div className={styles["home-node-card"]}>
+                    <div className={styles["home-node-name"]}>{node.name}</div>
+                    <div className={styles["home-node-tag"]}>
+                      {isActive ? "当前" : node.tag}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </section>
         </div>
       </div>

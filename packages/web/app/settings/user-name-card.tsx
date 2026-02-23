@@ -1,6 +1,11 @@
 import styles from "./settings.module.css";
 
-export function UserNameCard() {
+type UserNameCardProps = {
+  userName?: string;
+};
+
+export function UserNameCard({ userName }: UserNameCardProps) {
+  const displayUserName = userName ?? "yixiaojiu";
   return (
     <section className="border border-[#d9e6f5] rounded-2xl bg-[rgba(255,255,255,0.88)] shadow-[0_10px_25px_rgba(21,33,54,0.06)] overflow-hidden h-full min-h-[520px]">
       <div className="p-[14px] grid gap-[14px]">
@@ -22,7 +27,7 @@ export function UserNameCard() {
           <input
             id="userNameInput"
             className="w-full rounded-xl border border-[#d9e6f5] bg-[rgba(255,255,255,0.9)] px-3 py-[10px] text-[#2b2f36] outline-none transition-[border-color,box-shadow] duration-[0.16s] ease focus:border-[rgba(145,196,238,0.8)] focus:shadow-[0_0_0_4px_rgba(145,196,238,0.2)]"
-            defaultValue="yixiaojiu"
+            defaultValue={displayUserName}
           />
         </div>
 

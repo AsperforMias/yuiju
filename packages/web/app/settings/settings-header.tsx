@@ -1,6 +1,11 @@
 import styles from "./settings.module.css";
 
-export function SettingsHeader() {
+type SettingsHeaderProps = {
+  theme?: string;
+};
+
+export function SettingsHeader({ theme }: SettingsHeaderProps) {
+  const displayTheme = theme ?? "日系简约";
   return (
     <div className={styles["settings-page-head"]}>
       <div>
@@ -10,7 +15,7 @@ export function SettingsHeader() {
 
       <div className={styles["settings-theme-pill"]}>
         <span className={styles["settings-theme-label"]}>主题</span>
-        <strong>日系简约</strong>
+        <strong>{displayTheme}</strong>
       </div>
     </div>
   );
