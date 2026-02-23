@@ -18,7 +18,13 @@ const parseLimit = (value: string | undefined) => {
 
 activityRoute.get("/index", async (context) => {
   const limit = parseLimit(context.req.query("limit"));
-  const docs = await getRecentBehaviorRecords(limit);
+  let docs = [];
+  try {
+    docs = await getRecentBehaviorRecords(limit);
+  } catch (error) {
+    console.error("getRecentBehaviorRecords failed:", error);
+    docs = [];
+  }
 
   const events = docs
     .slice()
