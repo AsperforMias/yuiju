@@ -12,7 +12,7 @@ export default async function ActivityPage() {
   let count: number | undefined;
 
   try {
-    const response = await fetch("/api/nodejs/activity", { cache: "no-store" });
+    const response = await fetch("/api/nodejs/activity/index", { cache: "no-store" });
     if (response.ok) {
       const payload = (await response.json()) as {
         data?: { events?: ActivityEvent[]; count?: number };

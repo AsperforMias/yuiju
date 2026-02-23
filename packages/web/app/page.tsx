@@ -18,7 +18,7 @@ export default async function HomePage() {
   } | null = null;
 
   try {
-    const response = await fetch("/api/nodejs/home", { cache: "no-store" });
+    const response = await fetch("/api/nodejs/home/index", { cache: "no-store" });
     if (response.ok) {
       const payload = (await response.json()) as { data?: typeof homeData };
       homeData = payload.data ?? null;
