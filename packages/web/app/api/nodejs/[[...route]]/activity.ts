@@ -1,59 +1,35 @@
+import { getRecentBehaviorRecords } from "@yuiju/utils";
+import dayjs from "dayjs";
 import { Hono } from "hono";
 
 export const activityRoute = new Hono();
 
-activityRoute.get("/", (context) => {
-  const events = [
-    {
-      time: "09:12",
-      behavior: "吃东西",
-      desc: "吃了一个苹果，恢复体力。",
-      trigger: "agent",
-      duration: 12,
-    },
-    {
-      time: "10:12",
-      behavior: "喝水",
-      desc: "补充水分，保持清醒。",
-      trigger: "system",
-      duration: 1,
-    },
-    {
-      time: "11:50",
-      behavior: "学习",
-      desc: "完成数学练习，获得一些进展。",
-      trigger: "agent",
-      duration: 45,
-    },
-    {
-      time: "14:20",
-      behavior: "发呆",
-      desc: "短暂停留发呆，节奏放慢。",
-      trigger: "system",
-      duration: 6,
-    },
-    {
-      time: "16:40",
-      behavior: "购物",
-      desc: "去商店购买了面包和水。",
-      trigger: "agent",
-      duration: 18,
-    },
-    {
-      time: "18:05",
-      behavior: "用户互动",
-      desc: "收到零花钱，心情变好了一点。",
-      trigger: "user",
-      duration: 2,
-    },
-    {
-      time: "19:32",
-      behavior: "休息",
-      desc: "在家休息，恢复一点体力。",
-      trigger: "agent",
-      duration: 20,
-    },
-  ];
+const DEFAULT_LIMIT = 10;
+const MAX_LIMIT = 50;
+
+const parseLimit = (value: string | undefined) => {
+  if (!value) return DEFAULT_LIMIT;
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed)) return DEFAULT_LIMIT;
+  if (parsed <= 0) return DEFAULT_LIMIT;
+  if (parsed > MAX_LIMIT) return MAX_LIMIT;
+  return parsed;
+};
+
+activityRoute.get("/index", async (context) => {
+  const limit = parseLimit(context.req.query("limit"));
+  const docs = await getRecentBehaviorRecords(limit);
+
+  const events = docs
+    .slice()
+    .reverse()
+    .map((item) => ({
+      time: dayjs(item.timestamp).format("HH:mm"),
+      behavior: item.behavior,
+      desc: item.description,
+      trigger: item.trigger,
+      duration: item.duration_minutes ?? 0,
+    }));
 
   return context.json({
     code: 0,
