@@ -56,6 +56,7 @@ export function HomePageHeader({ summary }: HomePageHeaderProps) {
   const [isSending, setIsSending] = useState(false);
   const [userName, setUserName] = useState(DEFAULT_USER_NAME);
   const bottomRef = useRef<HTMLDivElement | null>(null);
+  const messageCount = messages.length;
 
   useEffect(() => {
     if (!isChatOpen) return;
@@ -67,12 +68,13 @@ export function HomePageHeader({ summary }: HomePageHeaderProps) {
 
   useEffect(() => {
     if (!isChatOpen) return;
+    if (messageCount === 0) return;
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [isChatOpen, messages]);
+  }, [isChatOpen, messageCount]);
 
   useEffect(() => {
     if (!isChatOpen) return;
-    const handleKeyDown = (event: KeyboardEvent) => {
+    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
       if (event.key === "Escape") {
         setIsChatOpen(false);
       }
@@ -81,11 +83,45 @@ export function HomePageHeader({ summary }: HomePageHeaderProps) {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isChatOpen]);
 
-  const messageCount = messages.length;
-
   const persistMessages = (nextMessages: ChatMessage[]) => {
-    setMessages(nextMessages);
-    localStorage.setItem(getHistoryKey(userName), JSON.stringify(nextMessages));
+    // 数据验证和截断
+    if (!Array.isArray(nextMessages)) {
+      console.error("Invalid messages format");
+      return;
+    }
+    
+    // 限制历史记录数量，防止localStorage溢出
+    const truncatedMessages = nextMessages.slice(-HISTORY_LIMIT);
+    
+    // 验证消息格式
+    const validMessages = truncatedMessages.filter(
+      (item) => item && typeof item.content === "string" && typeof item.role === "string"
+    );
+    
+    // 检查总数据大小（约5KB限制）
+    try {
+      const serialized = JSON.stringify(validMessages);
+      if (serialized.length > 5120) { // 5KB限制
+        console.warn("Message data too large, truncating further");
+        const furtherTruncated = validMessages.slice(-Math.floor(HISTORY_LIMIT / 2));
+        localStorage.setItem(getHistoryKey(userName), JSON.stringify(furtherTruncated));
+        setMessages(furtherTruncated);
+      } else {
+        localStorage.setItem(getHistoryKey(userName), serialized);
+        setMessages(validMessages);
+      }
+    } catch (error) {
+      console.error("Failed to persist messages:", error);
+      // 降级处理：只保留最新消息
+      const emergencyMessages = validMessages.slice(-3);
+      try {
+        localStorage.setItem(getHistoryKey(userName), JSON.stringify(emergencyMessages));
+        setMessages(emergencyMessages);
+      } catch (e) {
+        console.error("Emergency persistence failed:", e);
+        setMessages([]);
+      }
+    }
   };
 
   const handleSend = async () => {
@@ -201,14 +237,15 @@ export function HomePageHeader({ summary }: HomePageHeaderProps) {
       </div>
 
       {isChatOpen ? (
-        <div
-          className="fixed inset-0 bg-[rgba(15,22,30,0.35)] grid items-stretch justify-items-end z-40"
-          onClick={() => setIsChatOpen(false)}
-          role="presentation"
-        >
+        <div className="fixed inset-0 bg-[rgba(15,22,30,0.35)] grid items-stretch justify-items-end z-40">
+          <button
+            type="button"
+            className="absolute inset-0"
+            aria-label="关闭聊天抽屉"
+            onClick={() => setIsChatOpen(false)}
+          />
           <section
-            className="w-[min(420px,100%)] max-[520px]:w-full h-full bg-white/95 border-l border-[rgba(217,230,245,0.9)] shadow-[-20px_0_40px_rgba(15,22,30,0.12)] grid grid-rows-[auto_1fr_auto]"
-            onClick={(event) => event.stopPropagation()}
+            className="relative w-[min(420px,100%)] max-[520px]:w-full h-full bg-white/95 border-l border-[rgba(217,230,245,0.9)] shadow-[-20px_0_40px_rgba(15,22,30,0.12)] grid grid-rows-[auto_1fr_auto]"
             role="dialog"
             aria-modal="true"
             aria-label="手机聊天"

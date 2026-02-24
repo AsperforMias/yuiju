@@ -141,6 +141,6 @@ export function ActivityTimelineCard({ events }: ActivityTimelineCardProps) {
           )}
         </div>
       </div>
-    </section>
+    </Card>
   );
 }

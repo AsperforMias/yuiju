@@ -109,6 +109,7 @@ export function HomeMapCard({ location }: HomeMapCardProps) {
         viewBox="0 0 100 100"
         preserveAspectRatio="none"
       >
+        <title>地图连线</title>
         <line
           x1="22"
           y1="62"
@@ -219,14 +220,15 @@ export function HomeMapCard({ location }: HomeMapCardProps) {
       </div>
 
       {isZoomOpen ? (
-        <div
-          className="fixed inset-0 bg-[rgba(15,22,30,0.35)] grid items-center justify-items-center p-4 z-[45]"
-          onClick={() => setIsZoomOpen(false)}
-          role="presentation"
-        >
+        <div className="fixed inset-0 bg-[rgba(15,22,30,0.35)] grid items-center justify-items-center p-4 z-[45]">
+          <button
+            type="button"
+            className="absolute inset-0"
+            aria-label="关闭放大地图"
+            onClick={() => setIsZoomOpen(false)}
+          />
           <section
-            className="w-[min(980px,96vw)] h-[min(720px,92vh)] bg-white/97 border border-[rgba(217,230,245,0.9)] rounded-[20px] shadow-[0_22px_45px_rgba(15,22,30,0.18)] grid grid-rows-[auto_1fr] overflow-hidden"
-            onClick={(event) => event.stopPropagation()}
+            className="relative w-[min(980px,96vw)] h-[min(720px,92vh)] bg-white/97 border border-[rgba(217,230,245,0.9)] rounded-[20px] shadow-[0_22px_45px_rgba(15,22,30,0.18)] grid grid-rows-[auto_1fr] overflow-hidden"
             role="dialog"
             aria-modal="true"
             aria-label="放大地图"
@@ -246,14 +248,15 @@ export function HomeMapCard({ location }: HomeMapCardProps) {
       ) : null}
 
       {isDetailOpen && selectedNode ? (
-        <div
-          className="fixed inset-0 bg-[rgba(15,22,30,0.35)] grid place-items-center p-4 z-50 backdrop-blur-[2px]"
-          onClick={() => setIsDetailOpen(false)}
-          role="presentation"
-        >
+        <div className="fixed inset-0 bg-[rgba(15,22,30,0.35)] grid place-items-center p-4 z-50 backdrop-blur-[2px]">
+          <button
+            type="button"
+            className="absolute inset-0"
+            aria-label="关闭地点详情"
+            onClick={() => setIsDetailOpen(false)}
+          />
           <section
-            className="w-[min(560px,92vw)] rounded-[18px] border border-[rgba(217,230,245,0.9)] bg-white/98 shadow-[0_20px_40px_rgba(15,22,30,0.16)] overflow-hidden"
-            onClick={(event) => event.stopPropagation()}
+            className="relative w-[min(560px,92vw)] rounded-[18px] border border-[rgba(217,230,245,0.9)] bg-white/98 shadow-[0_20px_40px_rgba(15,22,30,0.16)] overflow-hidden"
             role="dialog"
             aria-modal="true"
             aria-label={`${selectedNode.name}地点详情`}

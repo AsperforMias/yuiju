@@ -34,10 +34,12 @@ export function ActivityCareCard() {
   const submitWithRetry = async (mode: "add" | "set", retryCount = 0): Promise<void> => {
     const MAX_RETRIES = 3;
     const TIMEOUT_MS = 10000;
+    let controller: AbortController | null = null;
+    let timeoutId: NodeJS.Timeout | null = null;
 
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
+      controller = new AbortController();
+      timeoutId = setTimeout(() => controller?.abort(), TIMEOUT_MS);
 
       const response = await fetch("/api/nodejs/state/allowance", {
         method: "POST",
@@ -49,8 +51,6 @@ export function ActivityCareCard() {
         }),
         signal: controller.signal,
       });
-
-      clearTimeout(timeoutId);
 
       const payload = (await response.json().catch(() => ({}))) as {
         code?: number;
@@ -69,8 +69,6 @@ export function ActivityCareCard() {
 
       setStatus({ tone: "success", message: summary });
     } catch (error) {
-      clearTimeout(timeoutId);
-
       if (error instanceof Error) {
         if (error.name === "AbortError") {
           throw new Error("请求超时，请检查网络连接");
@@ -85,6 +83,14 @@ export function ActivityCareCard() {
       }
 
       throw new Error("网络错误，请稍后重试");
+    } finally {
+      // 确保资源清理
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+      if (controller) {
+        controller.abort();
+      }
     }
   };
 
