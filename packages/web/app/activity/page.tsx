@@ -1,8 +1,5 @@
-import {
-  ActivityTimelineCard,
-  defaultActivityEventsCount,
-  type ActivityEvent,
-} from "./activity-timeline-card";
+import { ActivityTimelineCard } from "./activity-timeline-card";
+import { defaultActivityEventsCount, type ActivityEvent } from "./activity-data";
 import { ActivityCareCard } from "./activity-care-card";
 import { ActivityDetailPreviewCard } from "./activity-detail-preview-card";
 import { ActivityPageHeader } from "./activity-page-header";

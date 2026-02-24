@@ -1,73 +1,43 @@
-import styles from "./activity.module.css";
+"use client";
 
-export type ActivityEvent = {
-  time: string;
-  behavior: string;
-  desc: string;
-  trigger: "agent" | "user" | "system";
-  duration: number;
-};
+import { useMemo, useState } from "react";
+import { type ActivityEvent, defaultActivityEvents } from "./activity-data";
 
 type ActivityTimelineCardProps = {
   events?: ActivityEvent[];
 };
 
-const defaultEvents: ActivityEvent[] = [
-    {
-      time: "09:12",
-      behavior: "吃东西",
-      desc: "吃了一个苹果，恢复体力。",
-      trigger: "agent",
-      duration: 12,
-    },
-    {
-      time: "10:12",
-      behavior: "喝水",
-      desc: "补充水分，保持清醒。",
-      trigger: "system",
-      duration: 1,
-    },
-    {
-      time: "11:50",
-      behavior: "学习",
-      desc: "完成数学练习，获得一些进展。",
-      trigger: "agent",
-      duration: 45,
-    },
-    {
-      time: "14:20",
-      behavior: "发呆",
-      desc: "短暂停留发呆，节奏放慢。",
-      trigger: "system",
-      duration: 6,
-    },
-    {
-      time: "16:40",
-      behavior: "购物",
-      desc: "去商店购买了面包和水。",
-      trigger: "agent",
-      duration: 18,
-    },
-    {
-      time: "18:05",
-      behavior: "用户互动",
-      desc: "收到零花钱，心情变好了一点。",
-      trigger: "user",
-      duration: 2,
-    },
-    {
-      time: "19:32",
-      behavior: "休息",
-      desc: "在家休息，恢复一点体力。",
-      trigger: "agent",
-      duration: 20,
-    },
-  ];
-
-export const defaultActivityEventsCount = defaultEvents.length;
+type TimeRangeOption = "today" | "last7" | "custom";
+type TriggerFilter = "all" | ActivityEvent["trigger"];
 
 export function ActivityTimelineCard({ events }: ActivityTimelineCardProps) {
-  const displayEvents = events && events.length > 0 ? events : defaultEvents;
+  const [timeRange, setTimeRange] = useState<TimeRangeOption>("today");
+  const [trigger, setTrigger] = useState<TriggerFilter>("all");
+  const [keyword, setKeyword] = useState("");
+
+  const displayEvents = useMemo(
+    () => (events && events.length > 0 ? events : defaultActivityEvents),
+    [events],
+  );
+
+  const filteredEvents = useMemo(() => {
+    let next = displayEvents;
+
+    if (trigger !== "all") {
+      next = next.filter((item) => item.trigger === trigger);
+    }
+
+    const normalizedKeyword = keyword.trim().toLowerCase();
+    if (normalizedKeyword) {
+      next = next.filter((item) => {
+        const behaviorMatch = item.behavior.toLowerCase().includes(normalizedKeyword);
+        const descMatch = item.desc.toLowerCase().includes(normalizedKeyword);
+        return behaviorMatch || descMatch;
+      });
+    }
+
+    return next;
+  }, [displayEvents, keyword, trigger]);
 
   return (
     <section className="border border-[#d9e6f5] rounded-2xl bg-[rgba(255,255,255,0.88)] shadow-[0_10px_25px_rgba(21,33,54,0.06)] overflow-hidden">
@@ -87,11 +57,12 @@ export function ActivityTimelineCard({ events }: ActivityTimelineCardProps) {
             <select
               id="timeRange"
               className="w-full rounded-xl border border-[rgba(217,230,245,0.95)] bg-[rgba(255,255,255,0.85)] px-3 py-[10px] outline-none transition-[border-color,box-shadow] duration-[160ms] ease focus:border-[rgba(145,196,238,0.55)] focus:shadow-[0_0_0_4px_rgba(145,196,238,0.18)] text-[#2b2f36]"
-              disabled
+              value={timeRange}
+              onChange={(event) => setTimeRange(event.target.value as TimeRangeOption)}
             >
-              <option>今天</option>
-              <option>近 7 天</option>
-              <option>自定义</option>
+              <option value="today">今天</option>
+              <option value="last7">近 7 天</option>
+              <option value="custom">自定义</option>
             </select>
           </div>
 
@@ -102,12 +73,13 @@ export function ActivityTimelineCard({ events }: ActivityTimelineCardProps) {
             <select
               id="trigger"
               className="w-full rounded-xl border border-[rgba(217,230,245,0.95)] bg-[rgba(255,255,255,0.85)] px-3 py-[10px] outline-none transition-[border-color,box-shadow] duration-[160ms] ease focus:border-[rgba(145,196,238,0.55)] focus:shadow-[0_0_0_4px_rgba(145,196,238,0.18)] text-[#2b2f36]"
-              disabled
+              value={trigger}
+              onChange={(event) => setTrigger(event.target.value as TriggerFilter)}
             >
-              <option>全部</option>
-              <option>agent</option>
-              <option>user</option>
-              <option>system</option>
+              <option value="all">全部</option>
+              <option value="agent">agent</option>
+              <option value="user">user</option>
+              <option value="system">system</option>
             </select>
           </div>
 
@@ -119,42 +91,49 @@ export function ActivityTimelineCard({ events }: ActivityTimelineCardProps) {
               id="keyword"
               className="w-full rounded-xl border border-[rgba(217,230,245,0.95)] bg-[rgba(255,255,255,0.85)] px-3 py-[10px] outline-none transition-[border-color,box-shadow] duration-[160ms] ease focus:border-[rgba(145,196,238,0.55)] focus:shadow-[0_0_0_4px_rgba(145,196,238,0.18)] text-[#2b2f36]"
               placeholder="例如：吃东西 / 购物 / 发呆"
-              disabled
+              value={keyword}
+              onChange={(event) => setKeyword(event.target.value)}
             />
           </div>
         </div>
 
         <div className="relative pl-[18px] grid gap-3 before:content-[''] before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-[rgba(145,196,238,0.6)] before:rounded-full">
-          {displayEvents.map((item) => {
-            const tone =
-              item.trigger === "agent"
-                ? "bg-[rgba(145,196,238,0.18)] border-[rgba(145,196,238,0.3)]"
-                : item.trigger === "user"
-                  ? "bg-[rgba(250,227,190,0.75)] border-[rgba(250,227,190,0.85)]"
-                  : "bg-[rgba(175,122,197,0.14)] border-[rgba(175,122,197,0.25)]";
+          {filteredEvents.length === 0 ? (
+            <div className="rounded-2xl border border-[rgba(217,230,245,0.9)] bg-[rgba(255,255,255,0.84)] shadow-[0_10px_25px_rgba(21,33,54,0.06)] p-3 text-[13px] text-[#6b7480]">
+              没有匹配的记录，试试调整筛选条件。
+            </div>
+          ) : (
+            filteredEvents.map((item) => {
+              const tone =
+                item.trigger === "agent"
+                  ? "bg-[rgba(145,196,238,0.18)] border-[rgba(145,196,238,0.3)]"
+                  : item.trigger === "user"
+                    ? "bg-[rgba(250,227,190,0.75)] border-[rgba(250,227,190,0.85)]"
+                    : "bg-[rgba(175,122,197,0.14)] border-[rgba(175,122,197,0.25)]";
 
-            return (
-              <article
-                key={`${item.time}-${item.behavior}`}
-                className="relative rounded-2xl border border-[rgba(217,230,245,0.9)] bg-[rgba(255,255,255,0.84)] shadow-[0_10px_25px_rgba(21,33,54,0.06)] p-3 grid gap-2 before:content-[''] before:absolute before:-left-3.5 before:top-[18px] before:w-2.5 before:h-2.5 before:rounded-full before:bg-[rgba(145,196,238,0.9)] before:border-2 before:border-[rgba(247,251,255,1)]"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="inline-flex items-center gap-2">
-                    <h3 className="m-0 text-[14px] font-black">{item.behavior}</h3>
-                    <span
-                      className={`text-[12px] px-[10px] py-[7px] rounded-full border border-[rgba(217,230,245,0.85)] bg-[rgba(247,251,255,0.9)] text-[#6b7480] ${tone}`}
-                    >
-                      {item.trigger}
+              return (
+                <article
+                  key={`${item.time}-${item.behavior}`}
+                  className="relative rounded-2xl border border-[rgba(217,230,245,0.9)] bg-[rgba(255,255,255,0.84)] shadow-[0_10px_25px_rgba(21,33,54,0.06)] p-3 grid gap-2 before:content-[''] before:absolute before:-left-3.5 before:top-[18px] before:w-2.5 before:h-2.5 before:rounded-full before:bg-[rgba(145,196,238,0.9)] before:border-2 before:border-[rgba(247,251,255,1)]"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="inline-flex items-center gap-2">
+                      <h3 className="m-0 text-[14px] font-black">{item.behavior}</h3>
+                      <span
+                        className={`text-[12px] px-[10px] py-[7px] rounded-full border border-[rgba(217,230,245,0.85)] bg-[rgba(247,251,255,0.9)] text-[#6b7480] ${tone}`}
+                      >
+                        {item.trigger}
+                      </span>
+                    </div>
+                    <span className="text-[12px] text-[#6b7480]">
+                      {item.time} · {item.duration}min
                     </span>
                   </div>
-                  <span className="text-[12px] text-[#6b7480]">
-                    {item.time} · {item.duration}min
-                  </span>
-                </div>
-                <p className="m-0 text-[13px] text-[#6b7480]">{item.desc}</p>
-              </article>
-            );
-          })}
+                  <p className="m-0 text-[13px] text-[#6b7480]">{item.desc}</p>
+                </article>
+              );
+            })
+          )}
         </div>
       </div>
     </section>
