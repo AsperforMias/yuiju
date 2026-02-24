@@ -9,6 +9,7 @@ import { MessageSquare } from "lucide-react";
 
 import { Badge } from "@/lib/components/ui/badge";
 import { Button } from "@/lib/components/ui/button";
+import { Textarea } from "@/lib/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
 type HomePageHeaderProps = {
@@ -323,8 +324,8 @@ export function HomePageHeader({ summary }: HomePageHeaderProps) {
             </div>
 
             <footer className="border-t border-[rgba(217,230,245,0.85)] px-4 pt-3 pb-4 grid gap-2">
-              <textarea
-                className="w-full min-h-[80px] max-h-[160px] resize-y border border-[rgba(217,230,245,0.9)] rounded-[14px] px-3 py-2.5 text-[13px] leading-[1.5] text-[#2b2f36] bg-white/95 outline-none transition focus:border-[rgba(145,196,238,0.8)] focus:shadow-[0_0_0_4px_rgba(145,196,238,0.2)]"
+              <Textarea
+                className="min-h-[80px] max-h-[160px] resize-y"
                 placeholder="输入内容，Enter 发送，Shift+Enter 换行"
                 value={inputValue}
                 onChange={(event) => setInputValue(event.target.value)}
