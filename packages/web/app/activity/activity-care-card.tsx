@@ -2,6 +2,12 @@
 
 import { useMemo, useState } from "react";
 
+import { Badge } from "@/lib/components/ui/badge";
+import { Button } from "@/lib/components/ui/button";
+import { Card } from "@/lib/components/ui/card";
+import { Input } from "@/lib/components/ui/input";
+import { cn } from "@/lib/utils";
+
 type CareStatus = {
   tone: "idle" | "loading" | "success" | "error";
   message: string;
@@ -111,13 +117,17 @@ export function ActivityCareCard() {
   };
 
   return (
-    <section className="border border-[#d9e6f5] rounded-2xl bg-[rgba(255,255,255,0.88)] shadow-[0_10px_25px_rgba(21,33,54,0.06)] overflow-hidden">
+    <Card>
       <div className="p-[14px] grid gap-[14px]">
         <div className="flex items-center justify-between gap-3">
           <h3 className="m-0 text-[14px] font-black">轻管理 · 零花钱</h3>
-          <span className="inline-flex items-center gap-[6px] px-[10px] py-2 rounded-full text-[12px] border border-[rgba(250,227,190,0.75)] bg-[rgba(250,227,190,0.55)] text-[#2b2f36]">
+          <Badge
+            variant="soft"
+            size="sm"
+            className="border-[rgba(250,227,190,0.75)] bg-[rgba(250,227,190,0.55)] text-[#2b2f36]"
+          >
             Care
-          </span>
+          </Badge>
         </div>
 
         <p className="m-0 text-[13px] text-[#6b7480] leading-[1.5]">
@@ -129,9 +139,8 @@ export function ActivityCareCard() {
             <label className="text-[12px] text-[#6b7480]" htmlFor="money">
               金额
             </label>
-            <input
+            <Input
               id="money"
-              className="w-full rounded-xl border border-[rgba(217,230,245,0.95)] bg-[rgba(255,255,255,0.85)] px-3 py-[10px] outline-none transition-[border-color,box-shadow] duration-[160ms] ease focus:border-[rgba(145,196,238,0.55)] focus:shadow-[0_0_0_4px_rgba(145,196,238,0.18)] text-[#2b2f36]"
               type="number"
               min={0}
               step={1}
@@ -144,9 +153,8 @@ export function ActivityCareCard() {
             <label className="text-[12px] text-[#6b7480]" htmlFor="reason">
               原因（可选）
             </label>
-            <input
+            <Input
               id="reason"
-              className="w-full rounded-xl border border-[rgba(217,230,245,0.95)] bg-[rgba(255,255,255,0.85)] px-3 py-[10px] outline-none transition-[border-color,box-shadow] duration-[160ms] ease focus:border-[rgba(145,196,238,0.55)] focus:shadow-[0_0_0_4px_rgba(145,196,238,0.18)] text-[#2b2f36]"
               value={reason}
               onChange={(event) => setReason(event.target.value)}
             />
@@ -154,43 +162,41 @@ export function ActivityCareCard() {
         </div>
 
         <div className="flex gap-[10px] items-center">
-          <button
-            className="inline-flex items-center justify-center gap-2 rounded-xl border border-[rgba(145,196,238,0.55)] bg-[rgba(145,196,238,0.62)] px-3 py-[10px] transition-[160ms] ease disabled:opacity-[0.55] disabled:cursor-not-allowed text-[#2b2f36]"
+          <Button
+            className="border-[rgba(145,196,238,0.55)] bg-[rgba(145,196,238,0.62)] text-[#2b2f36]"
             type="button"
             disabled={!canAdd}
             onClick={() => void submit("add")}
           >
             {activeMode === "add" ? "发放中..." : "发放（+）"}
-          </button>
-          <button
-            className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#d9e6f5] bg-[rgba(255,255,255,0.85)] px-3 py-[10px] transition-[160ms] ease disabled:opacity-[0.55] disabled:cursor-not-allowed text-[#2b2f36]"
-            type="button"
-            disabled={!canSet}
-            onClick={() => void submit("set")}
-          >
+          </Button>
+          <Button type="button" disabled={!canSet} onClick={() => void submit("set")}>
             {activeMode === "set" ? "设置中..." : "设置为该值"}
-          </button>
+          </Button>
         </div>
 
         {status.message ? (
-          <div
-            className={`inline-flex items-center gap-2 px-[10px] py-2 rounded-full text-[12px] border ${
+          <Badge
+            variant="soft"
+            size="sm"
+            className={cn(
+              "px-[10px] py-2",
               status.tone === "error"
                 ? "border-[rgba(229,88,88,0.4)] bg-[rgba(229,88,88,0.12)] text-[#b33a3a]"
                 : status.tone === "success"
                   ? "border-[rgba(130,194,123,0.4)] bg-[rgba(130,194,123,0.18)] text-[#2f6b3a]"
-                  : "border-[rgba(217,230,245,0.9)] bg-[rgba(247,251,255,0.9)] text-[#6b7480]"
-            }`}
+                  : "border-[rgba(217,230,245,0.9)] bg-[rgba(247,251,255,0.9)] text-[#6b7480]",
+            )}
           >
-            <span>{status.message}</span>
-          </div>
+            {status.message}
+          </Badge>
         ) : (
-          <div className="inline-flex items-center gap-2 px-[10px] py-2 rounded-full text-[12px] border border-[rgba(217,230,245,0.9)] bg-[rgba(247,251,255,0.9)] text-[#6b7480]">
+          <Badge variant="pill" size="sm" className="border-[rgba(217,230,245,0.9)] bg-[rgba(247,251,255,0.9)] text-[#6b7480]">
             <span>提示</span>&nbsp;<strong className="text-[#2b2f36]">发放</strong>&nbsp;
             <span>更像"给零花钱"</span>
-          </div>
+          </Badge>
         )}
       </div>
-    </section>
+    </Card>
   );
 }

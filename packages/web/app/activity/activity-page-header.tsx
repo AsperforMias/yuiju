@@ -1,4 +1,4 @@
-import styles from "./activity.module.css";
+import { Badge } from "@/lib/components/ui/badge";
 
 type ActivityPageHeaderProps = {
   count?: number;
@@ -7,16 +7,16 @@ type ActivityPageHeaderProps = {
 export function ActivityPageHeader({ count }: ActivityPageHeaderProps) {
   const displayCount = count ?? 0;
   return (
-    <div className={styles["activity-page-head"]}>
+    <div className="flex items-end justify-between gap-4 mt-[18px] mb-[14px] max-[1020px]:flex-col max-[1020px]:items-start">
       <div>
-        <h1 className={styles["activity-page-title"]}>动态</h1>
-        <p className={styles["activity-page-subtitle"]}>行为时间线 + 轻管理（零花钱）</p>
+        <h1 className="m-0 text-[18px] font-extrabold">动态</h1>
+        <p className="mt-1.5 text-[13px] text-[#6b7480]">行为时间线 + 轻管理（零花钱）</p>
       </div>
 
-      <div className={styles["activity-pill"]}>
-        <span className={styles["activity-muted"]}>今日记录</span>&nbsp;
+      <Badge variant="pill" size="default" className="whitespace-nowrap">
+        <span className="text-[#6b7480]">今日记录</span>&nbsp;
         <strong>{displayCount} 条</strong>
-      </div>
+      </Badge>
     </div>
   );
 }

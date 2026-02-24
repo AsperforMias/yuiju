@@ -3,6 +3,12 @@
 import { useMemo, useState } from "react";
 import { type ActivityEvent, defaultActivityEvents } from "./activity-data";
 
+import { Badge } from "@/lib/components/ui/badge";
+import { Card } from "@/lib/components/ui/card";
+import { Input } from "@/lib/components/ui/input";
+import { Select } from "@/lib/components/ui/select";
+import { cn } from "@/lib/utils";
+
 type ActivityTimelineCardProps = {
   events?: ActivityEvent[];
 };
@@ -40,13 +46,17 @@ export function ActivityTimelineCard({ events }: ActivityTimelineCardProps) {
   }, [displayEvents, keyword, trigger]);
 
   return (
-    <section className="border border-[#d9e6f5] rounded-2xl bg-[rgba(255,255,255,0.88)] shadow-[0_10px_25px_rgba(21,33,54,0.06)] overflow-hidden">
+    <Card>
       <div className="p-[14px] grid gap-3">
         <div className="flex items-center justify-between gap-3">
           <h3 className="m-0 text-[14px] font-black">行为时间线</h3>
-          <span className="inline-flex items-center gap-[6px] px-[10px] py-2 rounded-full text-[12px] border border-[rgba(217,230,245,0.85)] bg-[rgba(255,255,255,0.85)] text-[#2b2f36] bg-[rgba(175,122,197,0.12)] border-[rgba(175,122,197,0.25)]">
+          <Badge
+            variant="soft"
+            size="sm"
+            className="border-[rgba(175,122,197,0.25)] bg-[rgba(175,122,197,0.12)] text-[#2b2f36]"
+          >
             仅展示库字段
-          </span>
+          </Badge>
         </div>
 
         <div className="grid grid-cols-3 gap-[10px] max-[520px]:grid-cols-1">
@@ -54,25 +64,23 @@ export function ActivityTimelineCard({ events }: ActivityTimelineCardProps) {
             <label className="text-[12px] text-[#6b7480]" htmlFor="timeRange">
               时间范围
             </label>
-            <select
+            <Select
               id="timeRange"
-              className="w-full rounded-xl border border-[rgba(217,230,245,0.95)] bg-[rgba(255,255,255,0.85)] px-3 py-[10px] outline-none transition-[border-color,box-shadow] duration-[160ms] ease focus:border-[rgba(145,196,238,0.55)] focus:shadow-[0_0_0_4px_rgba(145,196,238,0.18)] text-[#2b2f36]"
               value={timeRange}
               onChange={(event) => setTimeRange(event.target.value as TimeRangeOption)}
             >
               <option value="today">今天</option>
               <option value="last7">近 7 天</option>
               <option value="custom">自定义</option>
-            </select>
+            </Select>
           </div>
 
           <div className="grid gap-[6px]">
             <label className="text-[12px] text-[#6b7480]" htmlFor="trigger">
               trigger
             </label>
-            <select
+            <Select
               id="trigger"
-              className="w-full rounded-xl border border-[rgba(217,230,245,0.95)] bg-[rgba(255,255,255,0.85)] px-3 py-[10px] outline-none transition-[border-color,box-shadow] duration-[160ms] ease focus:border-[rgba(145,196,238,0.55)] focus:shadow-[0_0_0_4px_rgba(145,196,238,0.18)] text-[#2b2f36]"
               value={trigger}
               onChange={(event) => setTrigger(event.target.value as TriggerFilter)}
             >
@@ -80,16 +88,15 @@ export function ActivityTimelineCard({ events }: ActivityTimelineCardProps) {
               <option value="agent">agent</option>
               <option value="user">user</option>
               <option value="system">system</option>
-            </select>
+            </Select>
           </div>
 
           <div className="grid gap-[6px]">
             <label className="text-[12px] text-[#6b7480]" htmlFor="keyword">
               behavior 搜索
             </label>
-            <input
+            <Input
               id="keyword"
-              className="w-full rounded-xl border border-[rgba(217,230,245,0.95)] bg-[rgba(255,255,255,0.85)] px-3 py-[10px] outline-none transition-[border-color,box-shadow] duration-[160ms] ease focus:border-[rgba(145,196,238,0.55)] focus:shadow-[0_0_0_4px_rgba(145,196,238,0.18)] text-[#2b2f36]"
               placeholder="例如：吃东西 / 购物 / 发呆"
               value={keyword}
               onChange={(event) => setKeyword(event.target.value)}
@@ -106,10 +113,10 @@ export function ActivityTimelineCard({ events }: ActivityTimelineCardProps) {
             filteredEvents.map((item) => {
               const tone =
                 item.trigger === "agent"
-                  ? "bg-[rgba(145,196,238,0.18)] border-[rgba(145,196,238,0.3)]"
+                  ? "bg-[rgba(145,196,238,0.18)] border-[rgba(145,196,238,0.3)] text-[#2b2f36]"
                   : item.trigger === "user"
-                    ? "bg-[rgba(250,227,190,0.75)] border-[rgba(250,227,190,0.85)]"
-                    : "bg-[rgba(175,122,197,0.14)] border-[rgba(175,122,197,0.25)]";
+                    ? "bg-[rgba(250,227,190,0.75)] border-[rgba(250,227,190,0.85)] text-[#2b2f36]"
+                    : "bg-[rgba(175,122,197,0.14)] border-[rgba(175,122,197,0.25)] text-[#2b2f36]";
 
               return (
                 <article
@@ -119,11 +126,9 @@ export function ActivityTimelineCard({ events }: ActivityTimelineCardProps) {
                   <div className="flex items-center justify-between">
                     <div className="inline-flex items-center gap-2">
                       <h3 className="m-0 text-[14px] font-black">{item.behavior}</h3>
-                      <span
-                        className={`text-[12px] px-[10px] py-[7px] rounded-full border border-[rgba(217,230,245,0.85)] bg-[rgba(247,251,255,0.9)] text-[#6b7480] ${tone}`}
-                      >
+                      <Badge variant="soft" size="sm" className={cn("px-[10px] py-[7px]", tone)}>
                         {item.trigger}
-                      </span>
+                      </Badge>
                     </div>
                     <span className="text-[12px] text-[#6b7480]">
                       {item.time} · {item.duration}min

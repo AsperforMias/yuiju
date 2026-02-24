@@ -1,4 +1,5 @@
-import styles from "./activity.module.css";
+import { Badge } from "@/lib/components/ui/badge";
+import { Card } from "@/lib/components/ui/card";
 
 const detailPreview = `{
   "behavior": "吃东西",
@@ -13,13 +14,17 @@ const detailPreview = `{
 
 export function ActivityDetailPreviewCard() {
   return (
-    <section className="border border-[#d9e6f5] rounded-2xl bg-[rgba(255,255,255,0.88)] shadow-[0_10px_25px_rgba(21,33,54,0.06)] overflow-hidden">
+    <Card>
       <div className="p-[14px] grid gap-3">
         <div className="flex items-center justify-between gap-3">
           <h3 className="m-0 text-[14px] font-black">详情预览</h3>
-          <span className="inline-flex items-center gap-[6px] px-[10px] py-2 rounded-full text-[12px] border border-[rgba(175,122,197,0.25)] bg-[rgba(175,122,197,0.12)] text-[#2b2f36]">
+          <Badge
+            variant="soft"
+            size="sm"
+            className="border-[rgba(175,122,197,0.25)] bg-[rgba(175,122,197,0.12)] text-[#2b2f36]"
+          >
             Mock
-          </span>
+          </Badge>
         </div>
 
         <p className="m-0 text-[13px] text-[#6b7480] leading-[1.55]">
@@ -31,6 +36,6 @@ export function ActivityDetailPreviewCard() {
           {detailPreview}
         </pre>
       </div>
-    </section>
+    </Card>
   );
 }
