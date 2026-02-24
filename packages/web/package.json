@@ -8,10 +8,8 @@
     "start": "NODE_ENV=production next start -p 3010"
   },
   "dependencies": {
-    "@ai-sdk/deepseek": "^2.0.1",
     "@yuiju/source": "workspace:*",
     "@yuiju/utils": "workspace:*",
-    "ai": "^6.0.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "hono": "^4.11.3",
