@@ -25,6 +25,63 @@ export function ActivityCareCard() {
   const canAdd = amountValue !== null && amountValue > 0 && !isSubmitting;
   const canSet = amountValue !== null && amountValue >= 0 && !isSubmitting;
 
+  const submitWithRetry = async (mode: "add" | "set", retryCount = 0): Promise<void> => {
+    const MAX_RETRIES = 3;
+    const TIMEOUT_MS = 10000;
+
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
+      const response = await fetch("/api/nodejs/state/allowance", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amount: amountValue,
+          reason: reason.trim(),
+          mode,
+        }),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      const payload = (await response.json().catch(() => ({}))) as {
+        code?: number;
+        data?: { previousMoney?: number; currentMoney?: number; delta?: number };
+        message?: string;
+      };
+
+      if (!response.ok || payload.code !== 0) {
+        throw new Error(payload.message || `HTTP ${response.status}`);
+      }
+
+      const currentMoney = payload.data?.currentMoney ?? 0;
+      const delta = payload.data?.delta ?? 0;
+      const summary =
+        mode === "add" ? `已发放 +${delta}，当前 ${currentMoney}` : `已设置为 ${currentMoney}`;
+
+      setStatus({ tone: "success", message: summary });
+    } catch (error) {
+      clearTimeout(timeoutId);
+
+      if (error instanceof Error) {
+        if (error.name === "AbortError") {
+          throw new Error("请求超时，请检查网络连接");
+        }
+        throw error;
+      }
+
+      // 网络错误重试逻辑
+      if (retryCount < MAX_RETRIES) {
+        await new Promise((resolve) => setTimeout(resolve, 1000 * (retryCount + 1)));
+        return submitWithRetry(mode, retryCount + 1);
+      }
+
+      throw new Error("网络错误，请稍后重试");
+    }
+  };
+
   const submit = async (mode: "add" | "set") => {
     if (isSubmitting) return;
     if (amountValue === null) {
@@ -44,34 +101,7 @@ export function ActivityCareCard() {
     setStatus({ tone: "loading", message: "提交中..." });
 
     try {
-      const response = await fetch("/api/nodejs/state/allowance", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          amount: amountValue,
-          reason: reason.trim(),
-          mode,
-        }),
-      });
-
-      const payload = (await response.json().catch(() => ({}))) as {
-        code?: number;
-        data?: { previousMoney?: number; currentMoney?: number; delta?: number };
-        message?: string;
-      };
-
-      if (!response.ok || payload.code !== 0) {
-        throw new Error(payload.message || "请求失败");
-      }
-
-      const currentMoney = payload.data?.currentMoney ?? 0;
-      const delta = payload.data?.delta ?? 0;
-      const summary =
-        mode === "add"
-          ? `已发放 +${delta}，当前 ${currentMoney}`
-          : `已设置为 ${currentMoney}`;
-
-      setStatus({ tone: "success", message: summary });
+      await submitWithRetry(mode);
     } catch (error) {
       const message = error instanceof Error ? error.message : "请求失败";
       setStatus({ tone: "error", message });

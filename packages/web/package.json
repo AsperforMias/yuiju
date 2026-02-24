@@ -8,7 +8,8 @@
     "start": "NODE_ENV=production next start -p 3010"
   },
   "dependencies": {
-    "@yuiju/source": "workspace:*",
+    "@hono-rate-limiter/redis": "^0.1.4",
+    "@upstash/redis": "^1.36.2",
     "@yuiju/utils": "workspace:*",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
