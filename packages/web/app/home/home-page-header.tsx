@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, isTextUIPart, type UIMessage } from "ai";
+import { MessageSquare } from "lucide-react";
 
 import { Badge } from "@/lib/components/ui/badge";
 import { Button } from "@/lib/components/ui/button";
@@ -242,14 +243,7 @@ export function HomePageHeader({ summary }: HomePageHeaderProps) {
             <strong className="text-[#2b2f36]">{displaySummary}</strong>
           </Badge>
           <Button variant="secondary" type="button" onClick={() => setIsChatOpen(true)}>
-            <svg className="h-[18px] w-[18px]" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path
-                d="M7 18.5h7.2c3.7 0 6.3-2.4 6.3-5.8S17.9 7 14.2 7H9.8C6.1 7 3.5 9.4 3.5 12.7c0 1.8.8 3.4 2.2 4.5L5 21l4-2.5Z"
-                stroke="rgba(43,47,54,0.9)"
-                strokeWidth="1.6"
-                strokeLinejoin="round"
-              />
-            </svg>
+            <MessageSquare className="h-[18px] w-[18px] text-[#2b2f36]" strokeWidth={1.6} />
             手机聊天
           </Button>
         </div>
@@ -257,9 +251,10 @@ export function HomePageHeader({ summary }: HomePageHeaderProps) {
 
       {isChatOpen ? (
         <div className="fixed inset-0 bg-[rgba(15,22,30,0.35)] grid items-stretch justify-items-end z-40">
-          <button
+          <Button
             type="button"
-            className="absolute inset-0"
+            variant="ghost"
+            className="absolute inset-0 h-auto w-auto p-0 bg-transparent hover:bg-transparent"
             aria-label="关闭聊天抽屉"
             onClick={() => setIsChatOpen(false)}
           />
