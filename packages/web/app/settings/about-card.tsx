@@ -1,14 +1,19 @@
-import styles from "./settings.module.css";
+import { Badge } from "@/lib/components/ui/badge";
+import { Card } from "@/lib/components/ui/card";
 
 export function AboutCard() {
   return (
-    <section className="border border-[#d9e6f5] rounded-2xl bg-[rgba(255,255,255,0.88)] shadow-[0_10px_25px_rgba(21,33,54,0.06)] overflow-hidden h-full min-h-[520px]">
+    <Card className="h-full min-h-[520px]">
       <div className="p-[14px] grid gap-[14px]">
         <div className="flex items-center justify-between gap-3">
           <h3 className="m-0 text-[24px] font-black tracking-[0.2px]">关于</h3>
-          <span className="inline-flex items-center px-[10px] py-2 rounded-full text-[12px] border border-[rgba(250,227,190,0.75)] bg-[rgba(250,227,190,0.55)] text-[#2b2f36]">
+          <Badge
+            variant="soft"
+            size="sm"
+            className="border-[rgba(250,227,190,0.75)] bg-[rgba(250,227,190,0.55)] text-[#2b2f36]"
+          >
             Info
-          </span>
+          </Badge>
         </div>
 
         <p className="m-0 text-[15px] text-[#6b7480] leading-[1.55]">
@@ -17,15 +22,27 @@ export function AboutCard() {
         </p>
 
         <div className="flex flex-wrap gap-2">
-          <span className="inline-flex items-center px-[10px] py-2 rounded-full text-[12px] border border-[rgba(175,122,197,0.25)] bg-[rgba(175,122,197,0.12)] text-[#2b2f36]">
+          <Badge
+            variant="soft"
+            size="sm"
+            className="border-[rgba(175,122,197,0.25)] bg-[rgba(175,122,197,0.12)] text-[#2b2f36]"
+          >
             主色 #91c4ee
-          </span>
-          <span className="inline-flex items-center px-[10px] py-2 rounded-full text-[12px] border border-[rgba(175,122,197,0.25)] bg-[rgba(175,122,197,0.12)] text-[#2b2f36]">
+          </Badge>
+          <Badge
+            variant="soft"
+            size="sm"
+            className="border-[rgba(175,122,197,0.25)] bg-[rgba(175,122,197,0.12)] text-[#2b2f36]"
+          >
             辅色 #af7ac5
-          </span>
-          <span className="inline-flex items-center px-[10px] py-2 rounded-full text-[12px] border border-[rgba(250,227,190,0.75)] bg-[rgba(250,227,190,0.55)] text-[#2b2f36]">
+          </Badge>
+          <Badge
+            variant="soft"
+            size="sm"
+            className="border-[rgba(250,227,190,0.75)] bg-[rgba(250,227,190,0.55)] text-[#2b2f36]"
+          >
             浅杏 #fae3be
-          </span>
+          </Badge>
         </div>
 
         <ul className="list-none m-0 p-0 grid gap-2">
@@ -43,6 +60,6 @@ export function AboutCard() {
           </li>
         </ul>
       </div>
-    </section>
+    </Card>
   );
 }
