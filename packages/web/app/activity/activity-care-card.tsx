@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 type CareStatus = {
@@ -55,8 +56,6 @@ export function ActivityCareCard() {
     const payload = (await response.json()) as IallowanceResponse;
 
     if (!response.ok || payload.code !== 0) {
-      // Review: 组件库提供的 toast 发一条 error 信息 https://ui.shadcn.com/docs/components/radix/sonner
-
       throw new Error(payload.message || `HTTP ${response.status}`);
     }
 
@@ -90,6 +89,7 @@ export function ActivityCareCard() {
       await submitOnce(mode);
     } catch (error) {
       const message = error instanceof Error ? error.message : "请求失败";
+      toast.error(message);
       setStatus({ tone: "error", message });
     } finally {
       setActiveMode(null);

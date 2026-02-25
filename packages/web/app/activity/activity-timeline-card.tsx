@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Select } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import type { ActivityEvent } from './activity-data';
 
@@ -60,14 +60,15 @@ export function ActivityTimelineCard({ events }: ActivityTimelineCardProps) {
             <label className="text-[12px] text-[#6b7480]" htmlFor="timeRange">
               时间范围
             </label>
-            <Select
-              id="timeRange"
-              value={timeRange}
-              onChange={event => setTimeRange(event.target.value as TimeRangeOption)}
-            >
-              <option value="today">今天</option>
-              <option value="last7">近 7 天</option>
-              <option value="custom">自定义</option>
+            <Select value={timeRange} onValueChange={value => setTimeRange(value as TimeRangeOption)}>
+              <SelectTrigger id="timeRange" aria-label="选择时间范围">
+                <SelectValue placeholder="选择时间范围" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="today">今天</SelectItem>
+                <SelectItem value="last7">近 7 天</SelectItem>
+                <SelectItem value="custom">自定义</SelectItem>
+              </SelectContent>
             </Select>
           </div>
 
@@ -75,11 +76,16 @@ export function ActivityTimelineCard({ events }: ActivityTimelineCardProps) {
             <label className="text-[12px] text-[#6b7480]" htmlFor="trigger">
               trigger
             </label>
-            <Select id="trigger" value={trigger} onChange={event => setTrigger(event.target.value as TriggerFilter)}>
-              <option value="all">全部</option>
-              <option value="agent">agent</option>
-              <option value="user">user</option>
-              <option value="system">system</option>
+            <Select value={trigger} onValueChange={value => setTrigger(value as TriggerFilter)}>
+              <SelectTrigger id="trigger" aria-label="选择触发类型">
+                <SelectValue placeholder="选择 trigger" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">全部</SelectItem>
+                <SelectItem value="agent">agent</SelectItem>
+                <SelectItem value="user">user</SelectItem>
+                <SelectItem value="system">system</SelectItem>
+              </SelectContent>
             </Select>
           </div>
 
