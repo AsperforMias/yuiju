@@ -28,24 +28,11 @@ export default function HomePage() {
   }, [homeData]);
 
   const status = useMemo(() => {
-    if (!homeData?.status) return undefined;
-    return {
-      behavior: homeData.status.behavior ?? "发呆",
-      location: homeData.status.location ?? "家",
-      stamina: {
-        current: homeData.status.stamina?.current ?? 68,
-        max: homeData.status.stamina?.max ?? 100,
-      },
-      money: homeData.status.money ?? 128,
-    };
+    return homeData?.status;
   }, [homeData]);
 
   const plans = useMemo(() => {
-    if (!homeData?.plans) return undefined;
-    return {
-      longTerm: homeData.plans.longTerm ?? "认真上学，变得更厉害",
-      shortTerm: homeData.plans.shortTerm ?? ["复习", "逛商店", "做饭"],
-    };
+    return homeData?.plans;
   }, [homeData]);
 
   return (

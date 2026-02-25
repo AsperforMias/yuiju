@@ -95,7 +95,7 @@ export function ActivityTimelineCard({ events }: ActivityTimelineCardProps) {
             </label>
             <Input
               id="keyword"
-              placeholder="例如：吃东西 / 购物 / 发呆"
+              placeholder="输入关键词"
               value={keyword}
               onChange={event => setKeyword(event.target.value)}
             />

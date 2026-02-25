@@ -6,7 +6,7 @@ type HomeWorldCardProps = {
 };
 
 export function HomeWorldCard({ time }: HomeWorldCardProps) {
-  const displayTime = time ?? "2026-02-07 19:32";
+  const displayTime = time ?? "—";
   return (
     <Card>
       <div className="p-[14px] grid gap-[14px]">

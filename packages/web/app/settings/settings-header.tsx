@@ -10,7 +10,7 @@ export function SettingsHeader() {
 
       <Badge variant="pill" size="default" className="whitespace-nowrap border-[#d9e6f5] bg-[#f7fbff] text-[#2b2f36]">
         <span className="text-[#6b7480]">主题</span>
-        <strong>日系简约</strong>
+        <strong>—</strong>
       </Badge>
     </div>
   );

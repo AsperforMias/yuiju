@@ -22,7 +22,7 @@ type MessageMetadata = {
 type HomeUIMessage = UIMessage<MessageMetadata>;
 
 const USER_NAME_KEY = "yuiju:user_name";
-const DEFAULT_USER_NAME = "翊小久";
+const DEFAULT_USER_NAME = "";
 const HISTORY_KEY_PREFIX = "yuiju:chat_history:";
 const HISTORY_LIMIT = 20;
 
@@ -91,7 +91,7 @@ const serializeMessages = (items: HomeUIMessage[]) => {
 };
 
 export function HomePageHeader({ summary }: HomePageHeaderProps) {
-  const displaySummary = summary ?? "悠酱现在在【家】，正在【发呆】";
+  const displaySummary = summary ?? "—";
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [inputValue, setInputValue] = useState("");
   const [userName, setUserName] = useState(DEFAULT_USER_NAME);
@@ -265,7 +265,7 @@ export function HomePageHeader({ summary }: HomePageHeaderProps) {
             <header className="px-4 pt-4 pb-3 flex items-center justify-between gap-3 border-b border-[rgba(217,230,245,0.85)]">
               <div className="grid gap-1 text-base font-black text-[#2b2f36]">
                 <strong>手机聊天</strong>
-                <span className="text-xs font-semibold text-[#6b7480]">@{userName}</span>
+                <span className="text-xs font-semibold text-[#6b7480]">@{userName || "—"}</span>
               </div>
               <div className="inline-flex items-center gap-2">
                 <Badge variant="soft" size="sm">

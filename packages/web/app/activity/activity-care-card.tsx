@@ -21,8 +21,8 @@ interface IallowanceResponse {
 }
 
 export function ActivityCareCard() {
-  const [amountInput, setAmountInput] = useState("20");
-  const [reason, setReason] = useState("奖励今天努力学习");
+  const [amountInput, setAmountInput] = useState("");
+  const [reason, setReason] = useState("");
   const [status, setStatus] = useState<CareStatus>({ tone: "idle", message: "" });
   const [activeMode, setActiveMode] = useState<"add" | "set" | null>(null);
 
