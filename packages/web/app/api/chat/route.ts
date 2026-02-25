@@ -17,12 +17,6 @@ type MessageMetadata = {
   createdAt?: number;
 };
 
-// Review：没必要封装，去掉
-const normalizeText = (value: unknown) => {
-  if (typeof value !== "string") return "";
-  return value.trim();
-};
-
 const checkRateLimit = (identifier: string): boolean => {
   const now = Date.now();
   const current = rateLimitStore.get(identifier);
@@ -85,7 +79,8 @@ export async function POST(request: Request) {
   }
 
   const payload = body as { messages?: unknown; userName?: unknown };
-  const userName = normalizeText(payload.userName) || DEFAULT_USER_NAME;
+  const trimmedUserName = typeof payload.userName === "string" ? payload.userName.trim() : "";
+  const userName = trimmedUserName || DEFAULT_USER_NAME;
 
   const incomingMessages = Array.isArray(payload.messages)
     ? (payload.messages as UIMessage<MessageMetadata>[])

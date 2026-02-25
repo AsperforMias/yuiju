@@ -5,8 +5,8 @@ export const homeRoute = new Hono();
 
 const STAMINA_MAX = 100;
 
-// Review: 命名改一下，语义化一些
-export interface IHomeResponse {
+// 语义化的响应类型名称
+export interface HomeResponse {
   code: number;
   message: string;
   data: {
@@ -23,7 +23,6 @@ export interface IHomeResponse {
   };
 }
 
-// Review: 接口路径别叫 `index`，没有这么命名的，命名要语义化。
 homeRoute.get("/summary", async (context) => {
   const [state, world] = await Promise.all([initCharacterStateData(), initWorldStateData()]);
 

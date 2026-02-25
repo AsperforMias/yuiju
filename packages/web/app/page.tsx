@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import useSWR from "swr";
-import type { IHomeResponse } from "./api/nodejs/[[...route]]/home";
+import type { HomeResponse } from "./api/nodejs/[[...route]]/home";
 import { HomeMapCard } from "./home/home-map-card";
 import { HomePageHeader } from "./home/home-page-header";
 import { HomeStatusCard } from "./home/home-status-card";
@@ -13,7 +13,7 @@ export default function HomePage() {
     try {
       const response = await fetch("/api/nodejs/home/summary", { cache: "no-store" });
       if (response.ok) {
-        const payload = (await response.json()) as IHomeResponse;
+        const payload = (await response.json()) as HomeResponse;
         return payload.data ?? undefined;
       }
     } catch {
