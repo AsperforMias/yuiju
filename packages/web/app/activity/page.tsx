@@ -1,15 +1,15 @@
-import { ActivityTimelineCard } from "./activity-timeline-card";
-import { defaultActivityEventsCount, type ActivityEvent } from "./activity-data";
-import { ActivityCareCard } from "./activity-care-card";
-import { ActivityDetailPreviewCard } from "./activity-detail-preview-card";
-import { ActivityPageHeader } from "./activity-page-header";
+import { ActivityCareCard } from './activity-care-card';
+import type { ActivityEvent } from './activity-data';
+import { ActivityDetailPreviewCard } from './activity-detail-preview-card';
+import { ActivityPageHeader } from './activity-page-header';
+import { ActivityTimelineCard } from './activity-timeline-card';
 
 export default async function ActivityPage() {
   let events: ActivityEvent[] | undefined;
   let count: number | undefined;
 
   try {
-    const response = await fetch("/api/nodejs/activity/index", { cache: "no-store" });
+    const response = await fetch('/api/nodejs/activity/index', { cache: 'no-store' });
     if (response.ok) {
       const payload = (await response.json()) as {
         data?: { events?: ActivityEvent[]; count?: number };
@@ -23,7 +23,7 @@ export default async function ActivityPage() {
   }
 
   if (!count) {
-    count = defaultActivityEventsCount;
+    count = 0;
   }
 
   return (

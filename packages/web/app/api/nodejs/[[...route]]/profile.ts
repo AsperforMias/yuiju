@@ -1,3 +1,4 @@
+// Review: profile 相关的设置都存在浏览器中（localStorage），不需要这个接口了。
 import { Hono } from "hono";
 
 export const profileRoute = new Hono();

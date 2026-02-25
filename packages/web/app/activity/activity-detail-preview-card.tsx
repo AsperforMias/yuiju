@@ -1,5 +1,5 @@
-import { Badge } from "@/lib/components/ui/badge";
-import { Card } from "@/lib/components/ui/card";
+import { Badge } from '@/lib/components/ui/badge';
+import { Card } from '@/lib/components/ui/card';
 
 const detailPreview = `{
   "behavior": "吃东西",
@@ -12,6 +12,7 @@ const detailPreview = `{
   ]
 }`;
 
+// Review: detailPreview 应该作为 ActivityDetailPreviewCard 组件的 props，不应该写死在这里
 export function ActivityDetailPreviewCard() {
   return (
     <Card>
@@ -28,8 +29,8 @@ export function ActivityDetailPreviewCard() {
         </div>
 
         <p className="m-0 text-[13px] text-[#6b7480] leading-[1.55]">
-          选中某条行为后，这里可以打开抽屉/弹窗展示字段：behavior / description / timestamp /
-          trigger / duration_minutes / parameters（JSON）。
+          选中某条行为后，这里可以打开抽屉/弹窗展示字段：behavior / description / timestamp / trigger / duration_minutes
+          / parameters（JSON）。
         </p>
 
         <pre className="m-3 p-3 rounded-xl border border-[rgba(217,230,245,0.85)] bg-[rgba(247,251,255,0.85)] overflow-auto text-[12px] text-[rgba(43,47,54,0.85)]">

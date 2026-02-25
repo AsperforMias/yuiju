@@ -3,7 +3,6 @@ import { connectDB } from "@yuiju/utils";
 import { Hono } from "hono";
 import { handle } from "hono/vercel";
 import { activityRoute } from "./activity";
-import { chatRoute } from "./chat";
 import { homeRoute } from "./home";
 import { profileRoute } from "./profile";
 import { stateRoute } from "./state";
@@ -75,7 +74,6 @@ app.use("/state", checkDatabaseConnection);
 
 app.route("/home", homeRoute);
 app.route("/activity", activityRoute);
-app.route("/chat", chatRoute);
 app.route("/profile", profileRoute);
 app.route("/state", stateRoute);
 

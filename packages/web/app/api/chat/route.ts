@@ -2,12 +2,7 @@ import "@yuiju/utils/env";
 
 import { deepseek } from "@ai-sdk/deepseek";
 import { getCharacterCardPrompt } from "@yuiju/source";
-import {
-  convertToModelMessages,
-  stepCountIs,
-  streamText,
-  type UIMessage,
-} from "ai";
+import { convertToModelMessages, stepCountIs, streamText, type UIMessage } from "ai";
 
 const DEFAULT_USER_NAME = "yixiaojiu";
 const MAX_HISTORY = 20;
@@ -15,12 +10,14 @@ const MAX_HISTORY = 20;
 const RATE_LIMIT_WINDOW = 60 * 1000; // 1分钟
 const RATE_LIMIT_MAX = 10; // 每分钟最多10次请求
 
+// Review: 后续功能。对ip进行限流，每个 IP 每天只可以访问 x 次
 const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
 
 type MessageMetadata = {
   createdAt?: number;
 };
 
+// Review：没必要封装，去掉
 const normalizeText = (value: unknown) => {
   if (typeof value !== "string") return "";
   return value.trim();

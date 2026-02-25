@@ -4,6 +4,7 @@
   "description": "",
   "private": true,
   "main": "prompt/index.ts",
+  "types": "prompt/index.ts",
   "scripts": {},
   "keywords": [],
   "author": "",

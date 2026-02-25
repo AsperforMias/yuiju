@@ -1,16 +1,15 @@
-"use client";
+'use client';
 
-import type { KeyboardEvent } from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useChat } from '@ai-sdk/react';
+import { DefaultChatTransport, isTextUIPart, type UIMessage } from 'ai';
+import { MessageSquare } from 'lucide-react';
+import type { KeyboardEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { useChat } from "@ai-sdk/react";
-import { DefaultChatTransport, isTextUIPart, type UIMessage } from "ai";
-import { MessageSquare } from "lucide-react";
-
-import { Badge } from "@/lib/components/ui/badge";
-import { Button } from "@/lib/components/ui/button";
-import { Textarea } from "@/lib/components/ui/textarea";
-import { cn } from "@/lib/utils";
+import { Badge } from '@/lib/components/ui/badge';
+import { Button } from '@/lib/components/ui/button';
+import { Textarea } from '@/lib/components/ui/textarea';
+import { cn } from '@/lib/utils';
 
 type HomePageHeaderProps = {
   summary?: string;
@@ -22,9 +21,9 @@ type MessageMetadata = {
 
 type HomeUIMessage = UIMessage<MessageMetadata>;
 
-const USER_NAME_KEY = "yuiju:user_name";
-const DEFAULT_USER_NAME = "yixiaojiu";
-const HISTORY_KEY_PREFIX = "yuiju:chat_history:";
+const USER_NAME_KEY = 'yuiju:user_name';
+const DEFAULT_USER_NAME = '翊小久';
+const HISTORY_KEY_PREFIX = 'yuiju:chat_history:';
 const HISTORY_LIMIT = 20;
 
 const getHistoryKey = (userName: string) => {
@@ -34,9 +33,9 @@ const getHistoryKey = (userName: string) => {
 
 const formatTime = (value: number | Date = new Date()) => {
   const date = value instanceof Date ? value : new Date(value);
-  return date.toLocaleTimeString("zh-CN", {
-    hour: "2-digit",
-    minute: "2-digit",
+  return date.toLocaleTimeString('zh-CN', {
+    hour: '2-digit',
+    minute: '2-digit',
   });
 };
 
@@ -46,25 +45,22 @@ const parseHistory = (raw: string | null): HomeUIMessage[] => {
     const parsed = JSON.parse(raw) as HomeUIMessage[];
     if (!Array.isArray(parsed)) return [];
     return parsed
-      .map((item) => {
-        if (!item || typeof item !== "object") return null;
-        if (typeof item.id !== "string") return null;
-        if (item.role !== "user" && item.role !== "assistant") return null;
+      .map(item => {
+        if (!item || typeof item !== 'object') return null;
+        if (typeof item.id !== 'string') return null;
+        if (item.role !== 'user' && item.role !== 'assistant') return null;
         if (!Array.isArray(item.parts)) return null;
 
         const parts = item.parts
-          .filter((part) => part && part.type === "text" && typeof part.text === "string")
-          .map((part) => ({ type: "text", text: part.text }));
+          .filter(part => part && part.type === 'text' && typeof part.text === 'string')
+          .map(part => ({ type: 'text', text: part.text }));
 
         if (parts.length === 0) return null;
 
         const metadata =
-          item.metadata && typeof item.metadata === "object" && "createdAt" in item.metadata
+          item.metadata && typeof item.metadata === 'object' && 'createdAt' in item.metadata
             ? {
-                createdAt:
-                  typeof item.metadata.createdAt === "number"
-                    ? item.metadata.createdAt
-                    : undefined,
+                createdAt: typeof item.metadata.createdAt === 'number' ? item.metadata.createdAt : undefined,
               }
             : undefined;
 
@@ -83,91 +79,66 @@ const parseHistory = (raw: string | null): HomeUIMessage[] => {
 
 const serializeMessages = (items: HomeUIMessage[]) => {
   return items
-    .filter((item) => item && (item.role === "user" || item.role === "assistant"))
-    .map((item) => ({
+    .filter(item => item && (item.role === 'user' || item.role === 'assistant'))
+    .map(item => ({
       id: item.id,
       role: item.role,
       metadata: item.metadata?.createdAt ? { createdAt: item.metadata.createdAt } : undefined,
-      parts: item.parts
-        .filter(isTextUIPart)
-        .map((part) => ({ type: "text", text: part.text })),
+      parts: item.parts.filter(isTextUIPart).map(part => ({ type: 'text', text: part.text })),
     }))
-    .filter((item) => item.parts.length > 0);
+    .filter(item => item.parts.length > 0);
 };
 
 export function HomePageHeader({ summary }: HomePageHeaderProps) {
-  const displaySummary = summary ?? "悠酱现在在【家】，正在【发呆】";
+  const displaySummary = summary ?? '悠酱现在在【家】，正在【发呆】';
   const [isChatOpen, setIsChatOpen] = useState(false);
-  const [inputValue, setInputValue] = useState("");
+  const [inputValue, setInputValue] = useState('');
   const [userName, setUserName] = useState(DEFAULT_USER_NAME);
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const lastErrorRef = useRef<string | null>(null);
 
-  const { messages, sendMessage, setMessages, status, error, clearError } =
-    useChat<HomeUIMessage>({
-      transport: new DefaultChatTransport({ api: "/api/chat" }),
-    });
+  const { messages, sendMessage, setMessages, status, error, clearError } = useChat<HomeUIMessage>({
+    transport: new DefaultChatTransport({ api: '/api/chat' }),
+  });
 
   const messageCount = messages.length;
-  const isSending = status === "submitted" || status === "streaming";
+  const isSending = status === 'submitted' || status === 'streaming';
 
-  useEffect(() => {
-    if (!isChatOpen) return;
-    const storedUserName = localStorage.getItem(USER_NAME_KEY);
-    const resolvedUserName = storedUserName?.trim() ? storedUserName.trim() : DEFAULT_USER_NAME;
-    setUserName(resolvedUserName);
-    setMessages(parseHistory(localStorage.getItem(getHistoryKey(resolvedUserName))));
-  }, [isChatOpen, setMessages]);
-
-  useEffect(() => {
-    if (!isChatOpen) return;
-    if (messageCount === 0) return;
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [isChatOpen, messageCount]);
-
-  useEffect(() => {
-    if (!isChatOpen) return;
-    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setIsChatOpen(false);
+  const persistMessages = useCallback(
+    (nextMessages: HomeUIMessage[]) => {
+      if (!Array.isArray(nextMessages)) {
+        console.error('Invalid messages format');
+        return { didTrim: false, next: [] as HomeUIMessage[] };
       }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isChatOpen]);
 
-  const persistMessages = useCallback((nextMessages: HomeUIMessage[]) => {
-    if (!Array.isArray(nextMessages)) {
-      console.error("Invalid messages format");
-      return { didTrim: false, next: [] as HomeUIMessage[] };
-    }
+      const serializedMessages = serializeMessages(nextMessages);
+      const limitedMessages = serializedMessages.slice(-HISTORY_LIMIT);
+      let finalMessages = limitedMessages;
+      let didTrim = nextMessages.length > limitedMessages.length;
 
-    const serializedMessages = serializeMessages(nextMessages);
-    const limitedMessages = serializedMessages.slice(-HISTORY_LIMIT);
-    let finalMessages = limitedMessages;
-    let didTrim = nextMessages.length > limitedMessages.length;
-
-    try {
-      const serialized = JSON.stringify(limitedMessages);
-      if (serialized.length > 5120) {
-        console.warn("Message data too large, truncating further");
-        finalMessages = limitedMessages.slice(-Math.floor(HISTORY_LIMIT / 2));
-        didTrim = true;
-      }
-      localStorage.setItem(getHistoryKey(userName), JSON.stringify(finalMessages));
-    } catch (error) {
-      console.error("Failed to persist messages:", error);
-      finalMessages = limitedMessages.slice(-3);
-      didTrim = true;
       try {
+        const serialized = JSON.stringify(limitedMessages);
+        if (serialized.length > 5120) {
+          console.warn('Message data too large, truncating further');
+          finalMessages = limitedMessages.slice(-Math.floor(HISTORY_LIMIT / 2));
+          didTrim = true;
+        }
         localStorage.setItem(getHistoryKey(userName), JSON.stringify(finalMessages));
-      } catch (e) {
-        console.error("Emergency persistence failed:", e);
+      } catch (error) {
+        console.error('Failed to persist messages:', error);
+        finalMessages = limitedMessages.slice(-3);
+        didTrim = true;
+        try {
+          localStorage.setItem(getHistoryKey(userName), JSON.stringify(finalMessages));
+        } catch (e) {
+          console.error('Emergency persistence failed:', e);
+        }
       }
-    }
 
-    return { didTrim, next: finalMessages };
-  }, [userName]);
+      return { didTrim, next: finalMessages };
+    },
+    [userName],
+  );
 
   useEffect(() => {
     if (!isChatOpen) return;
@@ -181,13 +152,13 @@ export function HomePageHeader({ summary }: HomePageHeaderProps) {
     if (!error) return;
     if (lastErrorRef.current === error.message) return;
     lastErrorRef.current = error.message;
-    setMessages((prev) => [
+    setMessages(prev => [
       ...prev,
       {
         id: `error-${Date.now()}`,
-        role: "assistant",
+        role: 'assistant',
         metadata: { createdAt: Date.now() },
-        parts: [{ type: "text", text: `出错了：${error.message}` }],
+        parts: [{ type: 'text', text: `出错了：${error.message}` }],
       },
     ]);
   }, [error, setMessages]);
@@ -197,7 +168,7 @@ export function HomePageHeader({ summary }: HomePageHeaderProps) {
     const trimmed = inputValue.trim();
     if (!trimmed) return;
 
-    setInputValue("");
+    setInputValue('');
     if (error) {
       clearError();
     }
@@ -213,9 +184,9 @@ export function HomePageHeader({ summary }: HomePageHeaderProps) {
   };
 
   const handleInputKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (event.key === "Enter" && !event.shiftKey) {
+    if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault();
-      void handleSend();
+      handleSend();
     }
   };
 
@@ -224,12 +195,38 @@ export function HomePageHeader({ summary }: HomePageHeaderProps) {
     setMessages([]);
   };
 
+  // Review: react 在组件中的顺序。从上到下一般是 useState、useRef、useMemo、useCallback、useEffect
   const emptyHint = useMemo(() => {
     if (isSending) {
-      return "悠酱思考中…";
+      return '悠酱思考中…';
     }
-    return "现在可以开始聊天啦";
+    return '现在可以开始聊天啦';
   }, [isSending]);
+
+  useEffect(() => {
+    if (!isChatOpen) return;
+    const storedUserName = localStorage.getItem(USER_NAME_KEY);
+    const resolvedUserName = storedUserName?.trim() ? storedUserName.trim() : DEFAULT_USER_NAME;
+    setUserName(resolvedUserName);
+    setMessages(parseHistory(localStorage.getItem(getHistoryKey(resolvedUserName))));
+  }, [isChatOpen, setMessages]);
+
+  useEffect(() => {
+    if (!isChatOpen) return;
+    if (messageCount === 0) return;
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [isChatOpen, messageCount]);
+
+  useEffect(() => {
+    if (!isChatOpen) return;
+    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsChatOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isChatOpen]);
 
   return (
     <>
@@ -274,12 +271,7 @@ export function HomePageHeader({ summary }: HomePageHeaderProps) {
                 <Badge variant="soft" size="sm">
                   {messageCount} 条
                 </Badge>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  type="button"
-                  onClick={() => setIsChatOpen(false)}
-                >
+                <Button variant="outline" size="sm" type="button" onClick={() => setIsChatOpen(false)}>
                   关闭
                 </Button>
               </div>
@@ -290,31 +282,25 @@ export function HomePageHeader({ summary }: HomePageHeaderProps) {
                 {messages.length === 0 ? (
                   <div className="m-auto text-[#6b7480] text-[13px] text-center">{emptyHint}</div>
                 ) : (
-                  messages.map((item) => {
+                  messages.map(item => {
                     const text = item.parts
                       .filter(isTextUIPart)
-                      .map((part) => part.text)
-                      .join("");
-                    const time = item.metadata?.createdAt
-                      ? formatTime(item.metadata.createdAt)
-                      : undefined;
+                      .map(part => part.text)
+                      .join('');
+                    const time = item.metadata?.createdAt ? formatTime(item.metadata.createdAt) : undefined;
 
                     return (
                       <div
                         key={item.id}
                         className={cn(
-                          "max-w-[82%] px-3 py-2.5 rounded-[14px] text-[13px] leading-[1.55] whitespace-pre-wrap break-words",
-                          item.role === "user"
-                            ? "justify-self-end bg-[rgba(145,196,238,0.22)] border border-[rgba(145,196,238,0.4)] text-[#2b2f36]"
-                            : "justify-self-start bg-[rgba(247,251,255,0.94)] border border-[rgba(217,230,245,0.9)] text-[#2b2f36]",
+                          'max-w-[82%] px-3 py-2.5 rounded-[14px] text-[13px] leading-[1.55] whitespace-pre-wrap break-words',
+                          item.role === 'user'
+                            ? 'justify-self-end bg-[rgba(145,196,238,0.22)] border border-[rgba(145,196,238,0.4)] text-[#2b2f36]'
+                            : 'justify-self-start bg-[rgba(247,251,255,0.94)] border border-[rgba(217,230,245,0.9)] text-[#2b2f36]',
                         )}
                       >
                         <div className="whitespace-pre-wrap">{text}</div>
-                        {time ? (
-                          <div className="mt-1.5 text-[11px] text-[#6b7480] text-right">
-                            {time}
-                          </div>
-                        ) : null}
+                        {time ? <div className="mt-1.5 text-[11px] text-[#6b7480] text-right">{time}</div> : null}
                       </div>
                     );
                   })
@@ -328,7 +314,7 @@ export function HomePageHeader({ summary }: HomePageHeaderProps) {
                 className="min-h-[80px] max-h-[160px] resize-y"
                 placeholder="输入内容，Enter 发送，Shift+Enter 换行"
                 value={inputValue}
-                onChange={(event) => setInputValue(event.target.value)}
+                onChange={event => setInputValue(event.target.value)}
                 onKeyDown={handleInputKeyDown}
                 rows={3}
               />
@@ -349,7 +335,7 @@ export function HomePageHeader({ summary }: HomePageHeaderProps) {
                   onClick={() => void handleSend()}
                   disabled={isSending || !inputValue.trim()}
                 >
-                  {isSending ? "发送中..." : "发送"}
+                  {isSending ? '发送中...' : '发送'}
                 </Button>
               </div>
             </footer>

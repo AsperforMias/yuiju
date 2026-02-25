@@ -1,4 +1,3 @@
-import { setTimeout } from "node:timers/promises";
 import {
   getRedis,
   initCharacterStateData,
@@ -153,18 +152,6 @@ stateRoute.post("/allowance", async (context) => {
       currentMoney,
       delta,
       mode,
-    },
-    message: "ok",
-  });
-});
-
-stateRoute.post("/xxx", async (context) => {
-  await setTimeout(3000, "result");
-
-  return context.json({
-    code: 0,
-    data: {
-      bar: 1,
     },
     message: "ok",
   });

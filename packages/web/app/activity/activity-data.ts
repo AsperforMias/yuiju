@@ -6,6 +6,7 @@ export type ActivityEvent = {
   duration: number;
 };
 
+// Review: 去掉默认值
 export const defaultActivityEvents: ActivityEvent[] = [
   {
     time: "09:12",

@@ -1,13 +1,13 @@
-import { Badge } from "@/lib/components/ui/badge";
+import { Badge } from '@/lib/components/ui/badge';
 
-type ActivityPageHeaderProps = {
+interface ActivityPageHeaderProps {
   count?: number;
-};
+}
 
 export function ActivityPageHeader({ count }: ActivityPageHeaderProps) {
   const displayCount = count ?? 0;
   return (
-    <div className="flex items-end justify-between gap-4 mt-[18px] mb-[14px] max-[1020px]:flex-col max-[1020px]:items-start">
+    <div className="flex items-end justify-between gap-4 mt-4.5 mb-3.5 max-[1020px]:flex-col max-[1020px]:items-start">
       <div>
         <h1 className="m-0 text-[18px] font-extrabold">动态</h1>
         <p className="mt-1.5 text-[13px] text-[#6b7480]">行为时间线 + 轻管理（零花钱）</p>

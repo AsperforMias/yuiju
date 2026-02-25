@@ -1,4 +1,4 @@
-import { getRecentBehaviorRecords } from "@yuiju/utils";
+import { getRecentBehaviorRecords, type IBehaviorRecord } from "@yuiju/utils";
 import dayjs from "dayjs";
 import { Hono } from "hono";
 
@@ -18,7 +18,7 @@ const parseLimit = (value: string | undefined) => {
 
 activityRoute.get("/index", async (context) => {
   const limit = parseLimit(context.req.query("limit"));
-  let docs = [];
+  let docs: IBehaviorRecord[] = [];
   try {
     docs = await getRecentBehaviorRecords(limit);
   } catch (error) {

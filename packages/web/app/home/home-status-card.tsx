@@ -1,6 +1,6 @@
-import { Badge } from "@/lib/components/ui/badge";
-import { Button } from "@/lib/components/ui/button";
-import { Card } from "@/lib/components/ui/card";
+import { Badge } from '@/lib/components/ui/badge';
+import { Button } from '@/lib/components/ui/button';
+import { Card } from '@/lib/components/ui/card';
 
 type HomeStatus = {
   behavior: string;
@@ -29,23 +29,24 @@ type HomeStatusCardProps = {
 const formatItem = (item: InventoryItem) => `${item.name} ×${item.count}`;
 
 export function HomeStatusCard({ status, todayActions, inventory, plans }: HomeStatusCardProps) {
+  // Review: 放到 useMemo
   const displayStatus: HomeStatus = status ?? {
-    behavior: "发呆",
-    location: "家",
+    behavior: '发呆',
+    location: '家',
     stamina: { current: 68, max: 100 },
     money: 128,
   };
-  const displayActions = todayActions ?? ["起床", "上学", "吃饭", "发呆"];
+  const displayActions = todayActions ?? ['起床', '上学', '吃饭', '发呆'];
   const displayInventory = inventory ?? [
-    { name: "苹果", count: 2 },
-    { name: "面包", count: 1 },
-    { name: "水", count: 1 },
+    { name: '苹果', count: 2 },
+    { name: '面包', count: 1 },
+    { name: '水', count: 1 },
   ];
   const displayPlans: HomePlans = plans ?? {
-    longTerm: "认真上学，变得更厉害",
-    shortTerm: ["复习", "逛商店", "做饭"],
+    longTerm: '认真上学，变得更厉害',
+    shortTerm: ['复习', '逛商店', '做饭'],
   };
-  const inventorySummary = displayInventory.map(formatItem).join(" · ");
+  const inventorySummary = displayInventory.map(formatItem).join(' · ');
 
   return (
     <Card>
@@ -79,12 +80,10 @@ export function HomeStatusCard({ status, todayActions, inventory, plans }: HomeS
 
         <div className="mt-[10px] p-3 rounded-2xl border border-[rgba(217,230,245,0.85)] bg-[rgba(247,251,255,0.85)] grid gap-2.5">
           <div className="flex items-center justify-between gap-[10px]">
-            <div className="text-xs font-black tracking-[0.2px] text-[#6b7480]">
-              今日已执行的行为
-            </div>
+            <div className="text-xs font-black tracking-[0.2px] text-[#6b7480]">今日已执行的行为</div>
           </div>
           <div className="flex flex-wrap gap-2">
-            {displayActions.map((item) => (
+            {displayActions.map(item => (
               <Badge key={item} variant="chip" size="sm">
                 {item}
               </Badge>
@@ -102,7 +101,7 @@ export function HomeStatusCard({ status, todayActions, inventory, plans }: HomeS
               展开全部
             </summary>
             <div className="flex flex-wrap gap-2 mt-[10px]">
-              {displayInventory.map((item) => (
+              {displayInventory.map(item => (
                 <Badge key={item.name} variant="chip" size="sm">
                   {formatItem(item)}
                 </Badge>
@@ -119,7 +118,7 @@ export function HomeStatusCard({ status, todayActions, inventory, plans }: HomeS
           <div className="grid gap-2 rounded-xl bg-[rgba(247,251,255,0.8)] border border-[rgba(217,230,245,0.8)] p-[10px]">
             <div className="text-xs text-[#6b7480]">短期计划</div>
             <ul className="m-0 pl-[18px] text-[#6b7480] text-[13px] leading-[1.6]">
-              {displayPlans.shortTerm.map((item) => (
+              {displayPlans.shortTerm.map(item => (
                 <li key={item}>{item}</li>
               ))}
             </ul>

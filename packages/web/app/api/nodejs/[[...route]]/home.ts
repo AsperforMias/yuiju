@@ -5,6 +5,25 @@ export const homeRoute = new Hono();
 
 const STAMINA_MAX = 100;
 
+// Review: 命名改一下，语义化一些
+export interface IHomeResponse {
+  code: number;
+  message: string;
+  data: {
+    status?: {
+      behavior?: string;
+      location?: string;
+      stamina?: { current?: number; max?: number };
+      money?: number;
+    };
+    todayActions?: string[];
+    inventory?: { name: string; count: number }[];
+    plans?: { longTerm?: string; shortTerm?: string[] };
+    world?: { time?: string };
+  };
+}
+
+// Review: 接口路径别叫 `index`，没有这么命名的，命名要语义化。
 homeRoute.get("/index", async (context) => {
   const [state, world] = await Promise.all([initCharacterStateData(), initWorldStateData()]);
 
