@@ -1,3 +1,7 @@
+'use client';
+
+import { useMemo } from 'react';
+
 import { Badge } from '@/lib/components/ui/badge';
 import { Button } from '@/lib/components/ui/button';
 import { Card } from '@/lib/components/ui/card';
@@ -29,24 +33,44 @@ type HomeStatusCardProps = {
 const formatItem = (item: InventoryItem) => `${item.name} ×${item.count}`;
 
 export function HomeStatusCard({ status, todayActions, inventory, plans }: HomeStatusCardProps) {
-  // Review: 放到 useMemo
-  const displayStatus: HomeStatus = status ?? {
-    behavior: '发呆',
-    location: '家',
-    stamina: { current: 68, max: 100 },
-    money: 128,
-  };
-  const displayActions = todayActions ?? ['起床', '上学', '吃饭', '发呆'];
-  const displayInventory = inventory ?? [
-    { name: '苹果', count: 2 },
-    { name: '面包', count: 1 },
-    { name: '水', count: 1 },
-  ];
-  const displayPlans: HomePlans = plans ?? {
-    longTerm: '认真上学，变得更厉害',
-    shortTerm: ['复习', '逛商店', '做饭'],
-  };
-  const inventorySummary = displayInventory.map(formatItem).join(' · ');
+  // 统一在 useMemo 中处理默认值，避免每次渲染创建新对象
+  const displayStatus = useMemo<HomeStatus>(() => {
+    return (
+      status ?? {
+        behavior: '发呆',
+        location: '家',
+        stamina: { current: 68, max: 100 },
+        money: 128,
+      }
+    );
+  }, [status]);
+
+  const displayActions = useMemo(() => {
+    return todayActions ?? ['起床', '上学', '吃饭', '发呆'];
+  }, [todayActions]);
+
+  const displayInventory = useMemo(() => {
+    return (
+      inventory ?? [
+        { name: '苹果', count: 2 },
+        { name: '面包', count: 1 },
+        { name: '水', count: 1 },
+      ]
+    );
+  }, [inventory]);
+
+  const displayPlans = useMemo<HomePlans>(() => {
+    return (
+      plans ?? {
+        longTerm: '认真上学，变得更厉害',
+        shortTerm: ['复习', '逛商店', '做饭'],
+      }
+    );
+  }, [plans]);
+
+  const inventorySummary = useMemo(() => {
+    return displayInventory.map(formatItem).join(' · ');
+  }, [displayInventory]);
 
   return (
     <Card>

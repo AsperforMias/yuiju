@@ -104,6 +104,14 @@ export function HomePageHeader({ summary }: HomePageHeaderProps) {
   const messageCount = messages.length;
   const isSending = status === 'submitted' || status === 'streaming';
 
+  // Review: react 在组件中的顺序。从上到下一般是 useState、useRef、useMemo、useCallback、useEffect
+  const emptyHint = useMemo(() => {
+    if (isSending) {
+      return '悠酱思考中…';
+    }
+    return '现在可以开始聊天啦';
+  }, [isSending]);
+
   const persistMessages = useCallback(
     (nextMessages: HomeUIMessage[]) => {
       if (!Array.isArray(nextMessages)) {
@@ -194,14 +202,6 @@ export function HomePageHeader({ summary }: HomePageHeaderProps) {
     localStorage.removeItem(getHistoryKey(userName));
     setMessages([]);
   };
-
-  // Review: react 在组件中的顺序。从上到下一般是 useState、useRef、useMemo、useCallback、useEffect
-  const emptyHint = useMemo(() => {
-    if (isSending) {
-      return '悠酱思考中…';
-    }
-    return '现在可以开始聊天啦';
-  }, [isSending]);
 
   useEffect(() => {
     if (!isChatOpen) return;
