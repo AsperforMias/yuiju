@@ -1,5 +1,5 @@
-import { Badge } from "@/lib/components/ui/badge";
-import { Card } from "@/lib/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
 
 type HomeWorldCardProps = {
   time?: string;

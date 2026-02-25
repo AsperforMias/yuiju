@@ -1,10 +1,10 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Badge } from '@/lib/components/ui/badge';
-import { Card } from '@/lib/components/ui/card';
-import { Input } from '@/lib/components/ui/input';
-import { Select } from '@/lib/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Select } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import type { ActivityEvent } from './activity-data';
 

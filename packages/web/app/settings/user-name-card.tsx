@@ -2,10 +2,10 @@
 
 import { useEffect, useMemo, useState } from 'react';
 
-import { Badge } from '@/lib/components/ui/badge';
-import { Button } from '@/lib/components/ui/button';
-import { Card } from '@/lib/components/ui/card';
-import { Input } from '@/lib/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 
 const STORAGE_KEY = 'yuiju:user_name';
 const DEFAULT_USER_NAME = '翊小久';

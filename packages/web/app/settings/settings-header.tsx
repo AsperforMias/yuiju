@@ -1,4 +1,4 @@
-import { Badge } from "@/lib/components/ui/badge";
+import { Badge } from "@/components/ui/badge";
 
 export function SettingsHeader() {
   return (
