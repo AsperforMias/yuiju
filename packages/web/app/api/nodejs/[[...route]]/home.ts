@@ -24,7 +24,7 @@ export interface IHomeResponse {
 }
 
 // Review: 接口路径别叫 `index`，没有这么命名的，命名要语义化。
-homeRoute.get("/index", async (context) => {
+homeRoute.get("/summary", async (context) => {
   const [state, world] = await Promise.all([initCharacterStateData(), initWorldStateData()]);
 
   const inventory =
