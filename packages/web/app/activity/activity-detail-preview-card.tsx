@@ -1,19 +1,12 @@
 import { Badge } from '@/lib/components/ui/badge';
 import { Card } from '@/lib/components/ui/card';
 
-const detailPreview = `{
-  "behavior": "吃东西",
-  "description": "吃了一个苹果，恢复体力",
-  "timestamp": "2026-02-07T11:12:00.000Z",
-  "trigger": "agent",
-  "duration_minutes": 12,
-  "parameters": [
-    { "value": "苹果", "quantity": 1, "reason": "补充体力", "extra": { "stamina": 15 } }
-  ]
-}`;
+type ActivityDetailPreviewCardProps = {
+  detailPreview: string;
+};
 
-// Review: detailPreview 应该作为 ActivityDetailPreviewCard 组件的 props，不应该写死在这里
-export function ActivityDetailPreviewCard() {
+// 详情预览以 props 传入，便于接入真实数据
+export function ActivityDetailPreviewCard({ detailPreview }: ActivityDetailPreviewCardProps) {
   return (
     <Card>
       <div className="p-[14px] grid gap-3">

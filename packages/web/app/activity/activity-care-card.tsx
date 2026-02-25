@@ -35,64 +35,35 @@ export function ActivityCareCard() {
   const canAdd = amountValue !== null && amountValue > 0 && !isSubmitting;
   const canSet = amountValue !== null && amountValue >= 0 && !isSubmitting;
 
-  // Review: 不需要重试逻辑，去掉 controller 与 timeout
-  const submitWithRetry = async (mode: 'add' | 'set', retryCount = 0): Promise<void> => {
-    const MAX_RETRIES = 3;
-    const TIMEOUT_MS = 10000;
-    let controller: AbortController | null = null;
-    let timeoutId: NodeJS.Timeout | null = null;
-
-    try {
-      controller = new AbortController();
-      timeoutId = setTimeout(() => controller?.abort(), TIMEOUT_MS);
-
-      const response = await fetch('/api/nodejs/state/allowance', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          amount: amountValue,
-          reason: reason.trim(),
-          mode,
-        }),
-        signal: controller.signal,
-      });
-
-      const payload = (await response.json()) as IallowanceResponse;
-
-      if (!response.ok || payload.code !== 0) {
-        // Review: 组件库提供的 toast 发一条 error 信息 https://ui.shadcn.com/docs/components/radix/sonner
-        throw new Error(payload.message || `HTTP ${response.status}`);
-      }
-
-      const currentMoney = payload.data?.currentMoney ?? 0;
-      const delta = payload.data?.delta ?? 0;
-      const summary = mode === 'add' ? `已发放 +${delta}，当前 ${currentMoney}` : `已设置为 ${currentMoney}`;
-
-      setStatus({ tone: 'success', message: summary });
-    } catch (error) {
-      if (error instanceof Error) {
-        if (error.name === 'AbortError') {
-          throw new Error('请求超时，请检查网络连接');
-        }
-        throw error;
-      }
-
-      // 网络错误重试逻辑
-      if (retryCount < MAX_RETRIES) {
-        await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
-        return submitWithRetry(mode, retryCount + 1);
-      }
-
-      throw new Error('网络错误，请稍后重试');
-    } finally {
-      // 确保资源清理
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
-      if (controller) {
-        controller.abort();
-      }
+  // 单次提交请求，失败时抛错由上层统一处理
+  const submitOnce = async (mode: 'add' | 'set'): Promise<void> => {
+    const amount = amountValue;
+    if (amount === null) {
+      throw new Error('请输入整数金额');
     }
+
+    const response = await fetch('/api/nodejs/state/allowance', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        amount,
+        reason: reason.trim(),
+        mode,
+      }),
+    });
+
+    const payload = (await response.json()) as IallowanceResponse;
+
+    if (!response.ok || payload.code !== 0) {
+      // Review: 组件库提供的 toast 发一条 error 信息 https://ui.shadcn.com/docs/components/radix/sonner
+      throw new Error(payload.message || `HTTP ${response.status}`);
+    }
+
+    const currentMoney = payload.data?.currentMoney ?? 0;
+    const delta = payload.data?.delta ?? 0;
+    const summary = mode === 'add' ? `已发放 +${delta}，当前 ${currentMoney}` : `已设置为 ${currentMoney}`;
+
+    setStatus({ tone: 'success', message: summary });
   };
 
   const submit = async (mode: 'add' | 'set') => {
@@ -114,7 +85,7 @@ export function ActivityCareCard() {
     setStatus({ tone: 'loading', message: '提交中...' });
 
     try {
-      await submitWithRetry(mode);
+      await submitOnce(mode);
     } catch (error) {
       const message = error instanceof Error ? error.message : '请求失败';
       setStatus({ tone: 'error', message });

@@ -4,6 +4,18 @@ import { ActivityDetailPreviewCard } from './activity-detail-preview-card';
 import { ActivityPageHeader } from './activity-page-header';
 import { ActivityTimelineCard } from './activity-timeline-card';
 
+// Mock 详情预览数据，后续由真实数据替换
+const mockDetailPreview = `{
+  "behavior": "吃东西",
+  "description": "吃了一个苹果，恢复体力",
+  "timestamp": "2026-02-07T11:12:00.000Z",
+  "trigger": "agent",
+  "duration_minutes": 12,
+  "parameters": [
+    { "value": "苹果", "quantity": 1, "reason": "补充体力", "extra": { "stamina": 15 } }
+  ]
+}`;
+
 export default async function ActivityPage() {
   let events: ActivityEvent[] | undefined;
   let count: number | undefined;
@@ -34,7 +46,7 @@ export default async function ActivityPage() {
         <ActivityTimelineCard events={events} />
         <div className="grid gap-[14px]">
           <ActivityCareCard />
-          <ActivityDetailPreviewCard />
+          <ActivityDetailPreviewCard detailPreview={mockDetailPreview} />
         </div>
       </div>
     </main>
