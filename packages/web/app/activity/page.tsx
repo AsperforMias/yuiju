@@ -22,10 +22,6 @@ export default async function ActivityPage() {
     count = undefined;
   }
 
-  if (!count) {
-    count = 0;
-  }
-
   return (
     <main className="max-w-[1200px] mx-auto px-[18px] pt-[18px] pb-[36px]">
       <ActivityPageHeader count={count} />

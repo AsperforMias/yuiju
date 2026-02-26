@@ -16,7 +16,7 @@ const parseLimit = (value: string | undefined) => {
   return parsed;
 };
 
-activityRoute.get("/index", async (context) => {
+activityRoute.get("/activity", async (context) => {
   const limit = parseLimit(context.req.query("limit"));
   let docs: IBehaviorRecord[] = [];
   try {
