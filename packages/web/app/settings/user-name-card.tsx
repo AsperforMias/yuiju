@@ -8,7 +8,7 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 
 const STORAGE_KEY = 'yuiju:user_name';
-const DEFAULT_USER_NAME = '';
+const DEFAULT_USER_NAME = '渺小久';
 
 export function UserNameCard() {
   const [userName, setUserName] = useState(DEFAULT_USER_NAME);
@@ -28,6 +28,7 @@ export function UserNameCard() {
     return userName !== storedUserName;
   }, [storedUserName, userName]);
 
+  // 核心逻辑：空字符串表示恢复默认值，否则写入本地存储。
   const handleSave = () => {
     const nextValue = userName.trim();
     if (nextValue) {

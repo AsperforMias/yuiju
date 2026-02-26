@@ -22,10 +22,11 @@ type MessageMetadata = {
 type HomeUIMessage = UIMessage<MessageMetadata>;
 
 const USER_NAME_KEY = "yuiju:user_name";
-const DEFAULT_USER_NAME = "";
+const DEFAULT_USER_NAME = "渺小久";
 const HISTORY_KEY_PREFIX = "yuiju:chat_history:";
 const HISTORY_LIMIT = 20;
 
+// 关键函数：生成聊天历史的 localStorage key，空值会回退到默认名。
 const getHistoryKey = (userName: string) => {
   const normalized = userName.trim() || DEFAULT_USER_NAME;
   return `${HISTORY_KEY_PREFIX}${normalized}`;
@@ -39,6 +40,7 @@ const formatTime = (value: number | Date = new Date()) => {
   });
 };
 
+// 核心逻辑：解析本地缓存消息，仅保留安全的文本结构。
 const parseHistory = (raw: string | null): HomeUIMessage[] => {
   if (!raw) return [];
   try {
@@ -113,6 +115,7 @@ export function HomePageHeader({ summary }: HomePageHeaderProps) {
     return "现在可以开始聊天啦";
   }, [isSending]);
 
+  // 复杂边界：序列化体积过大或写入失败时，自动降级截断。
   const persistMessages = useCallback(
     (nextMessages: HomeUIMessage[]) => {
       if (!Array.isArray(nextMessages)) {
@@ -207,8 +210,22 @@ export function HomePageHeader({ summary }: HomePageHeaderProps) {
     if (!isChatOpen) return;
     const storedUserName = localStorage.getItem(USER_NAME_KEY);
     const resolvedUserName = storedUserName?.trim() ? storedUserName.trim() : DEFAULT_USER_NAME;
+    const nextHistoryKey = getHistoryKey(resolvedUserName);
+    let historyRaw = localStorage.getItem(nextHistoryKey);
+
+    // 兼容旧默认值为空时的历史记录 key。
+    if (!storedUserName?.trim()) {
+      const legacyKey = `${HISTORY_KEY_PREFIX}`;
+      const legacyRaw = localStorage.getItem(legacyKey);
+      if (!historyRaw && legacyRaw) {
+        historyRaw = legacyRaw;
+        localStorage.setItem(nextHistoryKey, legacyRaw);
+        localStorage.removeItem(legacyKey);
+      }
+    }
+
     setUserName(resolvedUserName);
-    setMessages(parseHistory(localStorage.getItem(getHistoryKey(resolvedUserName))));
+    setMessages(parseHistory(historyRaw));
   }, [isChatOpen, setMessages]);
 
   useEffect(() => {
