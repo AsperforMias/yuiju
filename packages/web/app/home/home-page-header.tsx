@@ -2,6 +2,7 @@
 
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, isTextUIPart, type UIMessage } from "ai";
+import dayjs from "dayjs";
 import { MessageSquare } from "lucide-react";
 import type { KeyboardEvent } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -33,11 +34,7 @@ const getHistoryKey = (userName: string) => {
 };
 
 const formatTime = (value: number | Date = new Date()) => {
-  const date = value instanceof Date ? value : new Date(value);
-  return date.toLocaleTimeString("zh-CN", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return dayjs(value).format("HH:mm");
 };
 
 // 核心逻辑：解析本地缓存消息，仅保留安全的文本结构。

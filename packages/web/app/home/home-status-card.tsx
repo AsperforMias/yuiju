@@ -1,10 +1,8 @@
-'use client';
+"use client";
 
-import { useMemo } from 'react';
-
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 
 type HomeStatus = {
   behavior?: string;
@@ -30,18 +28,16 @@ type HomeStatusCardProps = {
   plans?: HomePlans;
 };
 
+// 关键函数：格式化背包条目，保证文案一致。
 const formatItem = (item: InventoryItem) => `${item.name} ×${item.count}`;
 
 export function HomeStatusCard({ status, todayActions, inventory, plans }: HomeStatusCardProps) {
-  // 统一在 useMemo 中处理空态，避免每次渲染创建新对象
-  const displayStatus = useMemo(() => status, [status]);
-  const displayActions = useMemo(() => todayActions ?? [], [todayActions]);
-  const displayInventory = useMemo(() => inventory ?? [], [inventory]);
-  const displayPlans = useMemo(() => plans, [plans]);
-
-  const inventorySummary = useMemo(() => {
-    return displayInventory.length > 0 ? displayInventory.map(formatItem).join(' · ') : '暂无';
-  }, [displayInventory]);
+  const displayStatus = status;
+  const displayActions = todayActions ?? [];
+  const displayInventory = inventory ?? [];
+  const displayPlans = plans;
+  const inventorySummary =
+    displayInventory.length > 0 ? displayInventory.map(formatItem).join(" · ") : "暂无";
 
   return (
     <Card>
@@ -54,32 +50,34 @@ export function HomeStatusCard({ status, todayActions, inventory, plans }: HomeS
         <div className="grid grid-cols-2 gap-[10px] mt-[10px] max-[520px]:grid-cols-1">
           <div className="rounded-xl bg-[rgba(247,251,255,0.8)] border border-[rgba(217,230,245,0.8)] p-[10px]">
             <div className="text-xs text-[#6b7480]">当前行为</div>
-            <div className="mt-1.5 text-sm font-extrabold">{displayStatus?.behavior ?? '—'}</div>
+            <div className="mt-1.5 text-sm font-extrabold">{displayStatus?.behavior ?? "—"}</div>
           </div>
           <div className="rounded-xl bg-[rgba(247,251,255,0.8)] border border-[rgba(217,230,245,0.8)] p-[10px]">
             <div className="text-xs text-[#6b7480]">当前位置</div>
-            <div className="mt-1.5 text-sm font-extrabold">{displayStatus?.location ?? '—'}</div>
+            <div className="mt-1.5 text-sm font-extrabold">{displayStatus?.location ?? "—"}</div>
           </div>
           <div className="rounded-xl bg-[rgba(247,251,255,0.8)] border border-[rgba(217,230,245,0.8)] p-[10px]">
             <div className="text-xs text-[#6b7480]">体力</div>
             <div className="mt-1.5 text-sm font-extrabold">
-              {displayStatus?.stamina?.current ?? '—'}
-              <span className="text-[#6b7480]"> / {displayStatus?.stamina?.max ?? '—'}</span>
+              {displayStatus?.stamina?.current ?? "—"}
+              <span className="text-[#6b7480]"> / {displayStatus?.stamina?.max ?? "—"}</span>
             </div>
           </div>
           <div className="rounded-xl bg-[rgba(247,251,255,0.8)] border border-[rgba(217,230,245,0.8)] p-[10px]">
             <div className="text-xs text-[#6b7480]">金钱</div>
-            <div className="mt-1.5 text-sm font-extrabold">¥ {displayStatus?.money ?? '—'}</div>
+            <div className="mt-1.5 text-sm font-extrabold">¥ {displayStatus?.money ?? "—"}</div>
           </div>
         </div>
 
         <div className="mt-[10px] p-3 rounded-2xl border border-[rgba(217,230,245,0.85)] bg-[rgba(247,251,255,0.85)] grid gap-2.5">
           <div className="flex items-center justify-between gap-[10px]">
-            <div className="text-xs font-black tracking-[0.2px] text-[#6b7480]">今日已执行的行为</div>
+            <div className="text-xs font-black tracking-[0.2px] text-[#6b7480]">
+              今日已执行的行为
+            </div>
           </div>
           <div className="flex flex-wrap gap-2">
             {displayActions.length > 0 ? (
-              displayActions.map(item => (
+              displayActions.map((item) => (
                 <Badge key={item} variant="chip" size="sm">
                   {item}
                 </Badge>
@@ -101,7 +99,7 @@ export function HomeStatusCard({ status, todayActions, inventory, plans }: HomeS
             </summary>
             <div className="flex flex-wrap gap-2 mt-[10px]">
               {displayInventory.length > 0 ? (
-                displayInventory.map(item => (
+                displayInventory.map((item) => (
                   <Badge key={item.name} variant="chip" size="sm">
                     {formatItem(item)}
                   </Badge>
@@ -117,14 +115,14 @@ export function HomeStatusCard({ status, todayActions, inventory, plans }: HomeS
           <div className="grid gap-2 rounded-xl bg-[rgba(247,251,255,0.8)] border border-[rgba(217,230,245,0.8)] p-[10px]">
             <div className="text-xs text-[#6b7480]">长期计划</div>
             <p className="m-0 text-[#6b7480] text-[13px] leading-[1.55]">
-              {displayPlans?.longTerm ?? '—'}
+              {displayPlans?.longTerm ?? "—"}
             </p>
           </div>
           <div className="grid gap-2 rounded-xl bg-[rgba(247,251,255,0.8)] border border-[rgba(217,230,245,0.8)] p-[10px]">
             <div className="text-xs text-[#6b7480]">短期计划</div>
             {displayPlans?.shortTerm && displayPlans.shortTerm.length > 0 ? (
               <ul className="m-0 pl-[18px] text-[#6b7480] text-[13px] leading-[1.6]">
-                {displayPlans.shortTerm.map(item => (
+                {displayPlans.shortTerm.map((item) => (
                   <li key={item}>{item}</li>
                 ))}
               </ul>
