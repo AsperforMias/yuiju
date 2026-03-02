@@ -6,6 +6,7 @@ import {
   saveBehaviorRecord,
 } from "@yuiju/utils";
 import { Hono } from "hono";
+import { rejectPublicRequest } from "./public-guard";
 
 const parseAmount = (value: unknown): number | null => {
   if (typeof value !== "number") return null;
@@ -17,6 +18,11 @@ const parseAmount = (value: unknown): number | null => {
 export const stateRoute = new Hono();
 
 stateRoute.post("/allowance", async (context) => {
+  const blocked = rejectPublicRequest(context);
+  if (blocked) {
+    return blocked;
+  }
+
   let body: unknown;
   try {
     body = await context.req.json();

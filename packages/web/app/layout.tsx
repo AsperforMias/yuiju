@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Navbar } from "@/lib/components/navbar";
 import { Toaster } from "@/components/ui/sonner";
+import { isPublicDeployment } from "@/lib/public-deployment";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -24,10 +25,13 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // 核心逻辑：对外展示环境隐藏「动态」入口。
+  const showActivity = !isPublicDeployment();
+
   return (
     <html lang="zh-CN">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        <Navbar />
+        <Navbar showActivity={showActivity} />
         <div>{children}</div>
         <Toaster />
       </body>

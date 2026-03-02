@@ -1,3 +1,6 @@
+import { notFound } from 'next/navigation';
+import { isPublicDeployment } from '@/lib/public-deployment';
+
 import { ActivityCareCard } from './activity-care-card';
 import type { ActivityEvent } from './activity-data';
 import { ActivityDetailPreviewCard } from './activity-detail-preview-card';
@@ -5,6 +8,11 @@ import { ActivityPageHeader } from './activity-page-header';
 import { ActivityTimelineCard } from './activity-timeline-card';
 
 export default async function ActivityPage() {
+  // 核心逻辑：对外展示版本隐藏动态页。
+  if (isPublicDeployment()) {
+    notFound();
+  }
+
   let events: ActivityEvent[] | undefined;
   let count: number | undefined;
 
