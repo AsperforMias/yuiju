@@ -1,6 +1,7 @@
 import { getRecentBehaviorRecords, type IBehaviorRecord } from "@yuiju/utils";
 import dayjs from "dayjs";
 import { Hono } from "hono";
+import { rejectPublicRequest } from "./public-guard";
 
 export const activityRoute = new Hono();
 
@@ -15,6 +16,14 @@ const parseLimit = (value: string | undefined) => {
   if (parsed > MAX_LIMIT) return MAX_LIMIT;
   return parsed;
 };
+
+activityRoute.use("*", async (context, next) => {
+  const blocked = rejectPublicRequest(context);
+  if (blocked) {
+    return blocked;
+  }
+  await next();
+});
 
 activityRoute.get("/activity", async (context) => {
   const limit = parseLimit(context.req.query("limit"));
