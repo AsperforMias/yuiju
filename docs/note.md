@@ -17,4 +17,14 @@ CALL db.schema.visualization();
 -- 删除所有节点
 MATCH (n)
 DETACH DELETE n;
+
+-- 查看 dev 数据
+MATCH (n {group_id: 'dev'})
+RETURN n
+
+-- 删除 dev 数据
+MATCH (n {group_id: 'dev'})
+DETACH DELETE n
+RETURN count(n) AS deleted_count
+
 ```

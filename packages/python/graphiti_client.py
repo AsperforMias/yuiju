@@ -5,10 +5,13 @@ from pathlib import Path
 from typing import Optional
 
 from graphiti_core import Graphiti
-from graphiti_core.cross_encoder.openai_reranker_client import OpenAIRerankerClient
 from graphiti_core.embedder.openai import OpenAIEmbedder, OpenAIEmbedderConfig
 from graphiti_core.llm_client.config import LLMConfig
 from graphiti_core.llm_client.openai_generic_client import OpenAIGenericClient
+
+# 使用自定义 Cross Encoder，避免与 SiliconFlow API 的兼容性问题
+from custom_reranker import CustomRerankerClient
+# from graphiti_core.cross_encoder.
 
 
 _dotenv_loaded = False
@@ -143,7 +146,7 @@ async def get_graphiti() -> Graphiti:
       env.neo4j_password,
       llm_client=OpenAIGenericClient(config=llm_config),
       embedder=OpenAIEmbedder(config=embedder_config),
-      cross_encoder=OpenAIRerankerClient(config=reranker_config),
+      cross_encoder=CustomRerankerClient(config=reranker_config),
     )
     return _graphiti
 

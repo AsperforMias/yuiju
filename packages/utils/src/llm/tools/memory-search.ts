@@ -6,7 +6,11 @@ import { getMemoryServiceClientFromEnv } from "../../memory";
 export const memorySearchTool: Tool = {
   description: "搜索相关记忆",
   inputSchema: z.object({
-    query: z.string().describe("具体的搜索内容，例如：ゆいじゅ 喜欢草莓吗？"),
+    query: z
+      .string()
+      .describe(
+        "具体的搜索内容。如果你要搜索自己的记忆，请使用你的日文名（ゆいじゅ）。例如：ゆいじゅ喜欢草莓吗？",
+      ),
   }),
   execute: async ({ query }) => {
     const client = getMemoryServiceClientFromEnv();

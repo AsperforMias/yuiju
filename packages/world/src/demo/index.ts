@@ -1,4 +1,4 @@
 import "@yuiju/utils/env";
-import { main } from "./world-map";
+import { main } from "./memory";
 
 main();

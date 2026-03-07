@@ -5,15 +5,119 @@ from typing import Any
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
+from neo4j import AsyncSession
 
 from graphiti_core.nodes import EpisodeType
-from graphiti_core.search.search_config_recipes import COMBINED_HYBRID_SEARCH_RRF
+from graphiti_core.search.search_config_recipes import (
+    COMBINED_HYBRID_SEARCH_CROSS_ENCODER,
+    COMBINED_HYBRID_SEARCH_RRF,
+)
 from graphiti_core.search.search_filters import SearchFilters
 
 from graphiti_client import close_graphiti, get_graphiti
 
-
 logger = logging.getLogger("python-server")
+
+# ========================================
+# 临时补丁：修复 Graphiti 字段兼容性问题
+# 问题 1：LLM 返回的是 "entities"，但 Graphiti 期望的是 "extracted_entities"
+# 问题 2：LLM 返回的是 "entity_text"，但 Graphiti 期望的是 "name"
+# ========================================
+import sys
+from pydantic import Field, field_validator
+from typing import Any
+
+# 保存原始类并替换
+_original_extracted_entities = None
+_original_extracted_entity = None
+
+def _apply_field_compatibility_patch():
+    """修改 ExtractedEntities 和 ExtractedEntity 类，让它们兼容字段不匹配的问题"""
+    global _original_extracted_entities, _original_extracted_entity
+    if _original_extracted_entities is not None and _original_extracted_entity is not None:
+        return
+
+    try:
+        from graphiti_core.prompts.extract_nodes import ExtractedEntities, ExtractedEntity
+        _original_extracted_entities = ExtractedEntities
+        _original_extracted_entity = ExtractedEntity
+
+        # 首先修改 ExtractedEntity 类，让它兼容 entity_text 字段作为 name
+        class CompatibleExtractedEntity(_original_extracted_entity):
+            name: str = Field(..., description='Name of the extracted entity')
+            entity_type_id: int = Field(default=0, description='ID of the classified entity type')
+
+            @field_validator('name', mode='before')
+            @classmethod
+            def validate_name_compatibility(cls, v: Any, info: Any) -> Any:
+                # 从 info.data 中获取所有可用数据
+                data = info.data if hasattr(info, 'data') else {}
+                # 如果 name 字段缺失，检查是否有 entity_text 字段
+                if v is None or v == "":
+                    if 'entity_text' in data:
+                        logger.warning("Applied patch: using 'entity_text' as 'name'")
+                        return data['entity_text']
+                return v
+
+            model_config = {
+                'extra': 'allow'
+            }
+
+        # 然后修改 ExtractedEntities 类，让它同时兼容 'entities' 和 'extracted_entities'
+        class CompatibleExtractedEntities(_original_extracted_entities):
+            extracted_entities: list[CompatibleExtractedEntity] = Field(..., description='List of extracted entities')
+
+            @field_validator('extracted_entities', mode='before')
+            @classmethod
+            def validate_entities_compatibility(cls, v: Any, info: Any) -> Any:
+                # 如果是字典，检查是否有 'entities' 字段
+                if isinstance(v, dict):
+                    if 'entities' in v and 'extracted_entities' not in v:
+                        logger.warning("Applied patch: using 'entities' as 'extracted_entities'")
+                        return v['entities']
+                    if 'extracted_entities' in v:
+                        v = v['extracted_entities']
+                # 如果是列表，检查每个元素是否需要字段转换
+                if isinstance(v, list):
+                    return [
+                        {
+                            'name': item.get('entity_text', item.get('name', '')),
+                            'entity_type_id': item.get('entity_type_id', item.get('type', 0)),
+                            **{k: val for k, val in item.items() if k not in ['entity_text']}
+                        }
+                        for item in v
+                    ]
+                return v
+
+            model_config = {
+                'extra': 'allow'
+            }
+
+        # 替换原始类
+        import graphiti_core.prompts.extract_nodes as prompts_extract_nodes
+        import graphiti_core.utils.maintenance.node_operations as node_operations
+
+        sys.modules['graphiti_core.prompts.extract_nodes'].ExtractedEntity = CompatibleExtractedEntity
+        sys.modules['graphiti_core.prompts.extract_nodes'].ExtractedEntities = CompatibleExtractedEntities
+        sys.modules['graphiti_core.utils.maintenance.node_operations'].ExtractedEntity = CompatibleExtractedEntity
+        sys.modules['graphiti_core.utils.maintenance.node_operations'].ExtractedEntities = CompatibleExtractedEntities
+
+        prompts_extract_nodes.ExtractedEntity = CompatibleExtractedEntity
+        prompts_extract_nodes.ExtractedEntities = CompatibleExtractedEntities
+        node_operations.ExtractedEntity = CompatibleExtractedEntity
+        node_operations.ExtractedEntities = CompatibleExtractedEntities
+
+        logger.info("Applied Graphiti patch: ExtractedEntities and ExtractedEntity compatibility patch applied")
+
+    except Exception as e:
+        logger.warning(f"Failed to apply ExtractedEntities/ExtractedEntity patch: {e}")
+        import traceback
+        logger.warning(traceback.format_exc())
+
+# 应用补丁
+_apply_field_compatibility_patch()
+# ========================================
+
 logging.basicConfig(
   level=logging.INFO,
   format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -63,8 +167,12 @@ class MemorySearchItem(BaseModel):
   memory: str
   time: str | None = None
   source: str | None = None
-  # 范围 (0-2]
+  # Cross Encoder 分数范围 (0-1]，分数越高表示语义相似度越高
   score: float | None = None
+
+
+class ClearDevResponse(BaseModel):
+  deleted_count: int
 
 
 app = FastAPI(title="python-server")
@@ -153,8 +261,19 @@ async def write_episode(payload: EpisodeWriteRequest) -> EpisodeWriteResponse:
 async def search_memory(payload: MemorySearchRequest) -> list[MemorySearchItem]:
   graphiti = await get_graphiti()
 
-  config = COMBINED_HYBRID_SEARCH_RRF.model_copy(deep=True)
+  # 优化搜索配置，使用 Cross Encoder 进行深度语义精排
+  # Cross Encoder 能够更准确地计算查询与结果之间的语义相似度
+  config = COMBINED_HYBRID_SEARCH_CROSS_ENCODER.model_copy(deep=True)
   config.limit = payload.top_k
+
+  # 召回阶段：降低相似度阈值，确保召回更多相关候选结果
+  config.edge_config.sim_min_score = 0.6
+  config.node_config.sim_min_score = 0.6
+  config.episode_config.sim_min_score = 0.6
+  config.community_config.sim_min_score = 0.6
+
+  # 精排阶段：提高重排最小分数，保证返回结果的高质量
+  config.reranker_min_score = 0.8
 
   search_filter: SearchFilters | None = None
   if payload.filters:
@@ -170,6 +289,31 @@ async def search_memory(payload: MemorySearchRequest) -> list[MemorySearchItem]:
     group_ids=[_namespace_group_id(payload.is_dev)],
   )
 
+  # 结构化打印搜索结果，输出所有字段
+  # 获取 results 对象的所有属性
+  results_dict = {}
+  for key in dir(results):
+      if not key.startswith("_"):  # 跳过私有属性
+          value = getattr(results, key)
+          if not callable(value):  # 跳过方法
+              results_dict[key] = value
+
+  # 对 edges 做特殊处理，提取可读信息
+  if "edges" in results_dict:
+      results_dict["edges"] = [
+          {
+              k: (v.isoformat() if hasattr(v, "isoformat") else v)
+              for k, v in edge.__dict__.items()
+              if not k.startswith("_")
+          }
+          for edge in results_dict["edges"]
+      ]
+
+  logger.info(
+      "Search results (all fields): \n%s",
+      json.dumps(results_dict, ensure_ascii=False, indent=2, default=str)
+  )
+
   items: list[MemorySearchItem] = []
   for idx, edge in enumerate(results.edges):
     score = results.edge_reranker_scores[idx] if idx < len(results.edge_reranker_scores) else None
@@ -182,4 +326,34 @@ async def search_memory(payload: MemorySearchRequest) -> list[MemorySearchItem]:
       )
     )
 
-  return items
+  # 进一步过滤结果，只保留语义相似度高的记忆
+  # Cross Encoder 分数范围 0-1，分数越高表示语义相似度越高
+  filtered_items = [item for item in items if (item.score or 0) > 0.85]
+
+  # 如果过滤后没有结果，返回空列表（避免返回不相关的结果）
+  return filtered_items
+
+
+@app.delete("/v1/admin/clear-dev", response_model=ClearDevResponse)
+async def clear_dev_data() -> ClearDevResponse:
+    """
+    清理 dev 环境（group_id = "dev"）的所有数据。
+
+    警告：此操作不可逆！
+    """
+    graphiti = await get_graphiti()
+
+    # 使用 Graphiti 的 driver 直接执行 Cypher 查询
+    # 删除所有 group_id 为 "dev" 的节点和关系
+    query = """
+    MATCH (n {group_id: $group_id})
+    DETACH DELETE n
+    RETURN count(n) AS deleted_count
+    """
+
+    async with graphiti.driver.session() as session:  # type: AsyncSession
+        result = await session.run(query, group_id="dev")
+        record = await result.single()
+        deleted_count = record["deleted_count"] if record else 0
+
+    return ClearDevResponse(deleted_count=deleted_count)
