@@ -286,8 +286,8 @@ export async function searchMemory(): Promise<void> {
 
   // 测试搜索关键词，覆盖各种行为场景
   const testQueries = [
-    // "ゆいじゅ 起床",
-    "ゆいじゅ 吃早餐",
+    "ゆいじゅ 今天早上做了什么？",
+    // "ゆいじゅ 吃早餐",
     // "ゆいじゅ 学习",
     // "ゆいじゅ 打工",
     // "ゆいじゅ 咖啡",
@@ -302,8 +302,8 @@ export async function searchMemory(): Promise<void> {
       console.log(`📝 搜索关键词："${query}"`);
       const results = await memoryClient.searchMemory({
         query,
-        is_dev: useDevMode,
-        top_k: 3, // 每个查询返回前3条结果
+        is_dev: false,
+        top_k: 5,
       });
 
       if (results.length > 0) {

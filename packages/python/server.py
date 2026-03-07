@@ -289,31 +289,6 @@ async def search_memory(payload: MemorySearchRequest) -> list[MemorySearchItem]:
     group_ids=[_namespace_group_id(payload.is_dev)],
   )
 
-  # 结构化打印搜索结果，输出所有字段
-  # 获取 results 对象的所有属性
-  results_dict = {}
-  for key in dir(results):
-      if not key.startswith("_"):  # 跳过私有属性
-          value = getattr(results, key)
-          if not callable(value):  # 跳过方法
-              results_dict[key] = value
-
-  # 对 edges 做特殊处理，提取可读信息
-  if "edges" in results_dict:
-      results_dict["edges"] = [
-          {
-              k: (v.isoformat() if hasattr(v, "isoformat") else v)
-              for k, v in edge.__dict__.items()
-              if not k.startswith("_")
-          }
-          for edge in results_dict["edges"]
-      ]
-
-  logger.info(
-      "Search results (all fields): \n%s",
-      json.dumps(results_dict, ensure_ascii=False, indent=2, default=str)
-  )
-
   items: list[MemorySearchItem] = []
   for idx, edge in enumerate(results.edges):
     score = results.edge_reranker_scores[idx] if idx < len(results.edge_reranker_scores) else None
