@@ -1,3 +1,5 @@
+'use client';
+
 import { useMemo } from 'react';
 import useSWR from 'swr';
 import type { IHomeResponse } from './api/nodejs/[[...route]]/home';
@@ -6,8 +8,8 @@ import { HomePageHeader } from './home/home-page-header';
 import { HomeStatusCard } from './home/home-status-card';
 import { HomeWorldCard } from './home/home-world-card';
 
-export default async function HomePage() {
-  const { data: homeData, isLoading } = useSWR('/api/nodejs/home/index', async () => {
+export default function HomePage() {
+  const { data: homeData } = useSWR('/api/nodejs/home/index', async () => {
     try {
       const response = await fetch('/api/nodejs/home/index', { cache: 'no-store' });
       if (response.ok) {

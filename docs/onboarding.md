@@ -84,3 +84,63 @@ pnpm test:world
 
 - `git pull` 报错 `Could not read from remote repository`：通常是 SSH key 或仓库权限问题，不影响本地开发。
 - 启动时报 Redis/Mongo 连接错误：先确认本地服务是否启动，再检查 `.env` 中的 `REDIS_URL` 和 `MONGO_URI`。
+
+## 4. 项目部署（PM2）
+
+项目生产部署使用 PM2，配置文件为根目录 `ecosystem.config.js`。
+
+### 4.1 PM2 管理的应用
+
+- `yuiju-message`：消息服务（`pnpm run start:message`）
+- `yuiju-world`：世界引擎（`pnpm run start:world`）
+- `yuiju-web`：Web 服务（`pnpm run build:web && pnpm run start:web`）
+- `yuiju-python`：Python 服务（`pnpm run start:python`）
+
+### 4.2 常用部署命令
+
+1. 首次启动全部应用：
+
+```bash
+pm2 start ecosystem.config.js
+```
+
+2. 查看运行状态与日志：
+
+```bash
+pm2 status
+pm2 logs
+```
+
+3. 重启全部或单个应用：
+
+```bash
+pm2 restart ecosystem.config.js
+pm2 restart yuiju-web
+```
+
+4. 停止和删除进程：
+
+```bash
+pm2 stop ecosystem.config.js
+pm2 delete ecosystem.config.js
+```
+
+5. 设置开机自启（服务器场景）：
+
+```bash
+pm2 startup
+pm2 save
+```
+
+### 4.3 部署注意事项
+
+- 生产部署前建议先执行：
+
+```bash
+pnpm install
+pnpm lint
+pnpm type-check
+```
+
+- `.env` 需要在部署机器提前配置好，至少包含 `MONGO_URI`、`REDIS_URL`、`DEEPSEEK_API_KEY` 等关键变量。
+- `ecosystem.config.js` 中当前配置了 `autorestart: false`，若需要异常自动拉起，需要按运维策略调整。
