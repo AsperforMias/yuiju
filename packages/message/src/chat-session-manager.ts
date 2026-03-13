@@ -1,7 +1,11 @@
-import type { MemoryServiceClient, WriteEpisodeInput } from "@yuiju/utils";
-import { getTimeWithWeekday, isDev } from "@yuiju/utils";
+import type { MemoryServiceClient } from "@yuiju/utils";
+import { emitMemoryEpisode, getTimeWithWeekday, isDev } from "@yuiju/utils";
 import type { ModelMessage } from "ai";
 import dayjs from "dayjs";
+import {
+  buildConversationEpisode,
+  type UserWindowState,
+} from "./memory/episode-builder";
 
 type Role = "user" | "assistant";
 
@@ -18,18 +22,6 @@ export interface ChatMessageInput {
   role: Role;
   content: string;
   timestamp: Date;
-}
-
-interface ChatWindowMessageItem {
-  speaker_name: string;
-  content: string;
-  timestamp: string;
-}
-
-interface UserWindowState {
-  windowStartMs: number;
-  lastTsMs: number;
-  messages: ChatWindowMessageItem[];
 }
 
 export interface ChatSessionManagerOptions {
@@ -163,32 +155,36 @@ export class ChatSessionManager {
   }
 
   private async writeChatWindowEpisode(counterparty_name: string, state: UserWindowState) {
-    if (!this.memoryClient) {
-      console.error("No memory client provided");
-      return;
-    }
-
-    const windowStart = new Date(state.windowStartMs);
-    const windowEnd = new Date(state.lastTsMs);
-
-    const episodeContent = {
-      subject_name: SUBJECT_NAME,
-      counterparty_name,
-      window_start: getTimeWithWeekday(dayjs(windowStart)),
-      window_end: getTimeWithWeekday(dayjs(windowEnd)),
-      messages: state.messages,
-    };
-
-    const payload: WriteEpisodeInput = {
-      type: "对话",
-      counterparty_name,
-      content: episodeContent,
-      reference_time: windowEnd,
-      is_dev: this.isDev,
-    };
+    const episode = buildConversationEpisode({
+      counterpartyName: counterparty_name,
+      state,
+      isDev: this.isDev,
+    });
 
     try {
-      await this.memoryClient.writeEpisode(payload);
+      await emitMemoryEpisode(episode);
+
+      // 当前阶段只完成统一 Episode 建模，等待 Python 服务升级后再恢复真实写入。
+      // if (!this.memoryClient) {
+      //   console.error("No memory client provided");
+      //   return;
+      // }
+      //
+      // const payload: WriteEpisodeInput = {
+      //   type: "对话",
+      //   counterparty_name,
+      //   content: {
+      //     subject_name: SUBJECT_NAME,
+      //     counterparty_name,
+      //     window_start: episode.payload.windowStart,
+      //     window_end: episode.payload.windowEnd,
+      //     messages: state.messages,
+      //   },
+      //   reference_time: episode.happenedAt,
+      //   is_dev: this.isDev,
+      // };
+      //
+      // await this.memoryClient.writeEpisode(payload);
     } catch (error) {
       console.error("Failed to write chat window episode:", error);
       return;
