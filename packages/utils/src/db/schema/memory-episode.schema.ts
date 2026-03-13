@@ -26,6 +26,7 @@ export interface IMemoryEpisode extends Document {
   importance: number;
   payload: Record<string, unknown>;
   extractionStatus: MemoryEpisodeExtractionStatus;
+  extractedFactIds?: string[];
   isDev: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -58,6 +59,11 @@ const MemoryEpisodeSchema = new Schema<IMemoryEpisode>(
       default: "pending",
       index: true,
     },
+    extractedFactIds: {
+      type: [String],
+      required: false,
+      default: undefined,
+    },
     isDev: { type: Boolean, required: true, default: false, index: true },
   },
   {
@@ -70,10 +76,9 @@ MemoryEpisodeSchema.index({ subjectId: 1, happenedAt: -1 });
 MemoryEpisodeSchema.index({ subjectId: 1, type: 1, happenedAt: -1 });
 MemoryEpisodeSchema.index({ subjectId: 1, isDev: 1, happenedAt: -1 });
 
-export const MemoryEpisodeModel = mongoose.model<IMemoryEpisode>(
-  "MemoryEpisode",
-  MemoryEpisodeSchema,
-);
+export const MemoryEpisodeModel =
+  (mongoose.models.MemoryEpisode as mongoose.Model<IMemoryEpisode> | undefined) ??
+  mongoose.model<IMemoryEpisode>("MemoryEpisode", MemoryEpisodeSchema);
 
 export interface GetRecentMemoryEpisodesOptions {
   limit?: number;
@@ -94,6 +99,23 @@ export async function saveMemoryEpisode(input: MemoryEpisodeWriteInput): Promise
     isDev: input.isDev ?? false,
   });
   return await episode.save();
+}
+
+/**
+ * 更新 Episode 的抽取状态与已写入事实列表。
+ */
+export async function updateMemoryEpisodeExtraction(
+  episodeId: string,
+  input: {
+    extractionStatus: MemoryEpisodeExtractionStatus;
+    extractedFactIds?: string[];
+  },
+): Promise<void> {
+  await connectDB();
+  await MemoryEpisodeModel.findByIdAndUpdate(episodeId, {
+    extractionStatus: input.extractionStatus,
+    extractedFactIds: input.extractedFactIds,
+  }).exec();
 }
 
 /**

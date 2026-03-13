@@ -10,6 +10,7 @@ import type {
   ActionMetadata,
   ActionParameter,
   BehaviorRecord,
+  PlanState,
 } from "@yuiju/utils";
 import { generateText, Output, stepCountIs } from "ai";
 import dayjs from "dayjs";
@@ -41,6 +42,7 @@ export async function chooseActionAgent(
   actionList: ActionMetadata[],
   context: ActionContext,
   actionMemoryList: BehaviorRecord[],
+  planState: PlanState,
 ): Promise<ActionAgentDecision | undefined> {
   const systemPrompt = chooseActionPrompt({
     actionList,
@@ -58,8 +60,8 @@ export async function chooseActionAgent(
     location: `${context.characterState.location.major}${
       context.characterState.location.minor ? "-" + context.characterState.location.minor : ""
     }`,
-    longTermPlan: context.characterState.longTermPlan,
-    shortTermPlan: context.characterState.shortTermPlan,
+    mainPlanTitle: planState.mainPlan?.title,
+    activePlanTitles: planState.activePlans.map((plan) => plan.title),
   });
 
   for (let i = 0; i < RETRY_COUNT; i++) {
@@ -109,6 +111,7 @@ export async function chooseFoodAgent(
   foodList: ActionParameter[],
   context: ActionContext,
   actionMemoryList: BehaviorRecord[],
+  planState: PlanState,
 ) {
   const systemPrompt = chooseFoodPrompt({
     availableFood: foodList,
@@ -119,8 +122,8 @@ export async function chooseFoodAgent(
     satiety: context.characterState.satiety,
     mood: context.characterState.mood,
     worldTime: context.worldState.time,
-    longTermPlan: context.characterState.longTermPlan,
-    shortTermPlan: context.characterState.shortTermPlan,
+    mainPlanTitle: planState.mainPlan?.title,
+    activePlanTitles: planState.activePlans.map((plan) => plan.title),
     recentBehaviorList: actionMemoryList.map((item) => ({
       behavior: item.behavior,
       description: item.description,
@@ -164,6 +167,7 @@ export async function chooseShopProductAgent(
   productList: ActionParameter[],
   context: ActionContext,
   actionMemoryList: BehaviorRecord[],
+  planState: PlanState,
 ) {
   if (productList.length === 0) {
     return;
@@ -179,8 +183,8 @@ export async function chooseShopProductAgent(
     mood: context.characterState.mood,
     money: context.characterState.money,
     worldTime: context.worldState.time,
-    longTermPlan: context.characterState.longTermPlan,
-    shortTermPlan: context.characterState.shortTermPlan,
+    mainPlanTitle: planState.mainPlan?.title,
+    activePlanTitles: planState.activePlans.map((plan) => plan.title),
     recentBehaviorList: actionMemoryList.map((item) => ({
       behavior: item.behavior,
       description: item.description,
@@ -217,6 +221,7 @@ export async function chooseCafeCoffeeAgent(
   coffeeList: ActionParameter[],
   context: ActionContext,
   actionMemoryList: BehaviorRecord[],
+  planState: PlanState,
 ) {
   if (coffeeList.length === 0) {
     return;
@@ -232,8 +237,8 @@ export async function chooseCafeCoffeeAgent(
     mood: context.characterState.mood,
     money: context.characterState.money,
     worldTime: context.worldState.time,
-    longTermPlan: context.characterState.longTermPlan,
-    shortTermPlan: context.characterState.shortTermPlan,
+    mainPlanTitle: planState.mainPlan?.title,
+    activePlanTitles: planState.activePlans.map((plan) => plan.title),
     recentBehaviorList: actionMemoryList.map((item) => ({
       behavior: item.behavior,
       description: item.description,

@@ -1,9 +1,8 @@
-export interface WriteEpisodeInput {
+import type { FactCandidate } from "./fact";
+
+export interface WriteFactsInput {
   is_dev?: boolean;
-  type: string;
-  counterparty_name?: string;
-  content: unknown;
-  reference_time: Date | string;
+  facts: FactCandidate[];
 }
 
 export interface SearchMemoryInput {
@@ -25,31 +24,27 @@ export class MemoryServiceClient {
   constructor(private baseUrl: string) {}
 
   /**
-   * 写入一条 episode。
-   *
-   * - content 允许传对象；服务端会统一序列化处理
-   * - reference_time 统一以 ISO 字符串传输，避免时区歧义
+   * 写入提炼后的事实列表。
    */
-  async writeEpisode(input: WriteEpisodeInput): Promise<void> {
-    const res = await fetch(new URL("/v1/episodes", this.baseUrl), {
+  async writeFacts(input: WriteFactsInput): Promise<string[]> {
+    const res = await fetch(new URL("/v1/facts", this.baseUrl), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         is_dev: input.is_dev,
-        type: input.type,
-        counterparty_name: input.counterparty_name,
-        content: input.content,
-        reference_time:
-          input.reference_time instanceof Date
-            ? input.reference_time.toISOString()
-            : input.reference_time,
+        facts: input.facts,
       }),
     });
 
     if (!res.ok) {
       const text = await res.text().catch(() => "");
-      throw new Error(`MemoryService writeEpisode failed: ${res.status} ${text}`);
+      throw new Error(`MemoryService writeFacts failed: ${res.status} ${text}`);
     }
+
+    const json = (await res.json()) as { fact_ids?: unknown };
+    return Array.isArray(json.fact_ids)
+      ? json.fact_ids.filter((item): item is string => typeof item === "string")
+      : [];
   }
 
   /**

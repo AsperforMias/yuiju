@@ -26,10 +26,6 @@ export class CharacterState implements ICharacterState {
   public money: number = 0;
   // 仅作内存缓存或只读展示，实际数据源为 Redis String (JSON)
   public dailyActionsDoneToday: ActionId[] = [];
-  /** 长期计划（一句话描述） */
-  public longTermPlan: string | undefined;
-  /** 短期计划（步骤列表） */
-  public shortTermPlan: string[] | undefined;
   /** 背包物品列表 */
   public inventory: InventoryItem[] = [];
 
@@ -48,8 +44,6 @@ export class CharacterState implements ICharacterState {
     this.mood = data.mood;
     this.money = data.money;
     this.dailyActionsDoneToday = [...data.dailyActionsDoneToday];
-    this.longTermPlan = data.longTermPlan;
-    this.shortTermPlan = data.shortTermPlan;
     this.inventory = [...(data.inventory ?? [])];
   }
 
@@ -63,8 +57,6 @@ export class CharacterState implements ICharacterState {
       mood: this.mood,
       money: this.money,
       dailyActionsDoneToday: JSON.stringify(this.dailyActionsDoneToday),
-      longTermPlan: this.longTermPlan || "",
-      shortTermPlan: this.shortTermPlan ? JSON.stringify(this.shortTermPlan) : "",
       inventory: JSON.stringify(this.inventory),
     });
   }
@@ -131,16 +123,6 @@ export class CharacterState implements ICharacterState {
 
   async clearDailyActions(): Promise<void> {
     this.dailyActionsDoneToday = [];
-    await this.save();
-  }
-
-  async setLongTermPlan(plan?: string): Promise<void> {
-    this.longTermPlan = plan;
-    await this.save();
-  }
-
-  async setShortTermPlan(plan?: string[]): Promise<void> {
-    this.shortTermPlan = plan;
     await this.save();
   }
 
@@ -214,8 +196,6 @@ export class CharacterState implements ICharacterState {
       mood: this.mood,
       money: this.money,
       dailyActionsDoneToday: this.dailyActionsDoneToday,
-      longTermPlan: this.longTermPlan,
-      shortTermPlan: this.shortTermPlan,
       inventory: this.inventory,
     });
   }

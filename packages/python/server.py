@@ -127,26 +127,30 @@ logging.getLogger("neo4j.notifications").setLevel(logging.WARNING)
 SUBJECT_NAME = "ゆいじゅ"
 
 
-class EpisodeWriteRequest(BaseModel):
+class FactCandidate(BaseModel):
   """
-  写入 episode 的最小入参。
-
-  注意：
-  - content 允许是 string 或任意 JSON object；服务端会统一序列化为字符串写入 Graphiti。
-  - reference_time 用于 Graphiti 的 valid_at，决定时间相关性。
-  - is_dev 用于区分测试与线上环境，服务端会映射为 Graphiti 的 group_id（namespace）。
-  - counterparty_name 为“对话对方/关联对象”，用于帮助检索到与某人相关的记忆。
+  业务侧提炼后的候选事实。
   """
 
+  id: str = Field(min_length=1)
   type: str = Field(min_length=1)
-  counterparty_name: str | None = Field(default=None)
-  content: Any
-  reference_time: datetime
+  subject: str = Field(min_length=1)
+  predicate: str = Field(min_length=1)
+  object: str = Field(min_length=1)
+  summary: str = Field(min_length=1)
+  confidence: float = Field(ge=0, le=1)
+  evidenceEpisodeId: str = Field(min_length=1)
+  validAt: datetime
+  metadata: dict[str, Any] | None = None
+
+
+class FactWriteRequest(BaseModel):
   is_dev: bool = Field(default=False)
+  facts: list[FactCandidate] = Field(default_factory=list)
 
 
-class EpisodeWriteResponse(BaseModel):
-  ok: bool
+class FactWriteResponse(BaseModel):
+  fact_ids: list[str]
 
 
 class MemorySearchRequest(BaseModel):
@@ -192,69 +196,50 @@ def _namespace_group_id(is_dev: bool) -> str:
   return "dev" if is_dev else "prod"
 
 
-def _stringify_episode_content(
-  type_: str,
-  content: Any,
-  counterparty_name: str | None,
+def _stringify_fact_content(
+  fact: FactCandidate,
 ) -> str:
   """
-  将 episode 内容统一转换为字符串写入 Graphiti。
-
-  这里会把主体与关键元信息混入内容，帮助语义检索时更稳地命中：
-  - subject_name 固定为「ゆいじゅ」
-  - counterparty_name 为“对话对方/关联对象”（可选）
-  - type/reference_time
+  将提炼后的 fact 转换为 Graphiti 可检索文本。
   """
 
   meta = {
-    "subject_name": SUBJECT_NAME,
-    "type": type_,
+    "fact_id": fact.id,
+    "subject_name": fact.subject,
+    "type": fact.type,
+    "predicate": fact.predicate,
+    "object": fact.object,
+    "confidence": fact.confidence,
+    "evidence_episode_id": fact.evidenceEpisodeId,
     "fact_language_hint": "尽量使用中文表述 fact",
   }
-  if counterparty_name:
-    meta["counterparty_name"] = counterparty_name
+  if fact.metadata:
+    meta["metadata"] = fact.metadata
 
-  if isinstance(content, str):
-    return (
-      "[meta]\n"
-      + json.dumps(meta, ensure_ascii=False)
-      + "\n[/meta]\n"
-      + content
-    )
-
-  return json.dumps({"meta": meta, "content": content}, ensure_ascii=False)
+  return "[meta]\n" + json.dumps(meta, ensure_ascii=False) + "\n[/meta]\n" + fact.summary
 
 
-@app.post("/v1/episodes", response_model=EpisodeWriteResponse)
-async def write_episode(payload: EpisodeWriteRequest) -> EpisodeWriteResponse:
+@app.post("/v1/facts", response_model=FactWriteResponse)
+async def write_facts(payload: FactWriteRequest) -> FactWriteResponse:
   graphiti = await get_graphiti()
+  fact_ids: list[str] = []
 
-  reference_time = payload.reference_time
-  if reference_time.tzinfo is None:
-    reference_time = reference_time.replace(tzinfo=timezone.utc)
+  for fact in payload.facts:
+    valid_at = fact.validAt
+    if valid_at.tzinfo is None:
+      valid_at = valid_at.replace(tzinfo=timezone.utc)
 
-  episode_body = _stringify_episode_content(
-    type_=payload.type,
-    content=payload.content,
-    counterparty_name=payload.counterparty_name,
-  )
-  name_parts = [SUBJECT_NAME, payload.type]
-  if payload.counterparty_name:
-    name_parts.append(payload.counterparty_name)
-  name_parts.append(reference_time.isoformat())
-  name = "-".join(name_parts)
+    await graphiti.add_episode(
+      name=f"{fact.subject}-{fact.type}-{fact.id}",
+      episode_body=_stringify_fact_content(fact),
+      source_description=f"fact:{fact.type}",
+      reference_time=valid_at,
+      source=EpisodeType.text,
+      group_id=_namespace_group_id(payload.is_dev),
+    )
+    fact_ids.append(fact.id)
 
-  episode_type = EpisodeType.text if isinstance(payload.content, str) else EpisodeType.json
-
-  await graphiti.add_episode(
-    name=name,
-    episode_body=episode_body,
-    source_description=payload.type,
-    reference_time=reference_time,
-    source=episode_type,
-    group_id=_namespace_group_id(payload.is_dev),
-  )
-  return EpisodeWriteResponse(ok=True)
+  return FactWriteResponse(fact_ids=fact_ids)
 
 
 @app.post("/v1/search", response_model=list[MemorySearchItem])

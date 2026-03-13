@@ -19,8 +19,6 @@ function createContext(opts: {
       stamina: opts.stamina ?? 100,
       money: opts.money ?? 0,
       dailyActionsDoneToday: [],
-      longTermPlan: undefined,
-      shortTermPlan: undefined,
       inventory: [],
       async setAction() {},
       async setStamina() {},
@@ -35,8 +33,6 @@ function createContext(opts: {
       getItemQuantity() {
         return 0;
       },
-      async setLongTermPlan() {},
-      async setShortTermPlan() {},
       log() {
         return {
           action: opts.action,
@@ -44,8 +40,6 @@ function createContext(opts: {
           stamina: opts.stamina ?? 100,
           money: opts.money ?? 0,
           dailyActionsDoneToday: [],
-          longTermPlan: undefined,
-          shortTermPlan: undefined,
           inventory: [],
         };
       },

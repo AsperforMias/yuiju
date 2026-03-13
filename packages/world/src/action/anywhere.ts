@@ -6,6 +6,7 @@ import {
   type FoodMetadata,
 } from "@yuiju/utils";
 import { chooseFoodAgent } from "@/llm/agent";
+import { planManager } from "@/plan";
 import { logger } from "@/utils/logger";
 import { notDoneToday } from "./utils";
 
@@ -73,7 +74,12 @@ export const anywhereAction: ActionMetadata[] = [
       // 设置当前动作
       await context.characterState.setAction(ActionId.Eat_Item);
 
-      const selectionResult = await chooseFoodAgent(foodList, context, []);
+      const selectionResult = await chooseFoodAgent(
+        foodList,
+        context,
+        [],
+        await planManager.getState(),
+      );
       const selectedFoodList = selectionResult
         ?.filter((item) => foodList.find((param) => param.value === item.value))
         ?.map((item) => {

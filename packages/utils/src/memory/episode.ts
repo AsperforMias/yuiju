@@ -40,6 +40,7 @@ export type MemoryEpisodeExtractionStatus =
  * - isDev 用于未来恢复到真实服务端写入时，映射 dev/prod 命名空间。
  */
 export interface MemoryEpisode<TPayload = object> {
+  id?: string;
   source: MemoryEpisodeSource;
   type: MemoryEpisodeType;
   subjectId: string;
@@ -49,6 +50,7 @@ export interface MemoryEpisode<TPayload = object> {
   importance: number;
   payload: TPayload;
   extractionStatus: MemoryEpisodeExtractionStatus;
+  extractedFactIds?: string[];
   isDev?: boolean;
 }
 

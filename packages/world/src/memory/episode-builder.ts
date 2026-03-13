@@ -1,8 +1,8 @@
 import type {
   ActionAgentDecision,
   ActionContext,
-  CharacterStateData,
   MemoryEpisode,
+  PlanChange,
 } from "@yuiju/utils";
 import { ActionId, DEFAULT_MEMORY_SUBJECT_ID } from "@yuiju/utils";
 const DEFAULT_IMPORTANCE = 0.5;
@@ -12,23 +12,31 @@ export interface BuildBehaviorEpisodeInput {
   selectedAction: ActionAgentDecision;
   executionResult?: string;
   durationMinutes: number;
+  relatedPlanId?: string;
   happenedAt: Date;
   isDev: boolean;
 }
 
 export interface BuildPlanUpdateEpisodesInput {
-  previousLongTermPlan?: string;
-  nextLongTermPlan?: string;
-  previousShortTermPlan?: string[];
-  nextShortTermPlan?: string[];
+  changes: PlanChange[];
   happenedAt: Date;
   isDev: boolean;
 }
 
 interface PlanUpdateEpisodePayload {
-  planScope: "long_term" | "short_term";
-  before?: string | string[];
-  after?: string | string[];
+  planId: string;
+  planScope: "main" | "active";
+  changeType: "created" | "updated" | "completed" | "cancelled" | "replaced";
+  before?: {
+    id: string;
+    title: string;
+    status: string;
+  };
+  after?: {
+    id: string;
+    title: string;
+    status: string;
+  };
   changeReason: string;
 }
 
@@ -37,8 +45,9 @@ interface BehaviorEpisodePayload {
   reason: string;
   executionResult?: string;
   durationMinutes: number;
+  relatedPlanId?: string;
   location: ActionContext["characterState"]["location"];
-  characterStateSnapshot: CharacterStateData;
+  characterStateSnapshot: ReturnType<ActionContext["characterState"]["log"]>;
 }
 
 /**
@@ -78,6 +87,7 @@ export function buildBehaviorEpisode(
       reason: input.selectedAction.reason,
       executionResult: input.executionResult,
       durationMinutes: input.durationMinutes,
+      relatedPlanId: input.relatedPlanId,
       location: input.context.characterState.location,
       characterStateSnapshot: input.context.characterState.log(),
     },
@@ -94,44 +104,50 @@ export function buildBehaviorEpisode(
 export function buildPlanUpdateEpisodes(
   input: BuildPlanUpdateEpisodesInput,
 ): MemoryEpisode<PlanUpdateEpisodePayload>[] {
-  const episodes: MemoryEpisode<PlanUpdateEpisodePayload>[] = [];
-
-  if (input.previousLongTermPlan !== input.nextLongTermPlan) {
-    episodes.push(
-      createPlanUpdateEpisode({
-        planScope: "long_term",
-        before: input.previousLongTermPlan,
-        after: input.nextLongTermPlan,
-        happenedAt: input.happenedAt,
-        isDev: input.isDev,
-      }),
-    );
-  }
-
-  if (!isSameStringArray(input.previousShortTermPlan, input.nextShortTermPlan)) {
-    episodes.push(
-      createPlanUpdateEpisode({
-        planScope: "short_term",
-        before: input.previousShortTermPlan,
-        after: input.nextShortTermPlan,
-        happenedAt: input.happenedAt,
-        isDev: input.isDev,
-      }),
-    );
-  }
-
-  return episodes;
+  return input.changes.map((change) =>
+    createPlanUpdateEpisode({
+      planId: change.planId,
+      planScope: change.scope,
+      changeType: change.changeType,
+      before: change.before
+        ? {
+            id: change.before.id,
+            title: change.before.title,
+            status: change.before.status,
+          }
+        : undefined,
+      after: change.after
+        ? {
+            id: change.after.id,
+            title: change.after.title,
+            status: change.after.status,
+          }
+        : undefined,
+      happenedAt: input.happenedAt,
+      isDev: input.isDev,
+    }),
+  );
 }
 
 function createPlanUpdateEpisode(input: {
-  planScope: "long_term" | "short_term";
-  before?: string | string[];
-  after?: string | string[];
+  planId: string;
+  planScope: "main" | "active";
+  changeType: "created" | "updated" | "completed" | "cancelled" | "replaced";
+  before?: {
+    id: string;
+    title: string;
+    status: string;
+  };
+  after?: {
+    id: string;
+    title: string;
+    status: string;
+  };
   happenedAt: Date;
   isDev: boolean;
 }): MemoryEpisode<PlanUpdateEpisodePayload> {
-  const changeReason =
-    input.planScope === "long_term" ? "本次 tick 更新了长期计划" : "本次 tick 更新了短期计划";
+  const scopeText = input.planScope === "main" ? "主计划" : "活跃计划";
+  const changeReason = `本次 tick ${describeChangeType(input.changeType)}${scopeText}`;
 
   return {
     source: "world_tick",
@@ -139,15 +155,17 @@ function createPlanUpdateEpisode(input: {
     subjectId: DEFAULT_MEMORY_SUBJECT_ID,
     happenedAt: input.happenedAt,
     summaryText: [
-      `悠酱更新了${input.planScope === "long_term" ? "长期计划" : "短期计划"}`,
-      `原计划：${stringifyPlanValue(input.before)}`,
-      `新计划：${stringifyPlanValue(input.after)}`,
+      `悠酱${describeChangeType(input.changeType)}${scopeText}`,
+      `原计划：${stringifyPlanValue(input.before?.title)}`,
+      `新计划：${stringifyPlanValue(input.after?.title)}`,
     ].join("；"),
     importance: DEFAULT_IMPORTANCE,
     extractionStatus: "pending",
     isDev: input.isDev,
     payload: {
+      planId: input.planId,
       planScope: input.planScope,
+      changeType: input.changeType,
       before: input.before,
       after: input.after,
       changeReason,
@@ -167,18 +185,19 @@ function stringifyPlanValue(value?: string | string[]): string {
   return value || "空字符串";
 }
 
-function isSameStringArray(left?: string[], right?: string[]): boolean {
-  if (left === right) {
-    return true;
+function describeChangeType(changeType: PlanUpdateEpisodePayload["changeType"]): string {
+  switch (changeType) {
+    case "created":
+      return "创建了";
+    case "updated":
+      return "更新了";
+    case "completed":
+      return "完成了";
+    case "cancelled":
+      return "取消了";
+    case "replaced":
+      return "替换了";
+    default:
+      return "更新了";
   }
-
-  if (!left || !right) {
-    return !left && !right;
-  }
-
-  if (left.length !== right.length) {
-    return false;
-  }
-
-  return left.every((item, index) => item === right[index]);
 }

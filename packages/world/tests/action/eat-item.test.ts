@@ -78,8 +78,6 @@ function createMockCharacterState(opts: {
     mood: currentMood,
     money: 0,
     dailyActionsDoneToday: [],
-    longTermPlan: undefined,
-    shortTermPlan: undefined,
     inventory: currentInventory,
 
     // Mock 方法
@@ -137,8 +135,6 @@ function createMockCharacterState(opts: {
       const item = this.inventory.find((item) => item.name === itemName);
       return item ? item.quantity : 0;
     },
-    async setLongTermPlan(_plan?: string) {},
-    async setShortTermPlan(_plans?: string[]) {},
     log() {
       return {
         action: currentAction,
@@ -148,8 +144,6 @@ function createMockCharacterState(opts: {
         mood: currentMood,
         money: this.money,
         dailyActionsDoneToday: [],
-        longTermPlan: undefined,
-        shortTermPlan: undefined,
         inventory: currentInventory,
       };
     },

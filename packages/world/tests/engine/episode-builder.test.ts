@@ -12,8 +12,6 @@ function createContext(): ActionContext {
       mood: 60,
       money: 100,
       dailyActionsDoneToday: [],
-      longTermPlan: "努力学习",
-      shortTermPlan: ["完成作业"],
       inventory: [],
       setAction: async () => {},
       setStamina: async () => {},
@@ -35,16 +33,12 @@ function createContext(): ActionContext {
           mood: this.mood,
           money: this.money,
           dailyActionsDoneToday: this.dailyActionsDoneToday,
-          longTermPlan: this.longTermPlan,
-          shortTermPlan: this.shortTermPlan,
           inventory: this.inventory,
         };
       },
       addItem: async () => {},
       consumeItem: async () => false,
       getItemQuantity: () => 0,
-      setLongTermPlan: async () => {},
-      setShortTermPlan: async () => {},
     },
     worldState: {
       time: {} as never,
@@ -95,10 +89,7 @@ describe("world episode builder", () => {
 
   it("计划未变化时不生成 plan_update episode", () => {
     const episodes = buildPlanUpdateEpisodes({
-      previousLongTermPlan: "努力学习",
-      nextLongTermPlan: "努力学习",
-      previousShortTermPlan: ["完成作业"],
-      nextShortTermPlan: ["完成作业"],
+      changes: [],
       happenedAt: new Date("2026-03-13T10:00:00.000Z"),
       isDev: true,
     });
@@ -108,17 +99,49 @@ describe("world episode builder", () => {
 
   it("长期与短期计划变化时分别生成 plan_update episode", () => {
     const episodes = buildPlanUpdateEpisodes({
-      previousLongTermPlan: "努力学习",
-      nextLongTermPlan: "准备考试",
-      previousShortTermPlan: ["完成作业"],
-      nextShortTermPlan: ["完成作业", "复习数学"],
+      changes: [
+        {
+          planId: "plan_main_1",
+          scope: "main",
+          changeType: "replaced",
+          before: {
+            id: "plan_main_old",
+            title: "努力学习",
+            scope: "main",
+            status: "active",
+            createdAt: "2026-03-13T08:00:00.000Z",
+            updatedAt: "2026-03-13T08:00:00.000Z",
+          },
+          after: {
+            id: "plan_main_1",
+            title: "准备考试",
+            scope: "main",
+            status: "active",
+            createdAt: "2026-03-13T10:00:00.000Z",
+            updatedAt: "2026-03-13T10:00:00.000Z",
+          },
+        },
+        {
+          planId: "plan_active_1",
+          scope: "active",
+          changeType: "created",
+          after: {
+            id: "plan_active_1",
+            title: "复习数学",
+            scope: "active",
+            status: "active",
+            createdAt: "2026-03-13T10:00:00.000Z",
+            updatedAt: "2026-03-13T10:00:00.000Z",
+          },
+        },
+      ],
       happenedAt: new Date("2026-03-13T10:00:00.000Z"),
       isDev: true,
     });
 
     expect(episodes).toHaveLength(2);
-    expect(episodes[0]?.payload.planScope).toBe("long_term");
-    expect(episodes[1]?.payload.planScope).toBe("short_term");
+    expect(episodes[0]?.payload.planScope).toBe("main");
+    expect(episodes[1]?.payload.planScope).toBe("active");
     expect(episodes[1]?.summaryText).toContain("复习数学");
   });
 });

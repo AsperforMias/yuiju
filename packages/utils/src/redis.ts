@@ -6,6 +6,7 @@ import {
   type CharacterStateData,
   type Location,
   MajorScene,
+  type PlanState,
   type WorldStateData,
 } from "./types";
 import { safeParseJson } from "./utils";
@@ -17,6 +18,7 @@ export const REDIS_KEY_CHARACTER_STATE = isDev()
   : "yuiju:charactor:state";
 
 export const REDIS_KEY_WORLD_STATE = isDev() ? "dev:yuiju:world:state" : "yuiju:world:state";
+export const REDIS_KEY_PLAN_STATE = isDev() ? "dev:yuiju:plan:state" : "yuiju:plan:state";
 
 export const getRedis = () => {
   if (!redis) {
@@ -43,6 +45,11 @@ const DEFAULT_CHARACTER_STATE_DATA: CharacterStateData = {
   inventory: [],
 };
 
+const DEFAULT_PLAN_STATE: PlanState = {
+  activePlans: [],
+  updatedAt: new Date(0).toISOString(),
+};
+
 const isActionId = (value: string): value is ActionId => {
   return (Object.values(ActionId) as string[]).includes(value);
 };
@@ -64,8 +71,6 @@ export const initCharacterStateData = async (): Promise<CharacterStateData> => {
       mood: DEFAULT_CHARACTER_STATE_DATA.mood,
       money: DEFAULT_CHARACTER_STATE_DATA.money,
       dailyActionsDoneToday: JSON.stringify(DEFAULT_CHARACTER_STATE_DATA.dailyActionsDoneToday),
-      longTermPlan: "",
-      shortTermPlan: "",
       inventory: JSON.stringify(DEFAULT_CHARACTER_STATE_DATA.inventory ?? []),
     });
 
@@ -125,21 +130,6 @@ export const initCharacterStateData = async (): Promise<CharacterStateData> => {
     }
   }
 
-  if (raw.longTermPlan && raw.longTermPlan.trim() !== "") {
-    state.longTermPlan = raw.longTermPlan;
-  }
-
-  if (raw.shortTermPlan && raw.shortTermPlan.trim() !== "") {
-    const parsedShortTermPlan = safeParseJson<unknown>(raw.shortTermPlan);
-    if (Array.isArray(parsedShortTermPlan)) {
-      state.shortTermPlan = parsedShortTermPlan.filter(
-        (item): item is string => typeof item === "string",
-      );
-    } else {
-      state.shortTermPlan = [];
-    }
-  }
-
   if (raw.inventory) {
     const parsedInventory = safeParseJson<unknown>(raw.inventory);
     if (Array.isArray(parsedInventory)) {
@@ -150,6 +140,47 @@ export const initCharacterStateData = async (): Promise<CharacterStateData> => {
   }
 
   return state;
+};
+
+/**
+ * 读取当前计划状态。
+ *
+ * 说明：
+ * - 计划状态使用单个 Redis String 保存，避免多 key 更新时出现中间态；
+ * - 读取失败或数据损坏时，回退到空计划状态。
+ */
+export const initPlanStateData = async (): Promise<PlanState> => {
+  const redis = getRedis();
+  const raw = await redis.get(REDIS_KEY_PLAN_STATE);
+
+  if (!raw) {
+    await redis.set(REDIS_KEY_PLAN_STATE, JSON.stringify(DEFAULT_PLAN_STATE));
+    return { ...DEFAULT_PLAN_STATE, activePlans: [] };
+  }
+
+  const parsed = safeParseJson<unknown>(raw);
+  if (!parsed || typeof parsed !== "object") {
+    await redis.set(REDIS_KEY_PLAN_STATE, JSON.stringify(DEFAULT_PLAN_STATE));
+    return { ...DEFAULT_PLAN_STATE, activePlans: [] };
+  }
+
+  const maybeState = parsed as Partial<PlanState>;
+  const activePlans = Array.isArray(maybeState.activePlans) ? maybeState.activePlans : [];
+
+  return {
+    mainPlan: maybeState.mainPlan,
+    activePlans,
+    updatedAt:
+      typeof maybeState.updatedAt === "string" ? maybeState.updatedAt : DEFAULT_PLAN_STATE.updatedAt,
+  };
+};
+
+/**
+ * 保存当前计划状态。
+ */
+export const savePlanStateData = async (state: PlanState): Promise<void> => {
+  const redis = getRedis();
+  await redis.set(REDIS_KEY_PLAN_STATE, JSON.stringify(state));
 };
 
 export const initWorldStateData = async (): Promise<WorldStateData> => {

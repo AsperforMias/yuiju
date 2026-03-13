@@ -48,8 +48,6 @@ describe("Redis 状态初始化/格式化", () => {
         stamina: "not_a_number",
         money: "5",
         dailyActionsDoneToday: JSON.stringify(["发呆", "not_action"]),
-        longTermPlan: "",
-        shortTermPlan: "",
         inventory: "{bad json",
       })),
       hset: vi.fn(async () => 1),
@@ -77,8 +75,6 @@ describe("Redis 状态初始化/格式化", () => {
     expect(data.mood).toBe(60);
     expect(data.money).toBe(5);
     expect(data.dailyActionsDoneToday).toEqual([ActionId.Idle]);
-    expect(data.longTermPlan).toBeUndefined();
-    expect(data.shortTermPlan).toBeUndefined();
     expect(data.inventory).toEqual([]);
 
     expect(redisInstance.hset).not.toHaveBeenCalled();

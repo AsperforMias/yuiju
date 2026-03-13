@@ -1,147 +1,133 @@
-import "dotenv/config";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { characterState } from "@/state/character-state";
-import { ActionId } from "@yuiju/utils";
 
-process.env.NODE_ENV = "development";
-
-describe("短期与长期计划功能", () => {
-  beforeEach(async () => {
+describe("Plan Manager", () => {
+  beforeEach(() => {
+    process.env.NODE_ENV = "development";
     vi.clearAllMocks();
-    await characterState.load();
+    vi.resetModules();
   });
 
-  it("设置长期计划：保存到 Redis 并能正确读取", async () => {
-    const plan = "努力学习，考上理想的大学";
-    await characterState.setLongTermPlan(plan);
+  async function createPlanTestContext(initialState?: unknown) {
+    let planStateJson = initialState ? JSON.stringify(initialState) : null;
+    const redisInstance = {
+      get: vi.fn(async (key: string) => {
+        if (key.includes("plan:state")) {
+          return planStateJson;
+        }
+        return null;
+      }),
+      set: vi.fn(async (_key: string, value: string) => {
+        planStateJson = value;
+        return "OK";
+      }),
+      hgetall: vi.fn(async () => ({})),
+      hset: vi.fn(async () => 1),
+      hget: vi.fn(async () => null),
+      quit: vi.fn(async () => undefined),
+    };
 
-    expect(characterState.longTermPlan).toBe(plan);
+    vi.doMock("ioredis", () => {
+      return {
+        default: function MockRedis() {
+          return redisInstance as any;
+        },
+      };
+    });
 
-    await characterState.load();
-    expect(characterState.longTermPlan).toBe(plan);
+    const { planManager } = await import("@/plan");
+    const { initPlanStateData } = await import("../../../utils/src/redis");
+    return {
+      planManager,
+      initPlanStateData,
+      redisInstance,
+    };
+  }
+
+  it("创建主计划后可以稳定读取", async () => {
+    const { planManager, initPlanStateData } = await createPlanTestContext();
+
+    const result = await planManager.applyProposal({
+      mainPlanTitle: "努力学习，考上理想的大学",
+    });
+
+    expect(result.state.mainPlan?.title).toBe("努力学习，考上理想的大学");
+
+    const persisted = await initPlanStateData();
+    expect(persisted.mainPlan?.title).toBe("努力学习，考上理想的大学");
   });
 
-  it("设置短期计划：保存到 Redis 并能正确读取", async () => {
-    const plan = ["完成今天的作业", "复习数学", "预习明天课程"];
-    await characterState.setShortTermPlan(plan);
+  it("创建活跃计划集合后可以完整保存", async () => {
+    const { planManager } = await createPlanTestContext();
 
-    expect(characterState.shortTermPlan).toEqual(plan);
+    const result = await planManager.applyProposal({
+      activePlanTitles: ["完成今天的作业", "复习数学", "预习明天课程"],
+    });
 
-    await characterState.load();
-    expect(characterState.shortTermPlan).toEqual(plan);
+    expect(result.state.activePlans.map((plan) => plan.title)).toEqual([
+      "完成今天的作业",
+      "复习数学",
+      "预习明天课程",
+    ]);
   });
 
-  it("更新短期计划：采用全量替换策略", async () => {
-    const initialPlan = ["完成今天的作业", "复习数学"];
-    await characterState.setShortTermPlan(initialPlan);
-    expect(characterState.shortTermPlan).toEqual(initialPlan);
+  it("同内容重复 proposal 不产生无意义变更", async () => {
+    const { planManager } = await createPlanTestContext();
 
-    const updatedPlan = ["完成今天的作业", "复习数学", "预习明天课程", "准备考试"];
-    await characterState.setShortTermPlan(updatedPlan);
-    expect(characterState.shortTermPlan).toEqual(updatedPlan);
-    expect(characterState.shortTermPlan).not.toEqual(initialPlan);
+    await planManager.applyProposal({
+      mainPlanTitle: "准备考试",
+      activePlanTitles: ["复习数学"],
+    });
+
+    const result = await planManager.applyProposal({
+      mainPlanTitle: "准备考试",
+      activePlanTitles: ["复习数学"],
+    });
+
+    expect(result.changes).toHaveLength(0);
   });
 
-  it("清空长期计划：设置为 undefined", async () => {
-    const plan = "努力学习，考上理想的大学";
-    await characterState.setLongTermPlan(plan);
-    expect(characterState.longTermPlan).toBe(plan);
+  it("更新活跃计划时会取消旧计划并创建新计划", async () => {
+    const { planManager } = await createPlanTestContext({
+      activePlans: [
+        {
+          id: "plan_old",
+          title: "完成作业",
+          scope: "active",
+          status: "active",
+          createdAt: "2026-03-14T10:00:00.000Z",
+          updatedAt: "2026-03-14T10:00:00.000Z",
+        },
+      ],
+      updatedAt: "2026-03-14T10:00:00.000Z",
+    });
 
-    await characterState.setLongTermPlan(undefined);
-    expect(characterState.longTermPlan).toBeUndefined();
+    const result = await planManager.applyProposal({
+      activePlanTitles: ["复习数学", "准备考试"],
+    });
 
-    await characterState.load();
-    expect(characterState.longTermPlan).toBeUndefined();
+    expect(result.changes.some((change) => change.changeType === "cancelled")).toBe(true);
+    expect(result.changes.filter((change) => change.changeType === "created")).toHaveLength(2);
   });
 
-  it("清空短期计划：设置为空数组", async () => {
-    const plan = ["完成今天的作业", "复习数学"];
-    await characterState.setShortTermPlan(plan);
-    expect(characterState.shortTermPlan).toEqual(plan);
+  it("清空主计划时会标记取消", async () => {
+    const { planManager } = await createPlanTestContext({
+      mainPlan: {
+        id: "plan_main",
+        title: "努力学习",
+        scope: "main",
+        status: "active",
+        createdAt: "2026-03-14T10:00:00.000Z",
+        updatedAt: "2026-03-14T10:00:00.000Z",
+      },
+      activePlans: [],
+      updatedAt: "2026-03-14T10:00:00.000Z",
+    });
 
-    await characterState.setShortTermPlan([]);
-    expect(characterState.shortTermPlan).toEqual([]);
+    const result = await planManager.applyProposal({
+      mainPlanTitle: undefined,
+    });
 
-    await characterState.load();
-    expect(characterState.shortTermPlan).toEqual([]);
-  });
-
-  it("同时设置长期和短期计划：两者互不影响", async () => {
-    const longTermPlan = "努力学习，考上理想的大学";
-    const shortTermPlan = ["完成今天的作业", "复习数学"];
-
-    await characterState.setLongTermPlan(longTermPlan);
-    await characterState.setShortTermPlan(shortTermPlan);
-
-    expect(characterState.longTermPlan).toBe(longTermPlan);
-    expect(characterState.shortTermPlan).toEqual(shortTermPlan);
-
-    await characterState.load();
-    expect(characterState.longTermPlan).toBe(longTermPlan);
-    expect(characterState.shortTermPlan).toEqual(shortTermPlan);
-  });
-
-  it("短期计划包含特殊字符：正确保存和读取", async () => {
-    const plan = ["完成今天的作业", "复习数学（重点）", "预习明天课程-第3章", "准备考试！"];
-    await characterState.setShortTermPlan(plan);
-
-    expect(characterState.shortTermPlan).toEqual(plan);
-
-    await characterState.load();
-    expect(characterState.shortTermPlan).toEqual(plan);
-  });
-
-  it("长期计划包含特殊字符：正确保存和读取", async () => {
-    const plan = "努力学习，考上理想的大学（重点专业）！";
-    await characterState.setLongTermPlan(plan);
-
-    expect(characterState.longTermPlan).toBe(plan);
-
-    await characterState.load();
-    expect(characterState.longTermPlan).toBe(plan);
-  });
-
-  it("短期计划为空数组：正确处理", async () => {
-    await characterState.setShortTermPlan([]);
-    expect(characterState.shortTermPlan).toEqual([]);
-
-    await characterState.load();
-    expect(characterState.shortTermPlan).toEqual([]);
-  });
-
-  it("短期计划包含单个元素：正确处理", async () => {
-    const plan = ["完成今天的作业"];
-    await characterState.setShortTermPlan(plan);
-    expect(characterState.shortTermPlan).toEqual(plan);
-
-    await characterState.load();
-    expect(characterState.shortTermPlan).toEqual(plan);
-  });
-
-  it("长期计划为空字符串：正确处理", async () => {
-    const plan = "";
-    await characterState.setLongTermPlan(plan);
-    expect(characterState.longTermPlan).toBe(plan);
-
-    await characterState.load();
-    expect(characterState.longTermPlan).toBeUndefined();
-  });
-
-  it("计划与其他状态字段互不影响：设置计划不影响其他状态", async () => {
-    await characterState.setAction(ActionId.Idle);
-    await characterState.setStamina(80);
-    await characterState.setMoney(100);
-
-    const longTermPlan = "努力学习，考上理想的大学";
-    const shortTermPlan = ["完成今天的作业", "复习数学"];
-
-    await characterState.setLongTermPlan(longTermPlan);
-    await characterState.setShortTermPlan(shortTermPlan);
-
-    expect(characterState.action).toBe(ActionId.Idle);
-    expect(characterState.stamina).toBe(80);
-    expect(characterState.money).toBe(100);
-    expect(characterState.longTermPlan).toBe(longTermPlan);
-    expect(characterState.shortTermPlan).toEqual(shortTermPlan);
+    expect(result.state.mainPlan).toBeUndefined();
+    expect(result.changes[0]?.changeType).toBe("cancelled");
   });
 });
