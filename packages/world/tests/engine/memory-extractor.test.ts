@@ -1,8 +1,43 @@
-import { describe, expect, it } from "vitest";
-import { DEFAULT_MEMORY_SUBJECT_ID, ruleBasedMemoryExtractor, type MemoryEpisode } from "@yuiju/utils";
+import type { MemoryEpisode } from "@yuiju/utils";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-describe("ruleBasedMemoryExtractor", () => {
-  it("能从 plan_update episode 提炼 plan fact", () => {
+vi.mock("@ai-sdk/deepseek", () => ({
+  deepseek: vi.fn(() => "mock-model"),
+}));
+
+vi.mock("ai", () => ({
+  generateText: vi.fn(),
+  Output: {
+    object: ({ schema }: { schema: unknown }) => ({ schema }),
+  },
+}));
+
+describe("llmMemoryExtractor", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("能从 plan_update episode 提炼 plan fact", async () => {
+    const { generateText } = await import("ai");
+    vi.mocked(generateText).mockResolvedValue({
+      output: {
+        facts: [
+          {
+            type: "plan",
+            subject: "ゆいじゅ",
+            predicate: "current_main_plan",
+            object: "准备考试",
+            summary: "悠酱当前主计划是准备考试",
+            confidence: 0.92,
+            metadata: {
+              planId: "plan_1",
+            },
+          },
+        ],
+      },
+    } as never);
+
+    const { DEFAULT_MEMORY_SUBJECT_ID, llmMemoryExtractor } = await import("@yuiju/utils");
     const episode: MemoryEpisode = {
       id: "episode_plan_1",
       source: "world_tick",
@@ -24,13 +59,39 @@ describe("ruleBasedMemoryExtractor", () => {
       },
     };
 
-    const facts = ruleBasedMemoryExtractor.extract(episode);
+    const facts = await llmMemoryExtractor.extract(episode);
     expect(facts).toHaveLength(1);
     expect(facts[0]?.type).toBe("plan");
     expect(facts[0]?.object).toBe("准备考试");
+    expect(facts[0]?.dedupeKey).toContain("current_main_plan");
   });
 
-  it("能从对话中提炼偏好与关系 fact", () => {
+  it("能从对话中提炼偏好与关系 fact", async () => {
+    const { generateText } = await import("ai");
+    vi.mocked(generateText).mockResolvedValue({
+      output: {
+        facts: [
+          {
+            type: "preference",
+            subject: "ゆいじゅ",
+            predicate: "likes",
+            object: "草莓蛋糕",
+            summary: "悠酱喜欢草莓蛋糕",
+            confidence: 0.88,
+          },
+          {
+            type: "relation",
+            subject: "ゆいじゅ",
+            predicate: "attitude_towards",
+            object: "小明",
+            summary: "悠酱对小明表现出积极互动倾向",
+            confidence: 0.78,
+          },
+        ],
+      },
+    } as never);
+
+    const { DEFAULT_MEMORY_SUBJECT_ID, llmMemoryExtractor } = await import("@yuiju/utils");
     const episode: MemoryEpisode = {
       id: "episode_chat_1",
       source: "chat",
@@ -58,10 +119,11 @@ describe("ruleBasedMemoryExtractor", () => {
       },
     };
 
-    const facts = ruleBasedMemoryExtractor.extract(episode);
-    expect(facts.some((fact) => fact.type === "preference" && fact.object.includes("草莓蛋糕"))).toBe(
-      true,
-    );
+    const facts = await llmMemoryExtractor.extract(episode);
+    expect(
+      facts.some((fact) => fact.type === "preference" && fact.object.includes("草莓蛋糕")),
+    ).toBe(true);
     expect(facts.some((fact) => fact.type === "relation" && fact.object === "小明")).toBe(true);
+    expect(facts.every((fact) => fact.dedupeKey.length > 0)).toBe(true);
   });
 });

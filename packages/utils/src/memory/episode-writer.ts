@@ -1,7 +1,7 @@
-import type { MemoryEpisodeWriteInput } from "./episode";
 import { saveMemoryEpisode, updateMemoryEpisodeExtraction } from "../db";
+import type { MemoryEpisodeWriteInput } from "./episode";
+import { llmMemoryExtractor } from "./fact";
 import { getMemoryServiceClientFromEnv } from "./memory-service-client";
-import { ruleBasedMemoryExtractor } from "./fact";
 
 /**
  * 统一 Episode 发射入口。
@@ -25,7 +25,7 @@ export async function emitMemoryEpisode(episode: MemoryEpisodeWriteInput): Promi
       extractionStatus: "processing",
     });
 
-    const extractedFacts = ruleBasedMemoryExtractor.extract({
+    const extractedFacts = await llmMemoryExtractor.extract({
       ...episode,
       id: episodeId,
     });

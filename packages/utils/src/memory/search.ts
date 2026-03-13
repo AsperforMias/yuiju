@@ -7,6 +7,7 @@ import { DEFAULT_MEMORY_SUBJECT_ID } from "./episode";
 import { getMemoryServiceClientFromEnv } from "./memory-service-client";
 
 export type MemorySearchMode = "auto" | "episode" | "fact" | "plan";
+export type MemorySearchTimeRange = "today" | "recent_3d" | "recent_7d" | "all";
 
 export interface StructuredMemorySearchItem {
   kind: "episode" | "fact" | "plan";
@@ -33,19 +34,52 @@ function scoreEpisode(query: string, summaryText: string): number {
   return score;
 }
 
-async function searchEpisodes(query: string): Promise<StructuredMemorySearchItem[]> {
+function getTimeRangeBounds(timeRange: MemorySearchTimeRange): {
+  happenedAfter?: Date;
+  happenedBefore?: Date;
+  onlyToday?: boolean;
+} {
+  if (timeRange === "today") {
+    return {
+      onlyToday: true,
+    };
+  }
+
+  if (timeRange === "recent_3d") {
+    return {
+      happenedAfter: dayjs().subtract(3, "day").toDate(),
+      happenedBefore: dayjs().add(1, "minute").toDate(),
+    };
+  }
+
+  if (timeRange === "recent_7d") {
+    return {
+      happenedAfter: dayjs().subtract(7, "day").toDate(),
+      happenedBefore: dayjs().add(1, "minute").toDate(),
+    };
+  }
+
+  return {};
+}
+
+async function searchEpisodes(input: {
+  query: string;
+  timeRange: MemorySearchTimeRange;
+}): Promise<StructuredMemorySearchItem[]> {
+  const timeRangeFilter = getTimeRangeBounds(input.timeRange);
   const docs = await getRecentMemoryEpisodes({
     limit: 20,
     subjectId: DEFAULT_MEMORY_SUBJECT_ID,
     isDev: isDev(),
+    ...timeRangeFilter,
   });
 
   return docs
     .map((doc) => ({
       doc,
-      score: scoreEpisode(query, doc.summaryText),
+      score: scoreEpisode(input.query, doc.summaryText),
     }))
-    .filter((item) => item.score > 0 || !query.trim())
+    .filter((item) => item.score > 0 || !input.query.trim())
     .sort((left, right) => right.score - left.score)
     .slice(0, 5)
     .map(({ doc, score }) => ({
@@ -115,9 +149,13 @@ async function searchPlanState(): Promise<StructuredMemorySearchItem[]> {
 export async function searchStructuredMemory(input: {
   query: string;
   mode: MemorySearchMode;
+  timeRange: MemorySearchTimeRange;
 }): Promise<StructuredMemorySearchItem[]> {
   if (input.mode === "episode") {
-    return await searchEpisodes(input.query);
+    return await searchEpisodes({
+      query: input.query,
+      timeRange: input.timeRange,
+    });
   }
 
   if (input.mode === "fact") {
@@ -129,7 +167,10 @@ export async function searchStructuredMemory(input: {
     if (planItems.length > 0) {
       return planItems;
     }
-    return await searchEpisodes(input.query);
+    return await searchEpisodes({
+      query: input.query,
+      timeRange: input.timeRange,
+    });
   }
 
   const planItems = /计划|打算|目标|安排|今天要做什么|近期/.test(input.query)
@@ -144,5 +185,8 @@ export async function searchStructuredMemory(input: {
     return factItems;
   }
 
-  return await searchEpisodes(input.query);
+  return await searchEpisodes({
+    query: input.query,
+    timeRange: input.timeRange,
+  });
 }

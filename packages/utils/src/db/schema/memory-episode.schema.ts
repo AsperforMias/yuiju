@@ -86,6 +86,8 @@ export interface GetRecentMemoryEpisodesOptions {
   subjectId?: string;
   isDev?: boolean;
   onlyToday?: boolean;
+  happenedAfter?: Date;
+  happenedBefore?: Date;
 }
 
 /**
@@ -147,6 +149,14 @@ export async function getRecentMemoryEpisodes(
       $gte: startOfToday.toDate(),
       $lt: startOfTomorrow.toDate(),
     };
+  } else if (options.happenedAfter || options.happenedBefore) {
+    filter.happenedAt = {};
+    if (options.happenedAfter) {
+      (filter.happenedAt as Record<string, Date>).$gte = options.happenedAfter;
+    }
+    if (options.happenedBefore) {
+      (filter.happenedAt as Record<string, Date>).$lt = options.happenedBefore;
+    }
   }
 
   return await MemoryEpisodeModel.find(filter)

@@ -14,11 +14,16 @@ export const memorySearchTool: Tool = {
       .enum(["auto", "episode", "fact", "plan"])
       .default("auto")
       .describe("查询模式：auto 自动路由，episode 查原始事件，fact 查长期事实，plan 查当前计划。"),
+    timeRange: z
+      .enum(["today", "recent_3d", "recent_7d", "all"])
+      .default("all")
+      .describe("事件检索的时间范围过滤。"),
   }),
-  execute: async ({ query, mode }) => {
+  execute: async ({ query, mode, timeRange }) => {
     return await searchStructuredMemory({
       query,
       mode,
+      timeRange,
     });
   },
 };

@@ -133,6 +133,7 @@ class FactCandidate(BaseModel):
   """
 
   id: str = Field(min_length=1)
+  dedupeKey: str = Field(min_length=1)
   type: str = Field(min_length=1)
   subject: str = Field(min_length=1)
   predicate: str = Field(min_length=1)
@@ -205,6 +206,7 @@ def _stringify_fact_content(
 
   meta = {
     "fact_id": fact.id,
+    "dedupe_key": fact.dedupeKey,
     "subject_name": fact.subject,
     "type": fact.type,
     "predicate": fact.predicate,
