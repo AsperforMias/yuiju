@@ -17,7 +17,7 @@ describe("llmMemoryExtractor", () => {
     vi.clearAllMocks();
   });
 
-  it("能从 plan_update episode 提炼 plan fact", async () => {
+  it("能从细粒度计划事件 episode 提炼 plan fact", async () => {
     const { generateText } = await import("ai");
     vi.mocked(generateText).mockResolvedValue({
       output: {
@@ -41,7 +41,7 @@ describe("llmMemoryExtractor", () => {
     const episode: MemoryEpisode = {
       id: "episode_plan_1",
       source: "world_tick",
-      type: "plan_update",
+      type: "plan_created",
       subjectId: DEFAULT_MEMORY_SUBJECT_ID,
       happenedAt: new Date("2026-03-14T10:00:00.000Z"),
       summaryText: "悠酱创建了主计划；新计划：准备考试",

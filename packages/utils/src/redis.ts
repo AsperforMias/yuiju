@@ -46,6 +46,7 @@ const DEFAULT_CHARACTER_STATE_DATA: CharacterStateData = {
 };
 
 const DEFAULT_PLAN_STATE: PlanState = {
+  activePlanIds: [],
   activePlans: [],
   updatedAt: new Date(0).toISOString(),
 };
@@ -155,20 +156,30 @@ export const initPlanStateData = async (): Promise<PlanState> => {
 
   if (!raw) {
     await redis.set(REDIS_KEY_PLAN_STATE, JSON.stringify(DEFAULT_PLAN_STATE));
-    return { ...DEFAULT_PLAN_STATE, activePlans: [] };
+    return { ...DEFAULT_PLAN_STATE, activePlanIds: [], activePlans: [] };
   }
 
   const parsed = safeParseJson<unknown>(raw);
   if (!parsed || typeof parsed !== "object") {
     await redis.set(REDIS_KEY_PLAN_STATE, JSON.stringify(DEFAULT_PLAN_STATE));
-    return { ...DEFAULT_PLAN_STATE, activePlans: [] };
+    return { ...DEFAULT_PLAN_STATE, activePlanIds: [], activePlans: [] };
   }
 
   const maybeState = parsed as Partial<PlanState>;
   const activePlans = Array.isArray(maybeState.activePlans) ? maybeState.activePlans : [];
+  const mainPlan = maybeState.mainPlan;
+  const mainPlanId =
+    typeof maybeState.mainPlanId === "string" ? maybeState.mainPlanId : maybeState.mainPlan?.id;
+  const activePlanIds = Array.isArray(maybeState.activePlanIds)
+    ? maybeState.activePlanIds.filter((item): item is string => typeof item === "string")
+    : activePlans
+        .map((plan) => (typeof plan?.id === "string" ? plan.id : undefined))
+        .filter((item): item is string => Boolean(item));
 
   return {
-    mainPlan: maybeState.mainPlan,
+    mainPlanId,
+    activePlanIds,
+    mainPlan,
     activePlans,
     updatedAt:
       typeof maybeState.updatedAt === "string" ? maybeState.updatedAt : DEFAULT_PLAN_STATE.updatedAt,

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ActionId, MajorScene, type ActionAgentDecision, type ActionContext } from "@yuiju/utils";
-import { buildBehaviorEpisode, buildPlanUpdateEpisodes } from "@/memory/episode-builder";
+import { buildBehaviorEpisode, buildPlanUpdateEpisodes } from "../../src/memory/episode-builder";
 
 function createContext(): ActionContext {
   return {
@@ -87,7 +87,7 @@ describe("world episode builder", () => {
     expect(episode).toBeNull();
   });
 
-  it("计划未变化时不生成 plan_update episode", () => {
+  it("计划未变化时不生成计划生命周期 episode", () => {
     const episodes = buildPlanUpdateEpisodes({
       changes: [],
       happenedAt: new Date("2026-03-13T10:00:00.000Z"),
@@ -97,27 +97,29 @@ describe("world episode builder", () => {
     expect(episodes).toHaveLength(0);
   });
 
-  it("长期与短期计划变化时分别生成 plan_update episode", () => {
+  it("长期与短期计划变化时分别生成细粒度计划事件", () => {
     const episodes = buildPlanUpdateEpisodes({
       changes: [
         {
-          planId: "plan_main_1",
+          planId: "plan_main_old",
           scope: "main",
-          changeType: "replaced",
+          changeType: "superseded",
           before: {
             id: "plan_main_old",
             title: "努力学习",
             scope: "main",
             status: "active",
+            source: "llm",
             createdAt: "2026-03-13T08:00:00.000Z",
             updatedAt: "2026-03-13T08:00:00.000Z",
           },
           after: {
-            id: "plan_main_1",
-            title: "准备考试",
+            id: "plan_main_old",
+            title: "努力学习",
             scope: "main",
-            status: "active",
-            createdAt: "2026-03-13T10:00:00.000Z",
+            status: "superseded",
+            source: "llm",
+            createdAt: "2026-03-13T08:00:00.000Z",
             updatedAt: "2026-03-13T10:00:00.000Z",
           },
         },
@@ -130,6 +132,8 @@ describe("world episode builder", () => {
             title: "复习数学",
             scope: "active",
             status: "active",
+            parentPlanId: "plan_main_1",
+            source: "llm",
             createdAt: "2026-03-13T10:00:00.000Z",
             updatedAt: "2026-03-13T10:00:00.000Z",
           },
@@ -140,8 +144,11 @@ describe("world episode builder", () => {
     });
 
     expect(episodes).toHaveLength(2);
+    expect(episodes[0]?.type).toBe("plan_superseded");
     expect(episodes[0]?.payload.planScope).toBe("main");
+    expect(episodes[1]?.type).toBe("plan_created");
     expect(episodes[1]?.payload.planScope).toBe("active");
     expect(episodes[1]?.summaryText).toContain("复习数学");
+    expect(episodes[1]?.payload.after?.parentPlanId).toBe("plan_main_1");
   });
 });

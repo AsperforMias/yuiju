@@ -42,7 +42,16 @@ const MemoryEpisodeSchema = new Schema<IMemoryEpisode>(
     },
     type: {
       type: String,
-      enum: ["behavior", "conversation", "plan_update", "system"],
+      enum: [
+        "behavior",
+        "conversation",
+        "plan_created",
+        "plan_updated",
+        "plan_completed",
+        "plan_abandoned",
+        "plan_superseded",
+        "system",
+      ],
       required: true,
       index: true,
     },
@@ -91,6 +100,12 @@ export interface GetRecentMemoryEpisodesOptions {
   happenedBefore?: Date;
 }
 
+export interface GetPendingMemoryEpisodesOptions {
+  limit?: number;
+  statuses?: MemoryEpisodeExtractionStatus[];
+  isDev?: boolean;
+}
+
 /**
  * 保存统一 Episode 到 MongoDB。
  */
@@ -119,6 +134,33 @@ export async function updateMemoryEpisodeExtraction(
     extractionStatus: input.extractionStatus,
     extractedFactIds: input.extractedFactIds,
   }).exec();
+}
+
+/**
+ * 批量查询待处理 Episode。
+ *
+ * 说明：
+ * - 默认只扫描 pending / failed 两类状态，便于异步补偿；
+ * - 返回顺序按发生时间正序，优先处理更早堆积的数据。
+ */
+export async function getPendingMemoryEpisodes(
+  options: GetPendingMemoryEpisodesOptions = {},
+): Promise<IMemoryEpisode[]> {
+  await connectDB();
+
+  const filter: Record<string, unknown> = {
+    extractionStatus: {
+      $in: options.statuses ?? ["pending", "failed"],
+    },
+  };
+  if (typeof options.isDev === "boolean") {
+    filter.isDev = options.isDev;
+  }
+
+  return await MemoryEpisodeModel.find(filter)
+    .sort({ happenedAt: 1, createdAt: 1 })
+    .limit(options.limit ?? 20)
+    .exec();
 }
 
 /**
