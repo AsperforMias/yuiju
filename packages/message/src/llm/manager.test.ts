@@ -28,7 +28,7 @@ describe("LLMManager", () => {
 
     const tools = generateTextMock.mock.calls[0]?.[0]?.tools;
     expect(tools).toBeDefined();
-    expect(tools).toHaveProperty("memorySearchTool");
+    expect(tools).toHaveProperty("memorySearch");
     expect(tools).toHaveProperty("queryCharacterState");
     expect(tools).not.toHaveProperty("queryRecentBehaviors");
   });

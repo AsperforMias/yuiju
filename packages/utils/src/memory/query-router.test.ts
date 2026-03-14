@@ -4,6 +4,9 @@ const getRecentMemoryEpisodesMock = vi.fn();
 const initPlanStateDataMock = vi.fn();
 const getMemoryServiceClientFromEnvMock = vi.fn();
 const isDevMock = vi.fn(() => true);
+const fetchMock = vi.fn();
+
+vi.stubGlobal("fetch", fetchMock);
 
 vi.mock("../db", () => ({
   getRecentMemoryEpisodes: getRecentMemoryEpisodesMock,
@@ -22,6 +25,82 @@ vi.mock("./memory-service-client", () => ({
 }));
 
 describe("memoryQueryRouter", () => {
+  it("候选超过阈值且配置了 key 时会调用 SiliconFlow rerank", async () => {
+    process.env.SILICONFLOW_API_KEY = "test-key";
+    getRecentMemoryEpisodesMock.mockResolvedValueOnce([
+      {
+        _id: "episode_1",
+        type: "behavior",
+        source: "world_tick",
+        summaryText: "上午先去了图书馆复习数学",
+        happenedAt: new Date("2026-03-14T08:00:00.000Z"),
+        payload: {
+          action: "study",
+        },
+      },
+      {
+        _id: "episode_2",
+        type: "behavior",
+        source: "world_tick",
+        summaryText: "中午在咖啡店休息",
+        happenedAt: new Date("2026-03-14T10:00:00.000Z"),
+        payload: {
+          action: "rest",
+        },
+      },
+      {
+        _id: "episode_3",
+        type: "behavior",
+        source: "world_tick",
+        summaryText: "下午继续做模拟题",
+        happenedAt: new Date("2026-03-14T13:00:00.000Z"),
+        payload: {
+          action: "study",
+        },
+      },
+      {
+        _id: "episode_4",
+        type: "behavior",
+        source: "world_tick",
+        summaryText: "晚上整理错题并复盘考试重点",
+        happenedAt: new Date("2026-03-14T18:00:00.000Z"),
+        payload: {
+          action: "review",
+        },
+      },
+    ]);
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        results: [
+          { index: 0, relevance_score: 0.98 },
+          { index: 1, relevance_score: 0.81 },
+        ],
+      }),
+    });
+
+    const { searchEpisodes } = await import("./query-router");
+    const result = await searchEpisodes({
+      query: "图书馆 咖啡店 模拟题 考试",
+      topK: 2,
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://api.siliconflow.cn/v1/rerank",
+      expect.objectContaining({
+        method: "POST",
+        headers: expect.objectContaining({
+          Authorization: "Bearer test-key",
+        }),
+      }),
+    );
+    expect(result.map((item) => item.evidenceIds[0])).toEqual(["episode_4", "episode_3"]);
+    expect(result[0]?.metadata).toMatchObject({
+      rerankModel: "Qwen/Qwen3-Reranker-8B",
+    });
+    delete process.env.SILICONFLOW_API_KEY;
+  });
+
   it("episode 路由会透传 timeRange、topK 与 counterpartyName", async () => {
     getRecentMemoryEpisodesMock.mockResolvedValueOnce([
       {
@@ -140,7 +219,8 @@ describe("memoryQueryRouter", () => {
     });
   });
 
-  it("auto 路由会按 plan -> fact -> episode 合并并按 score 排序", async () => {
+  it("auto 路由会合并 plan/fact/episode，并在同分时按时间倒序排序", async () => {
+    delete process.env.SILICONFLOW_API_KEY;
     initPlanStateDataMock.mockResolvedValueOnce({
       updatedAt: "2026-03-14T10:00:00.000Z",
       mainPlan: {
@@ -181,6 +261,6 @@ describe("memoryQueryRouter", () => {
       topK: 3,
     });
 
-    expect(result.map((item) => item.source)).toEqual(["fact", "plan", "episode"]);
+    expect(result.map((item) => item.source)).toEqual(["fact", "episode", "plan"]);
   });
 });

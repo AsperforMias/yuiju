@@ -38,7 +38,7 @@ export class LLMManager {
       messages,
       system: systemPrompt,
       tools: {
-        memorySearchTool,
+        memorySearch: memorySearchTool,
         queryCharacterState: queryCharacterStateTool,
       },
       stopWhen: stepCountIs(5),

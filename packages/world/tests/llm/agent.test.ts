@@ -14,6 +14,6 @@ describe("chooseActionAgent", () => {
     const promptSource = fs.readFileSync(promptFile, "utf-8");
 
     expect(agentSource).toContain("memorySearch: unifiedMemorySearchTool");
-    expect(promptSource).toContain("优先调用 \\`memory-search\\` 查询记忆");
+    expect(promptSource).toContain("优先调用 \\`memorySearch\\` 查询记忆");
   });
 });

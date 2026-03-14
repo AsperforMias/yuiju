@@ -2,9 +2,9 @@ import dayjs from "dayjs";
 import { getRecentMemoryEpisodes } from "../db";
 import { isDev } from "../env";
 import { initPlanStateData } from "../redis";
-import { getTimeWithWeekday } from "../time";
 import { DEFAULT_MEMORY_SUBJECT_ID } from "./episode";
 import { getMemoryServiceClientFromEnv, type MemorySearchItem } from "./memory-service-client";
+import { rerankEpisodesWithSiliconFlow } from "./rerank";
 
 export type MemoryQueryType = "auto" | "episode" | "fact" | "plan";
 export type MemoryQueryTimeRange = "today" | "recent_3d" | "recent_7d" | "all";
@@ -34,6 +34,7 @@ interface MemoryQueryRouter {
 
 const DEFAULT_TOP_K = 5;
 const EPISODE_SEARCH_LIMIT = 20;
+const EPISODE_RERANK_THRESHOLD = 3;
 const PLAN_QUERY_PATTERN = /计划|打算|目标|安排|今天要做什么|近期/;
 
 function normalizeTopK(topK?: number): number {
@@ -182,6 +183,28 @@ function mergeAndRankResults(results: MemorySearchResult[], topK: number): Memor
     .slice(0, topK);
 }
 
+function buildEpisodeRerankDocument(doc: {
+  summaryText: string;
+  type: string;
+  counterpartyId?: string;
+  payload?: Record<string, unknown>;
+}): string {
+  const action =
+    typeof doc.payload?.action === "string" ? `行为: ${doc.payload.action}` : undefined;
+  const planId = getPlanIdFromPayload(doc.payload);
+  const counterparty = doc.counterpartyId ? `对象: ${doc.counterpartyId}` : undefined;
+
+  return [
+    doc.summaryText,
+    `类型: ${doc.type}`,
+    action,
+    counterparty,
+    planId ? `计划: ${planId}` : undefined,
+  ]
+    .filter((item): item is string => Boolean(item))
+    .join("\n");
+}
+
 /**
  * 查询 Episode 记忆。
  *
@@ -200,26 +223,67 @@ export async function searchEpisodes(input: MemorySearchInput): Promise<MemorySe
     ...timeRangeFilter,
   });
 
-  return docs
-    .map((doc) => {
+  const candidates = docs
+    .map((doc, index) => {
       const score = scoreEpisode(normalized.query, doc.summaryText);
       const planId = getPlanIdFromPayload(doc.payload);
 
       return {
-        source: "episode" as const,
-        score,
-        summary: doc.summaryText,
-        happenedAt: getTimeWithWeekday(dayjs(doc.happenedAt), "MM-DD HH:mm"),
-        evidenceIds: [String(doc._id)],
-        metadata: {
-          episodeType: doc.type,
-          planId,
-          source: doc.source,
+        item: {
+          source: "episode" as const,
+          score,
+          summary: doc.summaryText,
+          happenedAt: dayjs(doc.happenedAt).toISOString(),
+          evidenceIds: [String(doc._id)],
+          metadata: {
+            episodeType: doc.type,
+            planId,
+            source: doc.source,
+            displayTime: dayjs(doc.happenedAt).format("MM-DD HH:mm"),
+          },
+        },
+        document: buildEpisodeRerankDocument(doc),
+        result: {
+          source: "episode" as const,
+          score,
+          summary: doc.summaryText,
+          happenedAt: dayjs(doc.happenedAt).toISOString(),
+          evidenceIds: [String(doc._id)],
+          metadata: {
+            episodeType: doc.type,
+            planId,
+            source: doc.source,
+            displayTime: dayjs(doc.happenedAt).format("MM-DD HH:mm"),
+          },
         },
       };
     })
-    .filter((item) => item.score > 0 || !normalized.query)
-    .slice(0, normalized.topK);
+    .filter((item) => item.result.score > 0 || !normalized.query)
+    .sort((left, right) => {
+      if (right.result.score !== left.result.score) {
+        return right.result.score - left.result.score;
+      }
+
+      return getSortableTimestamp(right.result) - getSortableTimestamp(left.result);
+    });
+
+  if (
+    normalized.query &&
+    candidates.length > EPISODE_RERANK_THRESHOLD &&
+    process.env.SILICONFLOW_API_KEY?.trim()
+  ) {
+    const reranked = await rerankEpisodesWithSiliconFlow({
+      query: normalized.query,
+      topK: normalized.topK,
+      candidates,
+    });
+
+    if (reranked) {
+      return reranked;
+    }
+  }
+
+  return candidates.slice(0, normalized.topK).map((candidate) => candidate.result);
 }
 
 /**
