@@ -2,22 +2,22 @@ import {
   type ActionContext,
   ActionId,
   type ActionParameter,
-  getMemoryServiceClientFromEnv,
-  getRecentBehaviorRecords,
-  getTimeWithWeekday,
+  DEFAULT_MEMORY_SUBJECT_ID,
+  emitMemoryEpisode,
+  getRecentMemoryEpisodes,
   isDev,
-  isProd,
-  saveBehaviorRecord,
 } from "@yuiju/utils";
-import dayjs from "dayjs";
 import { getActionList } from "@/action";
 import { getActionById } from "@/action/utils";
 import { chooseActionAgent } from "@/llm/agent";
+import { buildBehaviorEpisode, buildPlanUpdateEpisodes } from "@/memory/episode-builder";
+import { planManager } from "@/plan";
 import { characterState } from "@/state/character-state";
 import { worldState } from "@/state/world-state";
 import { logger } from "@/utils/logger";
 
-const memoryClient = getMemoryServiceClientFromEnv();
+// 当前阶段先在调用侧统一 Episode 模型，暂不真正写入 Graphiti。
+// const memoryClient = getMemoryServiceClientFromEnv();
 
 export async function getDurationTime(
   durationMin:
@@ -55,6 +55,7 @@ export async function tick(params: TickParams): Promise<TickReturn> {
   };
 
   const actionList = getActionList(context);
+  const planState = await planManager.getState();
 
   if (actionList.length === 0) {
     const idleAction = getActionById(ActionId.Idle);
@@ -70,29 +71,41 @@ export async function tick(params: TickParams): Promise<TickReturn> {
     context.worldState.log(),
   );
 
-  const recentBehaviors = await getRecentBehaviorRecords(10);
+  const recentBehaviors = await getRecentMemoryEpisodes({
+    limit: 10,
+    types: ["behavior"],
+    subjectId: DEFAULT_MEMORY_SUBJECT_ID,
+    isDev: isDev(),
+    onlyToday: true,
+  });
   const history = recentBehaviors.map((behavior) => ({
-    behavior: behavior.behavior as ActionId,
-    description: behavior.description,
-    timestamp: behavior.timestamp.getTime(),
+    behavior: String(behavior.payload.action ?? ActionId.Idle) as ActionId,
+    description: String(behavior.payload.reason ?? behavior.summaryText),
+    timestamp: behavior.happenedAt.getTime(),
   }));
 
-  const selectedAction = await chooseActionAgent(actionList, context, history);
+  const selectedAction = await chooseActionAgent(actionList, context, history, planState);
   const actionMetadata = actionList.find((item) => item.action === selectedAction?.action);
 
   if (actionMetadata && selectedAction) {
-    // 处理计划更新
-    if (selectedAction.updateLongTermPlan !== undefined) {
-      await characterState.setLongTermPlan(selectedAction.updateLongTermPlan);
-      logger.info(
-        `[tick] Long term plan updated: ${selectedAction.updateLongTermPlan || "（清空）"}`,
-      );
-    }
-    if (selectedAction.updateShortTermPlan !== undefined) {
-      await characterState.setShortTermPlan(selectedAction.updateShortTermPlan);
-      logger.info(
-        `[tick] Short term plan updated: ${JSON.stringify(selectedAction.updateShortTermPlan)}`,
-      );
+    const planApplyResult = await planManager.applyProposal({
+      mainPlanTitle: selectedAction.updateLongTermPlan,
+      activePlanTitles: selectedAction.updateShortTermPlan,
+    });
+
+    const planEpisodes = buildPlanUpdateEpisodes({
+      changes: planApplyResult.changes,
+      happenedAt: new Date(),
+      isDev: isDev(),
+    });
+
+    for (const planEpisode of planEpisodes) {
+      try {
+        await emitMemoryEpisode(planEpisode);
+        logger.debug("[tick] built plan_update episode", planEpisode);
+      } catch (error) {
+        logger.error("[tick] write plan_update episode failed", error);
+      }
     }
 
     // 执行行为
@@ -113,43 +126,42 @@ export async function tick(params: TickParams): Promise<TickReturn> {
       await context.characterState.changeSatiety(-satietyDecay);
     }
 
-    // 保存行为记录（包含持续时间）
-    if (isProd()) {
-      let description = selectedAction.reason;
-      if (executionResult) {
-        description += ` ${executionResult}`;
-      }
+    const behaviorEpisode = buildBehaviorEpisode({
+      context,
+      selectedAction,
+      executionResult: executionResult ?? undefined,
+      durationMinutes: durationMin,
+      relatedPlanId: planApplyResult.relatedPlanId,
+      happenedAt: new Date(),
+      isDev: isDev(),
+    });
 
-      await saveBehaviorRecord({
-        behavior: selectedAction.action,
-        description,
-        timestamp: new Date(),
-        trigger: "agent",
-        duration_minutes: durationMin,
-      });
-    }
-
-    if (memoryClient && selectedAction.action !== ActionId.Idle) {
+    if (behaviorEpisode) {
       try {
-        const now = new Date();
-        let description = selectedAction.reason;
-        if (executionResult) {
-          description += ` ${executionResult}`;
-        }
+        await emitMemoryEpisode(behaviorEpisode);
+        logger.debug("[tick] built behavior episode", behaviorEpisode);
 
-        await memoryClient.writeEpisode({
-          is_dev: isDev(),
-          type: "ゆいじゅ的 Behavior",
-          reference_time: now,
-          content: {
-            time: getTimeWithWeekday(dayjs(now)),
-            action: selectedAction.action,
-            reason: description,
-            duration_minutes: `持续了${durationMin}分钟`,
-          },
-        });
+        // 当前阶段只完成统一 Episode 建模，等待 Python 服务升级后再恢复真实写入。
+        // if (memoryClient) {
+        //   let description = selectedAction.reason;
+        //   if (executionResult) {
+        //     description += ` ${executionResult}`;
+        //   }
+        //
+        //   await memoryClient.writeEpisode({
+        //     is_dev: isDev(),
+        //     type: "ゆいじゅ的 Behavior",
+        //     reference_time: behaviorEpisode.happenedAt,
+        //     content: {
+        //       time: getTimeWithWeekday(dayjs(behaviorEpisode.happenedAt)),
+        //       action: selectedAction.action,
+        //       reason: description,
+        //       duration_minutes: `持续了${durationMin}分钟`,
+        //     },
+        //   });
+        // }
       } catch (e) {
-        logger.error("[tick] write world_action episode failed", e);
+        logger.error("[tick] build world_action episode failed", e);
       }
     }
 

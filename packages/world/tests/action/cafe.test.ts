@@ -57,8 +57,6 @@ function createMockCharacterState(opts: {
     mood: currentMood,
     money: currentMoney,
     dailyActionsDoneToday: [],
-    longTermPlan: undefined,
-    shortTermPlan: undefined,
     inventory: currentInventory,
 
     async setAction(action: ActionId) {
@@ -125,8 +123,6 @@ function createMockCharacterState(opts: {
       const item = this.inventory.find((i: any) => i.name === itemName);
       return item ? (item.quantity ?? 0) : 0;
     },
-    async setLongTermPlan(_plan?: string) {},
-    async setShortTermPlan(_plans?: string[]) {},
     log() {
       return {
         action: currentAction,
@@ -136,8 +132,6 @@ function createMockCharacterState(opts: {
         mood: currentMood,
         money: currentMoney,
         dailyActionsDoneToday: [],
-        longTermPlan: undefined,
-        shortTermPlan: undefined,
         inventory: currentInventory,
       };
     },

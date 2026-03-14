@@ -1,12 +1,12 @@
-import { Badge } from "@/lib/components/ui/badge";
-import { Card } from "@/lib/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
 
 type HomeWorldCardProps = {
   time?: string;
 };
 
 export function HomeWorldCard({ time }: HomeWorldCardProps) {
-  const displayTime = time ?? "2026-02-07 19:32";
+  const displayTime = time ?? "—";
   return (
     <Card>
       <div className="p-[14px] grid gap-[14px]">

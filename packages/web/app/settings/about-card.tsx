@@ -1,5 +1,5 @@
-import { Badge } from "@/lib/components/ui/badge";
-import { Card } from "@/lib/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
 
 export function AboutCard() {
   return (
@@ -17,8 +17,7 @@ export function AboutCard() {
         </div>
 
         <p className="m-0 text-[15px] text-[#6b7480] leading-[1.55]">
-          本页面是 UI 稿（mock），用于快速对齐 PRD 的信息架构、布局与视觉风格。后续可迁移到 Next.js
-          页面并替换为真实数据与交互。
+          本页面用于展示信息架构、布局与视觉风格。后续可根据实际数据补充内容与交互。
         </p>
 
         <div className="flex flex-wrap gap-2">

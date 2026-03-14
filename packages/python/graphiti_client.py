@@ -4,11 +4,119 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
+import httpx
 from graphiti_core import Graphiti
-from graphiti_core.cross_encoder.openai_reranker_client import OpenAIRerankerClient
+from graphiti_core.cross_encoder.client import CrossEncoderClient
 from graphiti_core.embedder.openai import OpenAIEmbedder, OpenAIEmbedderConfig
 from graphiti_core.llm_client.config import LLMConfig
 from graphiti_core.llm_client.openai_generic_client import OpenAIGenericClient
+from graphiti_core.llm_client import RateLimitError
+
+
+class SiliconFlowRerankerClient(CrossEncoderClient):
+    """
+    硅基流动专业 Rerank API 客户端
+
+    使用 Qwen/Qwen3-Reranker-8B 模型的专业重排服务，该模型专门用于语义相关性排序。
+
+    特点：
+    - 使用专业的 Rerank API 端点
+    - 模型：Qwen/Qwen3-Reranker-8B，专门为检索重排优化
+    - API 端点：/v1/rerank
+    - 返回 0-1 范围的相关性分数
+    - 比通用 LLM 重排更准确
+    """
+
+    def __init__(
+        self,
+        config: LLMConfig | None = None,
+    ):
+        """
+        初始化硅基流动 Rerank 客户端
+
+        Args:
+            config (LLMConfig | None): LLM 配置，需要包含 API 密钥和基础 URL
+        """
+        if config is None:
+            config = LLMConfig()
+
+        self.config = config
+        # 构建 rerank API 端点
+        base_url = self.config.base_url.rstrip("/")
+        self.rerank_url = f"{base_url}/rerank"
+        self.default_model = "Qwen/Qwen3-Reranker-8B"
+
+    async def rank(self, query: str, passages: list[str]) -> list[tuple[str, float]]:
+        """
+        使用硅基流动 Rerank API 对段落进行排序
+
+        Args:
+            query (str): 查询内容
+            passages (list[str]): 待排序的段落列表
+
+        Returns:
+            list[tuple[str, float]]: 排序后的段落和分数（0-1 范围）
+        """
+        if not passages:
+            return []
+
+        if len(passages) <= 1:
+            return [(passage, 1.0) for passage in passages]
+
+        # 每次调用 rank 时创建新的 client
+        client = httpx.AsyncClient(
+            headers={
+                "Authorization": f"Bearer {self.config.api_key}",
+                "Content-Type": "application/json",
+            },
+            timeout=30.0,
+        )
+
+        try:
+            # 构建请求体
+            payload = {
+                "model": self.config.model or self.default_model,
+                "query": query,
+                "documents": passages,
+                "top_n": len(passages),
+            }
+
+            # 发送请求
+            response = await client.post(self.rerank_url, json=payload)
+
+            if response.status_code == 429:
+                raise RateLimitError("Rate limit exceeded for rerank API")
+            if response.status_code != 200:
+                raise Exception(f"Rerank API failed with status {response.status_code}: {response.text}")
+
+            # 解析响应
+            data = response.json()
+
+            if "results" not in data:
+                raise Exception("Invalid rerank API response structure")
+
+            # 提取分数并配对
+            ranked_results = []
+            for result in data["results"]:
+                passage = passages[result["index"]]
+                score = result["relevance_score"]
+                ranked_results.append((passage, score))
+
+            # 按分数降序排序
+            ranked_results.sort(reverse=True, key=lambda x: x[1])
+            return ranked_results
+
+        except Exception as e:
+            # 捕获所有异常并记录日志
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"SiliconFlow rerank API failed: {str(e)}")
+            logger.warning("Falling back to simple rank (all passages score 1.0)")
+            # 降级到简单排序
+            return [(passage, 1.0) for passage in passages]
+        finally:
+            # 关闭客户端
+            await client.aclose()
 
 
 _dotenv_loaded = False
@@ -77,10 +185,10 @@ def load_graphiti_env() -> GraphitiEnv:
   default_neo4j_user = "neo4j"
   default_neo4j_password = "neo4j123456"
   default_llm_base_url = "https://api.siliconflow.cn/v1"
-  default_llm_model = "Pro/deepseek-ai/DeepSeek-V3.2"
+  default_llm_model = "Pro/MiniMaxAI/MiniMax-M2.5"
   default_llm_small_model = "Qwen/Qwen3-8B"
   default_embedding_model = "Qwen/Qwen3-Embedding-0.6B"
-  default_reranker_model = "Qwen/Qwen3-8B"
+  default_reranker_model = "Qwen/Qwen3-Reranker-8B"
 
   llm_api_key = _require_env("SILICONFLOW_API_KEY")
 
@@ -143,7 +251,7 @@ async def get_graphiti() -> Graphiti:
       env.neo4j_password,
       llm_client=OpenAIGenericClient(config=llm_config),
       embedder=OpenAIEmbedder(config=embedder_config),
-      cross_encoder=OpenAIRerankerClient(config=reranker_config),
+      cross_encoder=SiliconFlowRerankerClient(config=reranker_config),
     )
     return _graphiti
 

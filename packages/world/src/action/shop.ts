@@ -1,12 +1,13 @@
 import {
   ActionId,
-  SHOP_PRODUCTS,
   type ActionMetadata,
-  type ShopProduct,
   allTrue,
   MajorScene,
+  SHOP_PRODUCTS,
+  type ShopProduct,
 } from "@yuiju/utils";
 import { chooseShopProductAgent } from "@/llm/agent";
+import { planManager } from "@/plan";
 import { logger } from "@/utils/logger";
 
 const SHOP_MIN_PRICE = Math.min(...SHOP_PRODUCTS.map((p) => p.price));
@@ -54,7 +55,12 @@ export const shopAction: ActionMetadata[] = [
         };
       });
 
-      const selectedProduct = await chooseShopProductAgent(productList, context, []);
+      const selectedProduct = await chooseShopProductAgent(
+        productList,
+        context,
+        [],
+        await planManager.getState(),
+      );
       if (!selectedProduct) {
         logger.error("[Buy_Item_At_Shop] 没有选择商品");
         return "购买失败，没有选择商品。";

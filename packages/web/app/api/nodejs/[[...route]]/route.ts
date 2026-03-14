@@ -4,7 +4,6 @@ import { Hono } from "hono";
 import { handle } from "hono/vercel";
 import { activityRoute } from "./activity";
 import { homeRoute } from "./home";
-import { profileRoute } from "./profile";
 import { stateRoute } from "./state";
 
 // 数据库连接状态管理
@@ -74,7 +73,6 @@ app.use("/state", checkDatabaseConnection);
 
 app.route("/home", homeRoute);
 app.route("/activity", activityRoute);
-app.route("/profile", profileRoute);
 app.route("/state", stateRoute);
 
 // 全局错误处理

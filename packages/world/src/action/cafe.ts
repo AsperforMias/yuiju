@@ -1,13 +1,14 @@
 import {
   ActionId,
-  CAFE_COFFEES,
-  CafeCoffeeName,
   type ActionMetadata,
-  type CafeCoffee,
   allTrue,
+  CAFE_COFFEES,
+  type CafeCoffee,
+  type CafeCoffeeName,
   MajorScene,
 } from "@yuiju/utils";
 import { chooseCafeCoffeeAgent } from "@/llm/agent";
+import { planManager } from "@/plan";
 import { logger } from "@/utils/logger";
 
 const CAFE_MIN_PRICE = Math.min(...CAFE_COFFEES.map((p) => p.price));
@@ -81,7 +82,12 @@ export const cafeAction: ActionMetadata[] = [
         };
       });
 
-      const selectedCoffee = await chooseCafeCoffeeAgent(coffeeList, context, []);
+      const selectedCoffee = await chooseCafeCoffeeAgent(
+        coffeeList,
+        context,
+        [],
+        await planManager.getState(),
+      );
       if (!selectedCoffee) {
         logger.error("[Order_Coffee] 没有选择咖啡");
         return "点单失败，没有选择咖啡。";

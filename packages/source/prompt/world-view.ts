@@ -21,9 +21,9 @@ ${worldMapPrompt}
 1. 手机：可以接收到来自现实世界的信息。
 `.trim();
 
-function generateShortTermPlanPrompt(shortTermPlan?: string[]) {
-  return shortTermPlan?.length
-    ? shortTermPlan.map((item, index) => `${index + 1}. ${item}`).join("\n")
+function generateActivePlanPrompt(activePlanTitles?: string[]) {
+  return activePlanTitles?.length
+    ? activePlanTitles.map((item, index) => `${index + 1}. ${item}`).join("\n")
     : "（无）";
 }
 
@@ -41,8 +41,8 @@ export interface ChooseActionPromptPayload {
   recentBehaviorList: BehaviorRecord[];
   worldTime: Dayjs;
   eventDescription?: string;
-  longTermPlan?: string;
-  shortTermPlan?: string[];
+  mainPlanTitle?: string;
+  activePlanTitles?: string[];
 }
 
 export function chooseActionPrompt({
@@ -56,8 +56,8 @@ export function chooseActionPrompt({
   mood,
   worldTime,
   eventDescription,
-  longTermPlan,
-  shortTermPlan,
+  mainPlanTitle,
+  activePlanTitles,
 }: ChooseActionPromptPayload) {
   const actionListPrompt = actionList
     .map((item) => `- ${item.action}：${item.description}`)
@@ -83,9 +83,9 @@ ${eventDescription ? `当前事件：${eventDescription}` : ""}
 饱腹：${satiety} / 100
 心情：${mood} / 100
 金币：${money}
-长期计划：${longTermPlan || "（无）"}
-短期计划：
-${generateShortTermPlanPrompt(shortTermPlan)}
+主计划：${mainPlanTitle || "（无）"}
+活跃计划：
+${generateActivePlanPrompt(activePlanTitles)}
 最近的action：
 ${generateRecentBehaviorPrompt(recentBehaviorList)}
 可选Action（仅可从中选择）：
@@ -104,8 +104,8 @@ export interface ChooseFoodPromptPayload {
   mood: number;
   recentBehaviorList: BehaviorRecord[];
   worldTime: Dayjs;
-  longTermPlan?: string;
-  shortTermPlan?: string[];
+  mainPlanTitle?: string;
+  activePlanTitles?: string[];
 }
 
 export function chooseFoodPrompt({
@@ -115,8 +115,8 @@ export function chooseFoodPrompt({
   stamina,
   satiety,
   mood,
-  longTermPlan,
-  shortTermPlan,
+  mainPlanTitle,
+  activePlanTitles,
   recentBehaviorList,
 }: ChooseFoodPromptPayload) {
   const availableFoodPrompt =
@@ -133,9 +133,9 @@ export function chooseFoodPrompt({
 体力值：${stamina}/100
 饱腹：${satiety}/100
 心情：${mood}/100
-长期计划：${longTermPlan || "（无）"}
-短期计划：
-${generateShortTermPlanPrompt(shortTermPlan)}
+主计划：${mainPlanTitle || "（无）"}
+活跃计划：
+${generateActivePlanPrompt(activePlanTitles)}
 
 最近的action：
 ${generateRecentBehaviorPrompt(recentBehaviorList)}
@@ -157,8 +157,8 @@ export interface ChooseShopProductPromptPayload {
   money: number;
   recentBehaviorList: BehaviorRecord[];
   worldTime: Dayjs;
-  longTermPlan?: string;
-  shortTermPlan?: string[];
+  mainPlanTitle?: string;
+  activePlanTitles?: string[];
 }
 
 export function chooseShopProductPrompt({
@@ -169,8 +169,8 @@ export function chooseShopProductPrompt({
   satiety,
   mood,
   money,
-  longTermPlan,
-  shortTermPlan,
+  mainPlanTitle,
+  activePlanTitles,
   recentBehaviorList,
 }: ChooseShopProductPromptPayload) {
   const availableProductsPrompt =
@@ -189,9 +189,9 @@ export function chooseShopProductPrompt({
 饱腹：${satiety}/100
 心情：${mood}/100
 金币：${money}
-长期计划：${longTermPlan || "（无）"}
-短期计划：
-${generateShortTermPlanPrompt(shortTermPlan)}
+主计划：${mainPlanTitle || "（无）"}
+活跃计划：
+${generateActivePlanPrompt(activePlanTitles)}
 
 最近的action：
 ${generateRecentBehaviorPrompt(recentBehaviorList)}
@@ -213,8 +213,8 @@ export interface ChooseCafeCoffeePromptPayload {
   money: number;
   recentBehaviorList: BehaviorRecord[];
   worldTime: Dayjs;
-  longTermPlan?: string;
-  shortTermPlan?: string[];
+  mainPlanTitle?: string;
+  activePlanTitles?: string[];
 }
 
 export function chooseCafeCoffeePrompt({
@@ -225,8 +225,8 @@ export function chooseCafeCoffeePrompt({
   satiety,
   mood,
   money,
-  longTermPlan,
-  shortTermPlan,
+  mainPlanTitle,
+  activePlanTitles,
   recentBehaviorList,
 }: ChooseCafeCoffeePromptPayload) {
   const availableCoffeesPrompt =
@@ -245,9 +245,9 @@ export function chooseCafeCoffeePrompt({
 饱腹：${satiety}/100
 心情：${mood}/100
 金币：${money}
-长期计划：${longTermPlan || "（无）"}
-短期计划：
-${generateShortTermPlanPrompt(shortTermPlan)}
+主计划：${mainPlanTitle || "（无）"}
+活跃计划：
+${generateActivePlanPrompt(activePlanTitles)}
 
 最近的action：
 ${generateRecentBehaviorPrompt(recentBehaviorList)}

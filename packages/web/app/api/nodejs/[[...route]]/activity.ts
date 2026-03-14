@@ -1,6 +1,12 @@
-import { getRecentBehaviorRecords, type IBehaviorRecord } from "@yuiju/utils";
+import {
+  DEFAULT_MEMORY_SUBJECT_ID,
+  getRecentMemoryEpisodes,
+  isDev,
+  type IMemoryEpisode,
+} from "@yuiju/utils";
 import dayjs from "dayjs";
 import { Hono } from "hono";
+import { rejectPublicRequest } from "./public-guard";
 
 export const activityRoute = new Hono();
 
@@ -16,13 +22,27 @@ const parseLimit = (value: string | undefined) => {
   return parsed;
 };
 
-activityRoute.get("/index", async (context) => {
+activityRoute.use("*", async (context, next) => {
+  const blocked = rejectPublicRequest(context);
+  if (blocked) {
+    return blocked;
+  }
+  await next();
+});
+
+activityRoute.get("/activity", async (context) => {
   const limit = parseLimit(context.req.query("limit"));
-  let docs: IBehaviorRecord[] = [];
+  let docs: IMemoryEpisode[] = [];
   try {
-    docs = await getRecentBehaviorRecords(limit);
+    docs = await getRecentMemoryEpisodes({
+      limit,
+      types: ["behavior", "system"],
+      subjectId: DEFAULT_MEMORY_SUBJECT_ID,
+      isDev: isDev(),
+      onlyToday: true,
+    });
   } catch (error) {
-    console.error("getRecentBehaviorRecords failed:", error);
+    console.error("getRecentMemoryEpisodes failed:", error);
     docs = [];
   }
 
@@ -30,11 +50,11 @@ activityRoute.get("/index", async (context) => {
     .slice()
     .reverse()
     .map((item) => ({
-      time: dayjs(item.timestamp).format("HH:mm"),
-      behavior: item.behavior,
-      desc: item.description,
-      trigger: item.trigger,
-      duration: item.duration_minutes ?? 0,
+      time: dayjs(item.happenedAt).format("HH:mm"),
+      behavior: String(item.payload.action ?? item.payload.eventName ?? item.type),
+      desc: item.summaryText,
+      trigger: item.type === "system" ? "system" : "agent",
+      duration: Number(item.payload.durationMinutes ?? 0),
     }));
 
   return context.json({

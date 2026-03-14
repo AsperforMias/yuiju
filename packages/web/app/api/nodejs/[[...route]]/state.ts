@@ -1,11 +1,13 @@
 import {
+  DEFAULT_MEMORY_SUBJECT_ID,
+  emitMemoryEpisode,
   getRedis,
   initCharacterStateData,
-  isProd,
   REDIS_KEY_CHARACTER_STATE,
-  saveBehaviorRecord,
+  isDev,
 } from "@yuiju/utils";
 import { Hono } from "hono";
+import { rejectPublicRequest } from "./public-guard";
 
 const parseAmount = (value: unknown): number | null => {
   if (typeof value !== "number") return null;
@@ -17,6 +19,11 @@ const parseAmount = (value: unknown): number | null => {
 export const stateRoute = new Hono();
 
 stateRoute.post("/allowance", async (context) => {
+  const blocked = rejectPublicRequest(context);
+  if (blocked) {
+    return blocked;
+  }
+
   let body: unknown;
   try {
     body = await context.req.json();
@@ -126,13 +133,24 @@ stateRoute.post("/allowance", async (context) => {
       : `翊小久设置金币：${previousMoney} -> ${currentMoney}`;
 
   try {
-    if (isProd()) {
-      await saveBehaviorRecord({
-        behavior: "金币变动",
-        description: reason ? `${descriptionBase}；原因：${reason}` : descriptionBase,
-        trigger: "user",
-      });
-    }
+    await emitMemoryEpisode({
+      source: "system",
+      type: "system",
+      subjectId: DEFAULT_MEMORY_SUBJECT_ID,
+      happenedAt: new Date(),
+      summaryText: reason ? `${descriptionBase}；原因：${reason}` : descriptionBase,
+      importance: 0.5,
+      extractionStatus: "pending",
+      isDev: isDev(),
+      payload: {
+        eventName: "金币变动",
+        mode,
+        previousMoney,
+        currentMoney,
+        delta,
+        reason: reason || undefined,
+      },
+    });
   } catch (err) {
     try {
       if (mode === "add") {

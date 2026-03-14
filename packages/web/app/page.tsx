@@ -10,10 +10,22 @@ import { HomeWorldCard } from './home/home-world-card';
 
 export default function HomePage() {
   const { data: homeData } = useSWR('/api/nodejs/home/index', async () => {
+"use client";
+
+import { useMemo } from "react";
+import useSWR from "swr";
+import type { HomeResponse } from "./api/nodejs/[[...route]]/home";
+import { HomeMapCard } from "./home/home-map-card";
+import { HomePageHeader } from "./home/home-page-header";
+import { HomeStatusCard } from "./home/home-status-card";
+import { HomeWorldCard } from "./home/home-world-card";
+
+export default function HomePage() {
+  const { data: homeData, isLoading } = useSWR("/api/nodejs/home/summary", async () => {
     try {
-      const response = await fetch('/api/nodejs/home/index', { cache: 'no-store' });
+      const response = await fetch("/api/nodejs/home/summary", { cache: "no-store" });
       if (response.ok) {
-        const payload = (await response.json()) as IHomeResponse;
+        const payload = (await response.json()) as HomeResponse;
         return payload.data ?? undefined;
       }
     } catch {
@@ -27,6 +39,14 @@ export default function HomePage() {
       : undefined;
   }, [homeData]);
 
+  const status = useMemo(() => {
+    return homeData?.status;
+  }, [homeData]);
+
+  const plans = useMemo(() => {
+    return homeData?.plans;
+  }, [homeData]);
+
   return (
     <main className="max-w-[1200px] mx-auto px-[18px] pt-[18px] pb-[36px]">
       <HomePageHeader summary={summary} />
@@ -34,30 +54,10 @@ export default function HomePage() {
       <div className="grid grid-cols-[360px_1fr] max-[1020px]:grid-cols-1 gap-[14px] items-start">
         <div className="grid gap-[14px]">
           <HomeStatusCard
-            status={
-              // Review: 放到 useMemo 里面
-              homeData?.status
-                ? {
-                    behavior: homeData.status.behavior ?? '发呆',
-                    location: homeData.status.location ?? '家',
-                    stamina: {
-                      current: homeData.status.stamina?.current ?? 68,
-                      max: homeData.status.stamina?.max ?? 100,
-                    },
-                    money: homeData.status.money ?? 128,
-                  }
-                : undefined
-            }
+            status={status}
             todayActions={homeData?.todayActions}
             inventory={homeData?.inventory}
-            plans={
-              homeData?.plans
-                ? {
-                    longTerm: homeData.plans.longTerm ?? '认真上学，变得更厉害',
-                    shortTerm: homeData.plans.shortTerm ?? ['复习', '逛商店', '做饭'],
-                  }
-                : undefined
-            }
+            plans={plans}
           />
           <HomeWorldCard time={homeData?.world?.time} />
         </div>

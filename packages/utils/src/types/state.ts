@@ -74,10 +74,6 @@ export interface CharacterStateData {
   money: number;
   /** 今日已执行的动作列表 */
   dailyActionsDoneToday: ActionId[];
-  /** 长期计划（一句话描述） */
-  longTermPlan?: string;
-  /** 短期计划（步骤列表） */
-  shortTermPlan?: string[];
   /** 背包物品列表 */
   inventory?: InventoryItem[];
 }
@@ -109,10 +105,6 @@ export interface ICharacterState extends CharacterStateData {
   consumeItem(itemName: string, quantity?: number): Promise<boolean>;
   /** 获取背包中指定物品的数量 */
   getItemQuantity(itemName: string): number;
-  /** 更新长期计划 */
-  setLongTermPlan(plan?: string): Promise<void>;
-  /** 更新短期计划 */
-  setShortTermPlan(plans?: string[]): Promise<void>;
 }
 
 export interface WorldStateData {
