@@ -140,26 +140,6 @@ export async function tick(params: TickParams): Promise<TickReturn> {
       try {
         await emitMemoryEpisode(behaviorEpisode);
         logger.debug("[tick] built behavior episode", behaviorEpisode);
-
-        // 当前阶段只完成统一 Episode 建模，等待 Python 服务升级后再恢复真实写入。
-        // if (memoryClient) {
-        //   let description = selectedAction.reason;
-        //   if (executionResult) {
-        //     description += ` ${executionResult}`;
-        //   }
-        //
-        //   await memoryClient.writeEpisode({
-        //     is_dev: isDev(),
-        //     type: "ゆいじゅ的 Behavior",
-        //     reference_time: behaviorEpisode.happenedAt,
-        //     content: {
-        //       time: getTimeWithWeekday(dayjs(behaviorEpisode.happenedAt)),
-        //       action: selectedAction.action,
-        //       reason: description,
-        //       duration_minutes: `持续了${durationMin}分钟`,
-        //     },
-        //   });
-        // }
       } catch (e) {
         logger.error("[tick] build world_action episode failed", e);
       }

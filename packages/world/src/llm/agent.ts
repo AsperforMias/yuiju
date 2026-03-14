@@ -12,6 +12,7 @@ import type {
   BehaviorRecord,
   PlanState,
 } from "@yuiju/utils";
+import { memorySearchTool as unifiedMemorySearchTool } from "@yuiju/utils";
 import { generateText, Output, stepCountIs } from "ai";
 import dayjs from "dayjs";
 import { z } from "zod";
@@ -69,6 +70,7 @@ export async function chooseActionAgent(
       const { output, reasoningText } = await generateText({
         model: model_deepseek_reasoner,
         tools: {
+          memorySearch: unifiedMemorySearchTool,
           queryAvailableFood: queryAvailableFood(context),
         },
         output: Output.object({

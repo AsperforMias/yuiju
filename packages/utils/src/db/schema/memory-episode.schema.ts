@@ -84,6 +84,7 @@ export interface GetRecentMemoryEpisodesOptions {
   limit?: number;
   types?: MemoryEpisodeType[];
   subjectId?: string;
+  counterpartyId?: string;
   isDev?: boolean;
   onlyToday?: boolean;
   happenedAfter?: Date;
@@ -138,6 +139,9 @@ export async function getRecentMemoryEpisodes(
   }
   if (options.subjectId) {
     filter.subjectId = options.subjectId;
+  }
+  if (options.counterpartyId) {
+    filter.counterpartyId = options.counterpartyId;
   }
   if (typeof options.isDev === "boolean") {
     filter.isDev = options.isDev;

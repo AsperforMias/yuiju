@@ -4,7 +4,6 @@ import {
   getMemoryServiceClientFromEnv,
   memorySearchTool,
   queryCharacterStateTool,
-  queryRecentBehaviorsTool,
 } from "@yuiju/utils";
 import { generateText, type ModelMessage, stepCountIs } from "ai";
 import { ChatSessionManager } from "../chat-session-manager";
@@ -41,7 +40,6 @@ export class LLMManager {
       tools: {
         memorySearchTool,
         queryCharacterState: queryCharacterStateTool,
-        queryRecentBehaviors: queryRecentBehaviorsTool,
       },
       stopWhen: stepCountIs(5),
     });
