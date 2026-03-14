@@ -1,15 +1,3 @@
-'use client';
-
-import { useMemo } from 'react';
-import useSWR from 'swr';
-import type { IHomeResponse } from './api/nodejs/[[...route]]/home';
-import { HomeMapCard } from './home/home-map-card';
-import { HomePageHeader } from './home/home-page-header';
-import { HomeStatusCard } from './home/home-status-card';
-import { HomeWorldCard } from './home/home-world-card';
-
-export default function HomePage() {
-  const { data: homeData } = useSWR('/api/nodejs/home/index', async () => {
 "use client";
 
 import { useMemo } from "react";
