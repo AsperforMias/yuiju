@@ -17,9 +17,6 @@ import { characterState } from "@/state/character-state";
 import { worldState } from "@/state/world-state";
 import { logger } from "@/utils/logger";
 
-// 当前阶段先在调用侧统一 Episode 模型，暂不真正写入 Graphiti。
-// const memoryClient = getMemoryServiceClientFromEnv();
-
 export async function getDurationTime(
   durationMin:
     | number
