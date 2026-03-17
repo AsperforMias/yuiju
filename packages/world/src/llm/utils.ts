@@ -1,3 +1,4 @@
+import { deepseek } from "@ai-sdk/deepseek";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { type LanguageModelMiddleware, wrapLanguageModel } from "ai";
 // import { logger } from "@/utils/logger";
@@ -18,6 +19,7 @@ export const siliconflow = createOpenAICompatible({
   baseURL: "https://api.siliconflow.cn/v1",
   apiKey: process.env.SILICONFLOW_API_KEY ?? "",
   name: "Siliconflow",
+  supportsStructuredOutputs: true,
 });
 
 /**
@@ -29,6 +31,6 @@ export const small_modal = wrapLanguageModel({
 });
 
 export const strong_model = wrapLanguageModel({
-  model: siliconflow("Pro/zai-org/GLM-5"),
+  model: deepseek("deepseek-reasoner"),
   middleware: [logMiddleware],
 });
