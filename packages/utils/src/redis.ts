@@ -7,6 +7,7 @@ import {
   type Location,
   MajorScene,
   type PlanState,
+  type RunningActionState,
   type WorldStateData,
 } from "./types";
 import { safeParseJson } from "./utils";
@@ -43,6 +44,7 @@ const DEFAULT_CHARACTER_STATE_DATA: CharacterStateData = {
   money: 0,
   dailyActionsDoneToday: [],
   inventory: [],
+  runningAction: null,
 };
 
 const DEFAULT_PLAN_STATE: PlanState = {
@@ -59,6 +61,53 @@ const isMajorScene = (value: unknown): value is MajorScene => {
   return typeof value === "string" && (Object.values(MajorScene) as string[]).includes(value);
 };
 
+const isValidIsoDateString = (value: unknown): value is string => {
+  return typeof value === "string" && dayjs(value).isValid();
+};
+
+const parseRunningActionState = (value: unknown): RunningActionState | null => {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const maybeRunningAction = value as Partial<RunningActionState>;
+
+  if (!maybeRunningAction.action || !isActionId(maybeRunningAction.action)) {
+    return null;
+  }
+
+  if (!isValidIsoDateString(maybeRunningAction.actionStartedAt)) {
+    return null;
+  }
+
+  if (!isValidIsoDateString(maybeRunningAction.waitUntil)) {
+    return null;
+  }
+
+  if (
+    typeof maybeRunningAction.actionDurationMinutes !== "number" ||
+    !Number.isFinite(maybeRunningAction.actionDurationMinutes) ||
+    maybeRunningAction.actionDurationMinutes < 0
+  ) {
+    return null;
+  }
+
+  if (
+    maybeRunningAction.completionEvent !== undefined &&
+    typeof maybeRunningAction.completionEvent !== "string"
+  ) {
+    return null;
+  }
+
+  return {
+    action: maybeRunningAction.action,
+    actionStartedAt: maybeRunningAction.actionStartedAt,
+    actionDurationMinutes: maybeRunningAction.actionDurationMinutes,
+    waitUntil: maybeRunningAction.waitUntil,
+    completionEvent: maybeRunningAction.completionEvent,
+  };
+};
+
 export const initCharacterStateData = async (): Promise<CharacterStateData> => {
   const redis = getRedis();
   const raw = await redis.hgetall(REDIS_KEY_CHARACTER_STATE);
@@ -73,6 +122,7 @@ export const initCharacterStateData = async (): Promise<CharacterStateData> => {
       money: DEFAULT_CHARACTER_STATE_DATA.money,
       dailyActionsDoneToday: JSON.stringify(DEFAULT_CHARACTER_STATE_DATA.dailyActionsDoneToday),
       inventory: JSON.stringify(DEFAULT_CHARACTER_STATE_DATA.inventory ?? []),
+      runningAction: JSON.stringify(DEFAULT_CHARACTER_STATE_DATA.runningAction),
     });
 
     return { ...DEFAULT_CHARACTER_STATE_DATA };
@@ -82,6 +132,7 @@ export const initCharacterStateData = async (): Promise<CharacterStateData> => {
     ...DEFAULT_CHARACTER_STATE_DATA,
     dailyActionsDoneToday: [...DEFAULT_CHARACTER_STATE_DATA.dailyActionsDoneToday],
     inventory: [...(DEFAULT_CHARACTER_STATE_DATA.inventory ?? [])],
+    runningAction: DEFAULT_CHARACTER_STATE_DATA.runningAction,
   };
 
   if (raw.action && isActionId(raw.action)) {
@@ -138,6 +189,11 @@ export const initCharacterStateData = async (): Promise<CharacterStateData> => {
     } else {
       state.inventory = [];
     }
+  }
+
+  if (raw.runningAction) {
+    const parsedRunningAction = safeParseJson<unknown>(raw.runningAction);
+    state.runningAction = parseRunningActionState(parsedRunningAction);
   }
 
   return state;

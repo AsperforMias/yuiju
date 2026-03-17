@@ -7,6 +7,7 @@ import {
   getRecentMemoryEpisodes,
   isDev,
   processPendingMemoryEpisodes,
+  type RunningActionState,
 } from "@yuiju/utils";
 import { getActionList } from "@/action";
 import { getActionById } from "@/action/utils";
@@ -43,6 +44,7 @@ export interface TickParams {
 export interface TickReturn {
   nextTickInMinutes: number;
   completionEvent?: string;
+  runningAction?: Omit<RunningActionState, "waitUntil">;
 }
 
 export async function tick(params: TickParams): Promise<TickReturn> {
@@ -86,6 +88,7 @@ export async function tick(params: TickParams): Promise<TickReturn> {
   const actionMetadata = actionList.find((item) => item.action === selectedAction?.action);
 
   if (actionMetadata && selectedAction) {
+    const actionStartedAt = new Date();
     const planProposal: {
       mainPlanTitle?: string;
       activePlanTitles?: string[];
@@ -164,7 +167,16 @@ export async function tick(params: TickParams): Promise<TickReturn> {
       context.worldState.log(),
     );
 
-    return { nextTickInMinutes: durationMin, completionEvent };
+    return {
+      nextTickInMinutes: durationMin,
+      completionEvent,
+      runningAction: {
+        action: selectedAction.action,
+        actionStartedAt: actionStartedAt.toISOString(),
+        actionDurationMinutes: durationMin,
+        completionEvent,
+      },
+    };
   } else {
     const idleAction = getActionById(ActionId.Idle);
     logger.error("[tick] LLM selected action is not executable.", selectedAction);

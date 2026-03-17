@@ -13,6 +13,7 @@ function createContext(): ActionContext {
       money: 100,
       dailyActionsDoneToday: [],
       inventory: [],
+      runningAction: null,
       setAction: async () => {},
       setStamina: async () => {},
       setSatiety: async () => {},
@@ -24,6 +25,9 @@ function createContext(): ActionContext {
       changeMoney: async () => {},
       markActionDoneToday: async () => {},
       clearDailyActions: async () => {},
+      setRunningAction: async () => {},
+      clearRunningAction: async () => {},
+      getRunningAction: () => null,
       log() {
         return {
           action: this.action,
@@ -34,6 +38,7 @@ function createContext(): ActionContext {
           money: this.money,
           dailyActionsDoneToday: this.dailyActionsDoneToday,
           inventory: this.inventory,
+          runningAction: this.runningAction,
         };
       },
       addItem: async () => {},
