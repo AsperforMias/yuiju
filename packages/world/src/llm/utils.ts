@@ -29,6 +29,6 @@ export const small_modal = wrapLanguageModel({
 });
 
 export const strong_model = wrapLanguageModel({
-  model: siliconflow("Pro/MiniMaxAI/MiniMax-M2.5"),
+  model: siliconflow("Pro/zai-org/GLM-5"),
   middleware: [logMiddleware],
 });
