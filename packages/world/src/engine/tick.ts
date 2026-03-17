@@ -99,6 +99,7 @@ export async function tick(params: TickParams): Promise<TickReturn> {
 
     const planApplyResult = await planManager.applyProposal(planProposal);
 
+    // 根据 planApplyResult.changes 构建变更 episode
     const planEpisodes = buildPlanUpdateEpisodes({
       changes: planApplyResult.changes,
       happenedAt: new Date(),
@@ -109,7 +110,7 @@ export async function tick(params: TickParams): Promise<TickReturn> {
       try {
         await emitMemoryEpisode(planEpisode);
         logger.debug("[tick] built plan_update episode", planEpisode);
-        void processPendingMemoryEpisodes({ limit: 1, isDev: isDev() }).catch((error) => {
+        processPendingMemoryEpisodes({ limit: 1, isDev: isDev() }).catch((error) => {
           logger.error("[tick] process pending memory episodes failed", error);
         });
       } catch (error) {
@@ -129,11 +130,6 @@ export async function tick(params: TickParams): Promise<TickReturn> {
       context,
       selectedAction.durationMinute,
     );
-
-    const satietyDecay = Math.ceil((durationMin / 60) * 5);
-    if (satietyDecay > 0) {
-      await context.characterState.changeSatiety(-satietyDecay);
-    }
 
     const behaviorEpisode = buildBehaviorEpisode({
       context,

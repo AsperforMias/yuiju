@@ -1,4 +1,3 @@
-import { deepseek } from "@ai-sdk/deepseek";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { type LanguageModelMiddleware, wrapLanguageModel } from "ai";
 // import { logger } from "@/utils/logger";
@@ -24,12 +23,12 @@ export const siliconflow = createOpenAICompatible({
 /**
  * 废物
  */
-export const model_qwen3_8B = wrapLanguageModel({
+export const small_modal = wrapLanguageModel({
   model: siliconflow("Qwen/Qwen3-8B"),
   middleware: [logMiddleware],
 });
 
-export const model_deepseek_reasoner = wrapLanguageModel({
-  model: deepseek("deepseek-reasoner"),
+export const strong_model = wrapLanguageModel({
+  model: siliconflow("Pro/MiniMaxAI/MiniMax-M2.5"),
   middleware: [logMiddleware],
 });

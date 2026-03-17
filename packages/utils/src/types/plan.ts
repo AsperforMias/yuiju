@@ -65,13 +65,9 @@ export interface PlanProposal {
 
 /**
  * 计划变更类型。
+ * superseded 被取代
  */
-export type PlanChangeType =
-  | "created"
-  | "updated"
-  | "completed"
-  | "abandoned"
-  | "superseded";
+export type PlanChangeType = "created" | "updated" | "completed" | "abandoned" | "superseded";
 
 /**
  * 单次计划变更记录。

@@ -194,6 +194,10 @@ export class PlanManager {
     return createApplyResult(currentState, changes);
   }
 
+  /**
+   * 应用计划建议，返回计划变更结果。
+   *
+   */
   async applyProposal(proposal: PlanProposal): Promise<PlanApplyResult> {
     const currentState = clonePlanState(await this.getState());
     const nowIso = new Date().toISOString();

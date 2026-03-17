@@ -159,7 +159,7 @@ export const initPlanStateData = async (): Promise<PlanState> => {
     return { ...DEFAULT_PLAN_STATE, activePlanIds: [], activePlans: [] };
   }
 
-  const parsed = safeParseJson<unknown>(raw);
+  const parsed = safeParseJson<PlanState>(raw);
   if (!parsed || typeof parsed !== "object") {
     await redis.set(REDIS_KEY_PLAN_STATE, JSON.stringify(DEFAULT_PLAN_STATE));
     return { ...DEFAULT_PLAN_STATE, activePlanIds: [], activePlans: [] };
@@ -182,7 +182,9 @@ export const initPlanStateData = async (): Promise<PlanState> => {
     mainPlan,
     activePlans,
     updatedAt:
-      typeof maybeState.updatedAt === "string" ? maybeState.updatedAt : DEFAULT_PLAN_STATE.updatedAt,
+      typeof maybeState.updatedAt === "string"
+        ? maybeState.updatedAt
+        : DEFAULT_PLAN_STATE.updatedAt,
   };
 };
 
