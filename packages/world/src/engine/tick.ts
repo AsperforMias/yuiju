@@ -76,7 +76,7 @@ export async function tick(params: TickParams): Promise<TickReturn> {
     types: ["behavior"],
     subjectId: DEFAULT_MEMORY_SUBJECT_ID,
     isDev: isDev(),
-    onlyToday: true,
+    onlyDate: new Date(),
   });
   const history = recentBehaviors.map((behavior) => ({
     behavior: String(behavior.payload.action ?? ActionId.Idle) as ActionId,

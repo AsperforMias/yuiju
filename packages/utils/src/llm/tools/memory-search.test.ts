@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { z } from "zod";
 
 const searchMock = vi.fn();
 
@@ -27,7 +28,10 @@ describe("memorySearchTool", () => {
       {
         query: "悠酱喜欢什么",
         memoryType: "fact",
-        timeRange: "all",
+        timeRange: "yesterday",
+        startTime: "2026-03-17 00:00:00",
+        endTime: "2026-03-17 23:59:59",
+        timeSort: "asc",
         counterpartyName: "小久",
         topK: 3,
       },
@@ -37,7 +41,10 @@ describe("memorySearchTool", () => {
     expect(searchMock).toHaveBeenCalledWith({
       query: "悠酱喜欢什么",
       memoryType: "fact",
-      timeRange: "all",
+      timeRange: "yesterday",
+      startTime: "2026-03-17 00:00:00",
+      endTime: "2026-03-17 23:59:59",
+      timeSort: "asc",
       counterpartyName: "小久",
       topK: 3,
     });
@@ -49,5 +56,15 @@ describe("memorySearchTool", () => {
         },
       }),
     ]);
+  });
+
+  it("要求必须显式传入 memoryType", async () => {
+    const { memorySearchTool } = await import("./memory-search");
+    const inputSchema = memorySearchTool.inputSchema as z.ZodType;
+    const parseResult = inputSchema.safeParse({
+      query: "悠酱喜欢什么",
+    });
+
+    expect(parseResult.success).toBe(false);
   });
 });

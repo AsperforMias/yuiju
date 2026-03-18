@@ -1,4 +1,5 @@
 import dayjs from "dayjs";
+import customParseFormat from "dayjs/plugin/customParseFormat";
 import { getRecentMemoryEpisodes } from "../db";
 import { isDev } from "../env";
 import { initPlanStateData } from "../redis";
@@ -6,13 +7,19 @@ import { DEFAULT_MEMORY_SUBJECT_ID } from "./episode";
 import { getMemoryServiceClientFromEnv, type MemorySearchItem } from "./memory-service-client";
 import { rerankEpisodesWithSiliconFlow } from "./rerank";
 
-export type MemoryQueryType = "auto" | "episode" | "fact" | "plan";
-export type MemoryQueryTimeRange = "today" | "recent_3d" | "recent_7d" | "all";
+dayjs.extend(customParseFormat);
+
+export type MemoryQueryType = "episode" | "fact" | "plan";
+export type MemoryQueryTimeRange = "today" | "yesterday" | "day_before_yesterday";
+export type MemoryQueryTimeSort = "asc" | "desc";
 
 export interface MemorySearchInput {
   query: string;
-  memoryType?: MemoryQueryType;
+  memoryType: MemoryQueryType;
   timeRange?: MemoryQueryTimeRange;
+  startTime?: string;
+  endTime?: string;
+  timeSort?: MemoryQueryTimeSort;
   counterpartyName?: string;
   topK?: number;
 }
@@ -35,7 +42,18 @@ interface MemoryQueryRouter {
 const DEFAULT_TOP_K = 5;
 const EPISODE_SEARCH_LIMIT = 20;
 const EPISODE_RERANK_THRESHOLD = 3;
-const PLAN_QUERY_PATTERN = /计划|打算|目标|安排|今天要做什么|近期/;
+const MEMORY_TIME_FORMAT = "YYYY-MM-DD HH:mm:ss";
+
+interface NormalizedMemorySearchInput {
+  query: string;
+  memoryType: MemoryQueryType;
+  timeRange?: MemoryQueryTimeRange;
+  startTime: string;
+  endTime: string;
+  timeSort: MemoryQueryTimeSort;
+  counterpartyName: string;
+  topK: number;
+}
 
 function normalizeTopK(topK?: number): number {
   if (!Number.isFinite(topK)) {
@@ -45,14 +63,33 @@ function normalizeTopK(topK?: number): number {
   return Math.max(1, Math.min(Number(topK), 20));
 }
 
-function normalizeInput(input: MemorySearchInput): Required<MemorySearchInput> {
+function normalizeInput(input: MemorySearchInput): NormalizedMemorySearchInput {
+  const normalizedStartTime = input.startTime?.trim() ?? "";
+  const normalizedEndTime = input.endTime?.trim() ?? "";
+
   return {
     query: input.query.trim(),
-    memoryType: input.memoryType ?? "auto",
-    timeRange: input.timeRange ?? "all",
+    memoryType: input.memoryType,
+    timeRange: input.timeRange,
+    startTime: normalizedStartTime,
+    endTime: normalizedEndTime,
+    timeSort: input.timeSort ?? "desc",
     counterpartyName: input.counterpartyName?.trim() ?? "",
     topK: normalizeTopK(input.topK),
   };
+}
+
+function parseMemoryTime(value: string): Date | undefined {
+  if (!value) {
+    return undefined;
+  }
+
+  const parsed = dayjs(value, MEMORY_TIME_FORMAT, true);
+  if (!parsed.isValid()) {
+    return undefined;
+  }
+
+  return parsed.toDate();
 }
 
 function scoreEpisode(query: string, summaryText: string): number {
@@ -76,28 +113,48 @@ function scorePlan(query: string, title: string): number {
   return score > 0 ? score : 1;
 }
 
-function getTimeRangeBounds(timeRange: MemoryQueryTimeRange): {
+function getTimeRangeBounds(input: {
+  timeRange?: MemoryQueryTimeRange;
+  startTime?: string;
+  endTime?: string;
+}): {
   happenedAfter?: Date;
   happenedBefore?: Date;
-  onlyToday?: boolean;
+  onlyDate?: Date;
 } {
-  if (timeRange === "today") {
+  // 精确时间优先于快捷时间；若 LLM 仅填对一侧，则退化为单边时间过滤。
+  const parsedStartTime = parseMemoryTime(input.startTime ?? "");
+  const parsedEndTime = parseMemoryTime(input.endTime ?? "");
+
+  if (parsedStartTime || parsedEndTime) {
+    let happenedAfter = parsedStartTime;
+    let happenedBefore = parsedEndTime;
+
+    if (happenedAfter && happenedBefore && happenedAfter > happenedBefore) {
+      [happenedAfter, happenedBefore] = [happenedBefore, happenedAfter];
+    }
+
     return {
-      onlyToday: true,
+      happenedAfter,
+      happenedBefore,
     };
   }
 
-  if (timeRange === "recent_3d") {
+  if (input.timeRange === "today") {
     return {
-      happenedAfter: dayjs().subtract(3, "day").toDate(),
-      happenedBefore: dayjs().add(1, "minute").toDate(),
+      onlyDate: dayjs().toDate(),
     };
   }
 
-  if (timeRange === "recent_7d") {
+  if (input.timeRange === "yesterday") {
     return {
-      happenedAfter: dayjs().subtract(7, "day").toDate(),
-      happenedBefore: dayjs().add(1, "minute").toDate(),
+      onlyDate: dayjs().subtract(1, "day").toDate(),
+    };
+  }
+
+  if (input.timeRange === "day_before_yesterday") {
+    return {
+      onlyDate: dayjs().subtract(2, "day").toDate(),
     };
   }
 
@@ -171,16 +228,18 @@ function getSortableTimestamp(result: MemorySearchResult): number {
   return Number.isNaN(parsed) ? 0 : parsed;
 }
 
-function mergeAndRankResults(results: MemorySearchResult[], topK: number): MemorySearchResult[] {
-  return [...results]
-    .sort((left, right) => {
-      if (right.score !== left.score) {
-        return right.score - left.score;
-      }
+function compareResultsByScoreAndTime(
+  left: MemorySearchResult,
+  right: MemorySearchResult,
+  timeSort: MemoryQueryTimeSort,
+): number {
+  // 排序语义固定为“先相关度，后时间”，避免 timeSort 影响召回相关性。
+  if (right.score !== left.score) {
+    return right.score - left.score;
+  }
 
-      return getSortableTimestamp(right) - getSortableTimestamp(left);
-    })
-    .slice(0, topK);
+  const timeDiff = getSortableTimestamp(right) - getSortableTimestamp(left);
+  return timeSort === "asc" ? -timeDiff : timeDiff;
 }
 
 function buildEpisodeRerankDocument(doc: {
@@ -214,17 +273,18 @@ function buildEpisodeRerankDocument(doc: {
  */
 export async function searchEpisodes(input: MemorySearchInput): Promise<MemorySearchResult[]> {
   const normalized = normalizeInput(input);
-  const timeRangeFilter = getTimeRangeBounds(normalized.timeRange);
+  const timeRangeFilter = getTimeRangeBounds(normalized);
   const docs = await getRecentMemoryEpisodes({
     limit: Math.max(normalized.topK, EPISODE_SEARCH_LIMIT),
     subjectId: DEFAULT_MEMORY_SUBJECT_ID,
     isDev: isDev(),
     counterpartyId: normalized.counterpartyName || undefined,
+    sortDirection: normalized.timeSort,
     ...timeRangeFilter,
   });
 
   const candidates = docs
-    .map((doc, index) => {
+    .map((doc) => {
       const score = scoreEpisode(normalized.query, doc.summaryText);
       const planId = getPlanIdFromPayload(doc.payload);
 
@@ -260,11 +320,7 @@ export async function searchEpisodes(input: MemorySearchInput): Promise<MemorySe
     })
     .filter((item) => item.result.score > 0 || !normalized.query)
     .sort((left, right) => {
-      if (right.result.score !== left.result.score) {
-        return right.result.score - left.result.score;
-      }
-
-      return getSortableTimestamp(right.result) - getSortableTimestamp(left.result);
+      return compareResultsByScoreAndTime(left.result, right.result, normalized.timeSort);
     });
 
   if (
@@ -307,16 +363,19 @@ export async function searchFacts(input: MemorySearchInput): Promise<MemorySearc
     is_dev: isDev(),
   });
 
-  return facts.slice(0, normalized.topK).map((item) => ({
-    source: "fact" as const,
-    score: item.score ?? 0,
-    summary: item.memory,
-    happenedAt: item.time ?? undefined,
-    validFrom: item.validFrom ?? item.valid_from ?? undefined,
-    validTo: item.validTo ?? item.valid_to ?? undefined,
-    evidenceIds: normalizeEvidenceIds(item),
-    metadata: normalizeFactMetadata(item),
-  }));
+  return facts
+    .map((item) => ({
+      source: "fact" as const,
+      score: item.score ?? 0,
+      summary: item.memory,
+      happenedAt: item.time ?? undefined,
+      validFrom: item.validFrom ?? item.valid_from ?? undefined,
+      validTo: item.validTo ?? item.valid_to ?? undefined,
+      evidenceIds: normalizeEvidenceIds(item),
+      metadata: normalizeFactMetadata(item),
+    }))
+    .sort((left, right) => compareResultsByScoreAndTime(left, right, normalized.timeSort))
+    .slice(0, normalized.topK);
 }
 
 /**
@@ -361,7 +420,9 @@ export async function searchPlans(input: MemorySearchInput): Promise<MemorySearc
     });
   }
 
-  return items.slice(0, normalized.topK);
+  return items
+    .sort((left, right) => compareResultsByScoreAndTime(left, right, normalized.timeSort))
+    .slice(0, normalized.topK);
 }
 
 class DefaultMemoryQueryRouter implements MemoryQueryRouter {
@@ -380,14 +441,7 @@ class DefaultMemoryQueryRouter implements MemoryQueryRouter {
       return await searchPlans(normalized);
     }
 
-    const results: MemorySearchResult[] = [];
-    if (PLAN_QUERY_PATTERN.test(normalized.query)) {
-      results.push(...(await searchPlans(normalized)));
-    }
-    results.push(...(await searchFacts(normalized)));
-    results.push(...(await searchEpisodes(normalized)));
-
-    return mergeAndRankResults(results, normalized.topK);
+    return [];
   }
 }
 

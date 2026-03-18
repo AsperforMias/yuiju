@@ -1,5 +1,6 @@
 import {
   type MemoryQueryTimeRange,
+  type MemoryQueryTimeSort,
   type MemoryQueryType,
   type MemorySearchResult,
   memoryQueryRouter,
@@ -22,7 +23,10 @@ export type StructuredMemorySearchItem = MemorySearchResult;
 export async function searchStructuredMemory(input: {
   query: string;
   mode: MemorySearchMode;
-  timeRange: MemorySearchTimeRange;
+  timeRange?: MemorySearchTimeRange;
+  startTime?: string;
+  endTime?: string;
+  timeSort?: MemoryQueryTimeSort;
   counterpartyName?: string;
   topK?: number;
 }): Promise<StructuredMemorySearchItem[]> {
@@ -30,6 +34,9 @@ export async function searchStructuredMemory(input: {
     query: input.query,
     memoryType: input.mode,
     timeRange: input.timeRange,
+    startTime: input.startTime,
+    endTime: input.endTime,
+    timeSort: input.timeSort,
     counterpartyName: input.counterpartyName,
     topK: input.topK,
   });

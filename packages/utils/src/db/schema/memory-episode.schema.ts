@@ -95,9 +95,10 @@ export interface GetRecentMemoryEpisodesOptions {
   subjectId?: string;
   counterpartyId?: string;
   isDev?: boolean;
-  onlyToday?: boolean;
+  onlyDate?: Date;
   happenedAfter?: Date;
   happenedBefore?: Date;
+  sortDirection?: "asc" | "desc";
 }
 
 export interface GetPendingMemoryEpisodesOptions {
@@ -168,7 +169,7 @@ export async function getPendingMemoryEpisodes(
  *
  * 说明：
  * - 默认按发生时间倒序返回；
- * - onlyToday 用于兼容当前“只看今天最近行为”的既有逻辑。
+ * - onlyDate 用于按某个自然日过滤，适配“今天 / 昨天 / 前天”等快捷时间查询。
  */
 export async function getRecentMemoryEpisodes(
   options: GetRecentMemoryEpisodesOptions = {},
@@ -188,12 +189,12 @@ export async function getRecentMemoryEpisodes(
   if (typeof options.isDev === "boolean") {
     filter.isDev = options.isDev;
   }
-  if (options.onlyToday) {
-    const startOfToday = dayjs().startOf("day");
-    const startOfTomorrow = startOfToday.add(1, "day");
+  if (options.onlyDate) {
+    const startOfTargetDate = dayjs(options.onlyDate).startOf("day");
+    const startOfNextDate = startOfTargetDate.add(1, "day");
     filter.happenedAt = {
-      $gte: startOfToday.toDate(),
-      $lt: startOfTomorrow.toDate(),
+      $gte: startOfTargetDate.toDate(),
+      $lt: startOfNextDate.toDate(),
     };
   } else if (options.happenedAfter || options.happenedBefore) {
     filter.happenedAt = {};
@@ -205,8 +206,10 @@ export async function getRecentMemoryEpisodes(
     }
   }
 
+  const sortDirection = options.sortDirection === "asc" ? 1 : -1;
+
   return await MemoryEpisodeModel.find(filter)
-    .sort({ happenedAt: -1, createdAt: -1 })
+    .sort({ happenedAt: sortDirection, createdAt: sortDirection })
     .limit(options.limit ?? 10)
     .exec();
 }
