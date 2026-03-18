@@ -23,7 +23,7 @@ describe("memorySearchTool", () => {
     ]);
 
     const { memorySearchTool } = await import("./memory-search");
-    const result = await (memorySearchTool.execute as ((...args: unknown[]) => Promise<unknown>))(
+    const result = await (memorySearchTool.execute as (...args: unknown[]) => Promise<unknown>)(
       {
         query: "悠酱喜欢什么",
         memoryType: "fact",

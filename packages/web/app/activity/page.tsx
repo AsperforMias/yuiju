@@ -1,9 +1,9 @@
-import { notFound } from 'next/navigation';
-import { isPublicDeployment } from '@/lib/public-deployment';
+import { notFound } from "next/navigation";
+import { isPublicDeployment } from "@/lib/public-deployment";
 
-import { ActivityClientShell } from './activity-client-shell';
-import type { ActivityItem, ActivityResponsePayload } from './activity-data';
-import { ActivityPageHeader } from './activity-page-header';
+import { ActivityClientShell } from "./activity-client-shell";
+import type { ActivityItem, ActivityResponsePayload } from "./activity-data";
+import { ActivityPageHeader } from "./activity-page-header";
 
 export default async function ActivityPage() {
   // 核心逻辑：对外展示版本隐藏动态页。
@@ -15,7 +15,7 @@ export default async function ActivityPage() {
   let count: number | undefined;
 
   try {
-    const response = await fetch('/api/nodejs/activity/index', { cache: 'no-store' });
+    const response = await fetch("/api/nodejs/activity/index", { cache: "no-store" });
     if (response.ok) {
       const payload = (await response.json()) as ActivityResponsePayload;
       events = payload.data?.events;

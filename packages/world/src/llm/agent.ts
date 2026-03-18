@@ -78,7 +78,7 @@ export async function chooseActionAgent(
             action: z
               .enum(actionList?.map((item) => item.action))
               .describe("Action ID，例如：发呆、起床等"),
-            reason: z.string().describe("简短理由，说明为什么选择这个Action"),
+            reason: z.string().describe("说明为什么选择这个Action"),
             durationMinute: z
               .number()
               .optional()

@@ -14,7 +14,9 @@ export const memorySearchTool: Tool = {
     memoryType: z
       .enum(["auto", "episode", "fact", "plan"])
       .default("auto")
-      .describe("查询模式：auto 自动组合查询，episode 查事件经过，fact 查长期事实，plan 查当前计划。"),
+      .describe(
+        "查询模式：auto 自动组合查询，episode 查事件经过，fact 查长期事实，plan 查当前计划。",
+      ),
     timeRange: z
       .enum(["today", "recent_3d", "recent_7d", "all"])
       .default("all")

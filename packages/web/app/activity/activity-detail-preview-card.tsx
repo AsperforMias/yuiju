@@ -1,5 +1,5 @@
-import { Card } from '@/components/ui/card';
-import type { ActivityItem } from './activity-data';
+import { Card } from "@/components/ui/card";
+import type { ActivityItem } from "./activity-data";
 
 type ActivityDetailPreviewCardProps = {
   event?: ActivityItem;
@@ -38,7 +38,7 @@ export function ActivityDetailPreviewCard({ event }: ActivityDetailPreviewCardPr
         </div>
 
         <div className="grid gap-2">
-          {event.detailFields.map(field => (
+          {event.detailFields.map((field) => (
             <div
               key={`${event.id}-${field.label}`}
               className="grid grid-cols-[84px_1fr] gap-3 rounded-xl border border-[rgba(217,230,245,0.85)] bg-[rgba(247,251,255,0.78)] px-3 py-2"

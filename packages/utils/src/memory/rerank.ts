@@ -59,9 +59,7 @@ export async function rerankEpisodesWithSiliconFlow<TItem extends RerankableSear
 
   if (!response.ok) {
     const text = await response.text().catch(() => "");
-    console.error(
-      `[rerankEpisodesWithSiliconFlow] rerank failed: ${response.status} ${text}`,
-    );
+    console.error(`[rerankEpisodesWithSiliconFlow] rerank failed: ${response.status} ${text}`);
     return null;
   }
 
@@ -73,8 +71,7 @@ export async function rerankEpisodesWithSiliconFlow<TItem extends RerankableSear
 
   const rerankedResults = json.results
     .map((item) => {
-      const candidate =
-        typeof item.index === "number" ? input.candidates[item.index] : undefined;
+      const candidate = typeof item.index === "number" ? input.candidates[item.index] : undefined;
       if (!candidate) {
         return null;
       }
