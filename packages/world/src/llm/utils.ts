@@ -34,3 +34,8 @@ export const strong_model = wrapLanguageModel({
   model: deepseek("deepseek-reasoner"),
   middleware: [logMiddleware],
 });
+
+export const minimax_model = wrapLanguageModel({
+  model: siliconflow("Pro/MiniMaxAI/MiniMax-M2.5"),
+  middleware: [logMiddleware],
+});

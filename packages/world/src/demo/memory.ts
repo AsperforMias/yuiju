@@ -1,340 +1,935 @@
 import "@yuiju/utils/env";
-import { ActionId, getTimeWithWeekday, isDev } from "@yuiju/utils";
-import dayjs from "dayjs";
 
-// 扩展 MemoryServiceClient，添加清理 dev 数据的方法
-class ExtendedMemoryServiceClient {
-  constructor(private baseUrl: string = "http://localhost:9196") {}
+import { getCharacterCardPrompt } from "@yuiju/source";
+import {
+  closeRedis,
+  connectDB,
+  DEFAULT_MEMORY_SUBJECT_ID,
+  type FactCandidate,
+  getMemoryServiceClientFromEnv,
+  type IMemoryEpisode,
+  isDev,
+  llmMemoryExtractor,
+  type MemoryEpisode,
+  MemoryEpisodeModel,
+  memorySearchTool,
+  type PlanState,
+  saveMemoryEpisode,
+  savePlanStateData,
+  updateMemoryEpisodeExtraction,
+} from "@yuiju/utils";
+import { generateText, stepCountIs } from "ai";
+import mongoose from "mongoose";
+import { minimax_model } from "@/llm/utils";
 
-  /** 写入 episode（复用原有逻辑） */
-  async writeEpisode(input: {
-    is_dev?: boolean;
-    type: string;
-    counterparty_name?: string;
-    content: unknown;
-    reference_time: Date | string;
-  }): Promise<void> {
-    const res = await fetch(new URL("/v1/episodes", this.baseUrl), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        is_dev: input.is_dev,
-        type: input.type,
-        counterparty_name: input.counterparty_name,
-        content: input.content,
-        reference_time:
-          input.reference_time instanceof Date
-            ? input.reference_time.toISOString()
-            : input.reference_time,
+/**
+ * 兼容当前仓库中 Mongo 环境变量命名差异。
+ *
+ * 说明：
+ * - utils 侧当前读取的是 MONGO_URI；
+ * - 项目文档里展示的是 MONGODB_URI；
+ * - demo 脚本优先做一层兜底映射，减少手工调整成本。
+ */
+if (!process.env.MONGO_URI?.trim() && process.env.MONGODB_URI?.trim()) {
+  process.env.MONGO_URI = process.env.MONGODB_URI;
+}
+
+const DEMO_TAG = "memory-eval-demo-v1";
+const MEMORY_SERVICE_BASE_URL = "http://localhost:9196";
+
+type DemoCategory = "positive" | "negative" | "boundary";
+
+interface DemoExpectation {
+  shouldWriteFact: boolean;
+  expectedFactHints: string[];
+  evaluationNote: string;
+}
+
+interface DemoEpisodeCase {
+  id: string;
+  title: string;
+  category: DemoCategory;
+  episode: MemoryEpisode<Record<string, unknown>>;
+  expectation: DemoExpectation;
+}
+
+interface SavedDemoEpisode {
+  demoCase: DemoEpisodeCase;
+  doc: IMemoryEpisode;
+}
+
+interface DemoExtractionResult {
+  demoCase: DemoEpisodeCase;
+  status: IMemoryEpisode["extractionStatus"] | "skipped_by_env";
+  factIds: string[];
+  facts: FactCandidate[];
+  wroteToMemoryService: boolean;
+  fallbackReason?: string;
+  errorMessage?: string;
+}
+
+interface ClearDevDataResult {
+  deletedEpisodeCount: number;
+  resetPlanState: boolean;
+  clearedGraphiti: boolean;
+  graphitiDeletedCount?: number;
+  graphitiErrorMessage?: string;
+}
+
+interface DemoQueryCase {
+  id: string;
+  title: string;
+  question: string;
+  expectedMemoryType: "episode";
+  expectedTimeConstraint: "yesterday" | "day_before_yesterday" | "explicit_range";
+  expectedSummaryHints: string[];
+  evaluationNote: string;
+}
+
+interface ConversationMessageItem {
+  speaker_name: string;
+  content: string;
+  timestamp: string;
+}
+
+/**
+ * 构建对话 episode。
+ *
+ * 说明：
+ * - demo 复用正式 memory 结构，确保输入分布尽量贴近真实系统；
+ * - payload 额外写入 demoCaseId / demoTag，方便后续排查与扩展。
+ */
+function createConversationEpisode(input: {
+  caseId: string;
+  counterpartyName: string;
+  happenedAt: Date;
+  importance: number;
+  messages: ConversationMessageItem[];
+}): MemoryEpisode<Record<string, unknown>> {
+  const previewText = input.messages
+    .slice(-3)
+    .map((message) => `${message.speaker_name}：${message.content}`)
+    .join(" | ");
+
+  return {
+    source: "chat",
+    type: "conversation",
+    subjectId: DEFAULT_MEMORY_SUBJECT_ID,
+    counterpartyId: input.counterpartyName,
+    happenedAt: input.happenedAt,
+    summaryText: [
+      `【记忆评测 Demo / ${input.caseId}】悠酱与 ${input.counterpartyName} 发生了一段对话`,
+      `最近内容：${previewText}`,
+    ].join("；"),
+    importance: input.importance,
+    extractionStatus: "pending",
+    isDev: isDev(),
+    payload: {
+      demoTag: DEMO_TAG,
+      demoCaseId: input.caseId,
+      counterpartyName: input.counterpartyName,
+      messageCount: input.messages.length,
+      windowStart: input.messages[0]?.timestamp ?? input.happenedAt.toISOString(),
+      windowEnd: input.messages.at(-1)?.timestamp ?? input.happenedAt.toISOString(),
+      messages: input.messages,
+    },
+  };
+}
+
+/**
+ * 构建行为 episode。
+ *
+ * 说明：
+ * - 这里保留 action / reason / executionResult 等核心字段；
+ * - 单次消费类样本会放在 behavior 中，用来验证“不要把一次性行为误提炼为长期偏好”。
+ */
+function createBehaviorEpisode(input: {
+  caseId: string;
+  happenedAt: Date;
+  action: string;
+  reason: string;
+  executionResult: string;
+  durationMinutes: number;
+  location: string;
+  relatedPlanId?: string;
+  importance: number;
+}): MemoryEpisode<Record<string, unknown>> {
+  return {
+    source: "world_tick",
+    type: "behavior",
+    subjectId: DEFAULT_MEMORY_SUBJECT_ID,
+    happenedAt: input.happenedAt,
+    summaryText: [
+      `【记忆评测 Demo / ${input.caseId}】悠酱执行了行为「${input.action}」`,
+      `原因：${input.reason}`,
+      `结果：${input.executionResult}`,
+      `持续时间：${input.durationMinutes} 分钟`,
+    ].join("；"),
+    importance: input.importance,
+    extractionStatus: "pending",
+    isDev: isDev(),
+    payload: {
+      demoTag: DEMO_TAG,
+      demoCaseId: input.caseId,
+      action: input.action,
+      reason: input.reason,
+      executionResult: input.executionResult,
+      durationMinutes: input.durationMinutes,
+      relatedPlanId: input.relatedPlanId,
+      location: input.location,
+      characterStateSnapshot: {
+        location: input.location,
+      },
+    },
+  };
+}
+
+/**
+ * 构建计划生命周期 episode。
+ *
+ * 说明：
+ * - 通过 created / updated / completed 等状态变化，测试计划类 fact 的抽取质量；
+ * - before / after 只保留最关键的计划字段，便于模型聚焦真正的状态变化。
+ */
+function createPlanEpisode(input: {
+  caseId: string;
+  type: MemoryEpisode["type"];
+  happenedAt: Date;
+  summaryText: string;
+  planId: string;
+  planScope: "main" | "active";
+  changeType: string;
+  before?: Record<string, unknown>;
+  after?: Record<string, unknown>;
+  changeReason: string;
+  importance: number;
+}): MemoryEpisode<Record<string, unknown>> {
+  return {
+    source: "world_tick",
+    type: input.type,
+    subjectId: DEFAULT_MEMORY_SUBJECT_ID,
+    happenedAt: input.happenedAt,
+    summaryText: `【记忆评测 Demo / ${input.caseId}】${input.summaryText}`,
+    importance: input.importance,
+    extractionStatus: "pending",
+    isDev: isDev(),
+    payload: {
+      demoTag: DEMO_TAG,
+      demoCaseId: input.caseId,
+      planId: input.planId,
+      planScope: input.planScope,
+      changeType: input.changeType,
+      before: input.before,
+      after: input.after,
+      changeReason: input.changeReason,
+    },
+  };
+}
+
+/**
+ * 生成本次 demo 的样本集。
+ *
+ * 说明：
+ * - positive: 理论上应被写入长期记忆；
+ * - negative: 理论上应被丢弃；
+ * - boundary: 用于观察抽取器是否会过度泛化。
+ */
+function buildDemoEpisodeCases(): DemoEpisodeCase[] {
+  return [
+    {
+      id: "pref-stable-dessert-tea",
+      title: "稳定偏好正例：草莓蛋糕与红茶",
+      category: "positive",
+      episode: createConversationEpisode({
+        caseId: "pref-stable-dessert-tea",
+        counterpartyName: "小满",
+        happenedAt: new Date("2026-03-18T10:15:00+08:00"),
+        importance: 0.88,
+        messages: [
+          {
+            speaker_name: "小满",
+            content: "你最近如果反复选甜品和饮料，会更偏向什么？",
+            timestamp: "2026-03-18 10:10:00",
+          },
+          {
+            speaker_name: "ゆいじゅ",
+            content: "如果让我连续选很多次，我大多都会选草莓蛋糕。",
+            timestamp: "2026-03-18 10:12:00",
+          },
+          {
+            speaker_name: "ゆいじゅ",
+            content: "饮料的话我长期更偏爱红茶，基本不会腻。",
+            timestamp: "2026-03-18 10:15:00",
+          },
+        ],
       }),
-    });
-
-    if (!res.ok) {
-      const text = await res.text().catch(() => "");
-      throw new Error(`MemoryService writeEpisode failed: ${res.status} ${text}`);
-    }
-  }
-
-  /** 搜索记忆（复用原有逻辑） */
-  async searchMemory(input: {
-    query: string;
-    is_dev?: boolean;
-    top_k?: number;
-    counterparty_name?: string;
-    filters?: Record<string, unknown>;
-  }): Promise<
-    Array<{ memory: string; time?: string | null; source?: string | null; score?: number | null }>
-  > {
-    const res = await fetch(new URL("/v1/search", this.baseUrl), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        query: input.query,
-        is_dev: input.is_dev,
-        top_k: input.top_k ?? 5,
-        counterparty_name: input.counterparty_name,
-        filters: input.filters,
+      expectation: {
+        shouldWriteFact: true,
+        expectedFactHints: ["草莓蛋糕", "红茶"],
+        evaluationNote: "这是一条典型稳定偏好，应该优先进入长期记忆。",
+      },
+    },
+    {
+      id: "chat-smalltalk-greeting",
+      title: "寒暄反例：早安聊天不应进入长期记忆",
+      category: "negative",
+      episode: createConversationEpisode({
+        caseId: "chat-smalltalk-greeting",
+        counterpartyName: "小雨",
+        happenedAt: new Date("2026-03-18T12:02:00+08:00"),
+        importance: 0.12,
+        messages: [
+          {
+            speaker_name: "小雨",
+            content: "早安呀，今天也要加油。",
+            timestamp: "2026-03-18 12:00:00",
+          },
+          {
+            speaker_name: "ゆいじゅ",
+            content: "早安，今天也请多关照。",
+            timestamp: "2026-03-18 12:02:00",
+          },
+        ],
       }),
-    });
+      expectation: {
+        shouldWriteFact: false,
+        expectedFactHints: [],
+        evaluationNote: "礼貌寒暄没有长期决策价值，理应被丢弃。",
+      },
+    },
+    {
+      id: "behavior-once-matcha",
+      title: "一次性行为边界例：顺手买抹茶拿铁",
+      category: "boundary",
+      episode: createBehaviorEpisode({
+        caseId: "behavior-once-matcha",
+        happenedAt: new Date("2026-03-18T18:20:00+08:00"),
+        action: "购买抹茶拿铁",
+        reason: "路过便利店时临时想喝点甜的，所以顺手买了一杯。",
+        executionResult: "喝完之后觉得还行，但没有继续讨论或复购。",
+        durationMinutes: 10,
+        location: "便利店",
+        importance: 0.28,
+      }),
+      expectation: {
+        shouldWriteFact: false,
+        expectedFactHints: [],
+        evaluationNote: "单次消费不应直接推断为稳定偏好，适合观察误判率。",
+      },
+    },
+    {
+      id: "relation-trust-acheng",
+      title: "关系正例：对阿澄的信任增强",
+      category: "positive",
+      episode: createConversationEpisode({
+        caseId: "relation-trust-acheng",
+        counterpartyName: "阿澄",
+        happenedAt: new Date("2026-03-19T09:45:00+08:00"),
+        importance: 0.91,
+        messages: [
+          {
+            speaker_name: "阿澄",
+            content: "这周复盘如果你还紧张，我可以继续陪你把错题过一遍。",
+            timestamp: "2026-03-19 09:41:00",
+          },
+          {
+            speaker_name: "ゆいじゅ",
+            content: "谢谢你，这几次一起复盘后，我越来越信任你了。",
+            timestamp: "2026-03-19 09:43:00",
+          },
+          {
+            speaker_name: "ゆいじゅ",
+            content: "之后如果我又因为考试焦虑卡住，应该会先来找你商量。",
+            timestamp: "2026-03-19 09:45:00",
+          },
+        ],
+      }),
+      expectation: {
+        shouldWriteFact: true,
+        expectedFactHints: ["阿澄", "信任"],
+        evaluationNote: "这类持续关系信号应当沉淀为 relation fact。",
+      },
+    },
+    {
+      id: "plan-main-hokkaido",
+      title: "主计划正例：准备北海道旅行采风",
+      category: "positive",
+      episode: createPlanEpisode({
+        caseId: "plan-main-hokkaido",
+        type: "plan_created",
+        happenedAt: new Date("2026-03-19T20:30:00+08:00"),
+        summaryText: "悠酱创建了主计划；原计划：无；新计划：准备北海道旅行采风",
+        planId: "demo-plan-main-hokkaido",
+        planScope: "main",
+        changeType: "created",
+        after: {
+          id: "demo-plan-main-hokkaido",
+          title: "准备北海道旅行采风",
+          status: "active",
+          source: "system",
+        },
+        changeReason: "把旅行采风确认为当前阶段最重要的主计划。",
+        importance: 0.86,
+      }),
+      expectation: {
+        shouldWriteFact: true,
+        expectedFactHints: ["北海道旅行采风", "主计划"],
+        evaluationNote: "主计划创建属于长期状态信息，应稳定进入记忆。",
+      },
+    },
+    {
+      id: "plan-detail-flight-check",
+      title: "计划细节边界例：今晚先查机票价格",
+      category: "boundary",
+      episode: createPlanEpisode({
+        caseId: "plan-detail-flight-check",
+        type: "plan_updated",
+        happenedAt: new Date("2026-03-20T08:15:00+08:00"),
+        summaryText: "悠酱更新了活跃计划；原计划：整理北海道旅行预算；新计划：今晚先查机票价格",
+        planId: "demo-plan-active-budget",
+        planScope: "active",
+        changeType: "updated",
+        before: {
+          id: "demo-plan-active-budget",
+          title: "整理北海道旅行预算",
+          status: "active",
+          parentPlanId: "demo-plan-main-hokkaido",
+          source: "system",
+        },
+        after: {
+          id: "demo-plan-active-budget",
+          title: "今晚先查机票价格",
+          status: "active",
+          parentPlanId: "demo-plan-main-hokkaido",
+          source: "system",
+        },
+        changeReason: "这是执行层面的临时微调，用来测试抽取器是否会过度记录计划细节。",
+        importance: 0.34,
+      }),
+      expectation: {
+        shouldWriteFact: false,
+        expectedFactHints: [],
+        evaluationNote: "计划细节微调通常不该进入长期记忆，是很重要的边界测试点。",
+      },
+    },
+  ];
+}
 
-    if (!res.ok) {
-      const text = await res.text().catch(() => "");
-      throw new Error(`MemoryService searchMemory failed: ${res.status} ${text}`);
-    }
+/**
+ * 构建当前计划真相源。
+ *
+ * 说明：
+ * - plan 查询直接读 Redis plan_state，不读 episode；
+ * - 因此 demo 需要显式写入一份当前计划状态，才能完整验证 plan 查询链路。
+ */
+function buildDemoPlanState(): PlanState {
+  const updatedAt = new Date("2026-03-20T08:20:00+08:00").toISOString();
 
-    const json = (await res.json()) as unknown;
-    if (!Array.isArray(json)) {
-      throw new Error("MemoryService searchMemory: invalid response");
-    }
+  return {
+    mainPlanId: "demo-plan-main-hokkaido",
+    activePlanIds: ["demo-plan-active-budget"],
+    mainPlan: {
+      id: "demo-plan-main-hokkaido",
+      title: "准备北海道旅行采风",
+      scope: "main",
+      status: "active",
+      source: "system",
+      createdAt: new Date("2026-03-19T20:30:00+08:00").toISOString(),
+      updatedAt,
+    },
+    activePlans: [
+      {
+        id: "demo-plan-active-budget",
+        title: "整理北海道旅行预算",
+        scope: "active",
+        status: "active",
+        parentPlanId: "demo-plan-main-hokkaido",
+        source: "system",
+        createdAt: new Date("2026-03-19T21:00:00+08:00").toISOString(),
+        updatedAt,
+      },
+    ],
+    updatedAt,
+  };
+}
 
-    return json as Array<{
-      memory: string;
-      time?: string | null;
-      source?: string | null;
-      score?: number | null;
-    }>;
-  }
+/**
+ * 构建空的 dev 计划状态，用于清理 demo 写入后的 Redis 状态。
+ */
+function buildEmptyPlanState(): PlanState {
+  return {
+    activePlanIds: [],
+    activePlans: [],
+    updatedAt: new Date(0).toISOString(),
+  };
+}
 
-  /** 清理 dev 环境的所有数据 */
-  async clearDevData(): Promise<{ deleted_count: number }> {
-    const res = await fetch(new URL("/v1/admin/clear-dev", this.baseUrl), {
+/**
+ * 清理 Python memory service 中的 dev 图数据。
+ *
+ * 说明：
+ * - Python 侧的 /v1/admin/clear-dev 会清空 group_id=dev 的 Graphiti 数据；
+ * - 这里单独封装是为了让 Mongo / Redis 的清理与 Graphiti 解耦，某一项失败也不阻断其他项。
+ */
+async function clearGraphitiDevData(): Promise<{
+  clearedGraphiti: boolean;
+  graphitiDeletedCount?: number;
+  graphitiErrorMessage?: string;
+}> {
+  try {
+    const response = await fetch(new URL("/v1/admin/clear-dev", MEMORY_SERVICE_BASE_URL), {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
     });
 
-    if (!res.ok) {
-      const text = await res.text().catch(() => "");
-      throw new Error(`MemoryService clearDevData failed: ${res.status} ${text}`);
+    if (!response.ok) {
+      const text = await response.text().catch(() => "");
+      return {
+        clearedGraphiti: false,
+        graphitiErrorMessage: `HTTP ${response.status} ${text}`.trim(),
+      };
     }
 
-    const json = (await res.json()) as unknown;
-    return json as { deleted_count: number };
+    const json = (await response.json()) as { deleted_count?: unknown };
+    return {
+      clearedGraphiti: true,
+      graphitiDeletedCount: typeof json.deleted_count === "number" ? json.deleted_count : undefined,
+    };
+  } catch (error) {
+    return {
+      clearedGraphiti: false,
+      graphitiErrorMessage: toErrorMessage(error),
+    };
   }
 }
-
-function getExtendedMemoryClient(): ExtendedMemoryServiceClient {
-  return new ExtendedMemoryServiceClient("http://localhost:9196");
-}
-
-interface MockBehavior {
-  action: ActionId;
-  reason: string;
-  durationMin: number;
-  daysAgo: number;
-  hour: number;
-  executionResult?: string;
-}
-
-// 模拟行为数据 - 使用真实的 ActionId 并设定具体的时间分布
-const mockBehaviors: MockBehavior[] = [
-  // 最近 24 小时内
-  {
-    action: ActionId.Wake_Up,
-    reason: "新的一天开始了，精神饱满地起床准备迎接挑战",
-    durationMin: 5,
-    daysAgo: 0,
-    hour: 7,
-  },
-  {
-    action: ActionId.Eat_Breakfast,
-    reason: "早餐吃了营养丰富的燕麦粥和鸡蛋，补充能量",
-    durationMin: 15,
-    daysAgo: 0,
-    hour: 7,
-    executionResult: "饱腹感 +20",
-  },
-  {
-    action: ActionId.Go_To_School_From_Home,
-    reason: "吃完早餐，该去学校上课了",
-    durationMin: 20,
-    daysAgo: 0,
-    hour: 8,
-  },
-  // 2-3 天前
-  {
-    action: ActionId.Study_At_School,
-    reason: "今天有数学和英语课程，需要认真听讲",
-    durationMin: 120,
-    daysAgo: 2,
-    hour: 10,
-  },
-  {
-    action: ActionId.Work_At_Cafe,
-    reason: "在咖啡店打工赚取零花钱，练习社交技能",
-    durationMin: 180,
-    daysAgo: 2,
-    hour: 14,
-    executionResult: "赚了 300 元",
-  },
-  {
-    action: ActionId.Drink_Coffee,
-    reason: "下午茶时间，一杯拿铁帮助放松身心",
-    durationMin: 30,
-    daysAgo: 3,
-    hour: 16,
-  },
-  // 一周前
-  {
-    action: ActionId.Eat_Dinner,
-    reason: "晚餐吃了最喜欢的咖喱饭",
-    durationMin: 40,
-    daysAgo: 7,
-    hour: 19,
-    executionResult: "饱腹感 +30",
-  },
-  {
-    action: ActionId.Sleep,
-    reason: "忙碌的一天结束了，好好休息恢复精力",
-    durationMin: 480,
-    daysAgo: 7,
-    hour: 22,
-  },
-];
 
 /**
- * 清理 dev 环境的所有数据
- * 可以按需调用此函数来清空测试数据
+ * 清理当前 dev 环境下的测试数据。
+ *
+ * 说明：
+ * - Mongo：删除 isDev=true 的 episode 文档；
+ * - Redis：重置当前计划状态；
+ * - Graphiti：调用 Python 管理接口清空 dev group。
  */
-export async function clearDevData(): Promise<void> {
-  console.log("🧹 开始清理 dev 环境数据...");
-  const memoryClient = getExtendedMemoryClient();
-  try {
-    const result = await memoryClient.clearDevData();
-    console.log(`✅ 清理完成，删除了 ${result.deleted_count} 条记录\n`);
-  } catch (e) {
-    console.error("❌ 清理失败:", (e as Error).message);
-    console.log("   请确保 Python 服务已更新并包含 /v1/admin/clear-dev 端点\n");
-    throw e;
+export async function clearDevData() {
+  await connectDB();
+
+  const deleteResult = await MemoryEpisodeModel.deleteMany({
+    isDev: true,
+  }).exec();
+
+  await savePlanStateData(buildEmptyPlanState());
+
+  const graphitiResult = await clearGraphitiDevData();
+
+  const result: ClearDevDataResult = {
+    deletedEpisodeCount: deleteResult.deletedCount ?? 0,
+    resetPlanState: true,
+    clearedGraphiti: graphitiResult.clearedGraphiti,
+    graphitiDeletedCount: graphitiResult.graphitiDeletedCount,
+    graphitiErrorMessage: graphitiResult.graphitiErrorMessage,
+  };
+
+  console.log("\n=== Dev 测试数据清理结果 ===");
+  console.log(`- 删除的 dev episode 数量: ${result.deletedEpisodeCount}`);
+  console.log(`- 已重置 dev 计划状态: ${result.resetPlanState ? "是" : "否"}`);
+  if (result.clearedGraphiti) {
+    console.log(`- 已清空 Graphiti dev 数据: 是`);
+    if (typeof result.graphitiDeletedCount === "number") {
+      console.log(`- Graphiti 删除数量: ${result.graphitiDeletedCount}`);
+    }
+  } else {
+    console.log(`- 已清空 Graphiti dev 数据: 否`);
+    if (result.graphitiErrorMessage) {
+      console.log(`- Graphiti 清理失败原因: ${result.graphitiErrorMessage}`);
+    }
   }
+
+  await closeRedis().catch(() => undefined);
+  await mongoose.disconnect().catch(() => undefined);
 }
 
-async function writeMemory() {
-  console.log("=== ゆいじゅ记忆服务测试脚本 ===\n");
+/**
+ * 构建查询样本。
+ *
+ * 说明：
+ * - 当前先聚焦 episode 的历史查询能力；
+ * - 问题设计尽量贴近真实使用，让 LLM 自己决定如何调用 function tool。
+ */
+function buildDemoQueries(): DemoQueryCase[] {
+  return [
+    {
+      id: "query-episode-day-before-dessert",
+      title: "Episode 历史查询：前天关于草莓蛋糕的对话",
+      question: "请帮我回忆前天和草莓蛋糕有关的事情，重点看发生过什么对话。",
+      expectedMemoryType: "episode",
+      expectedTimeConstraint: "day_before_yesterday",
+      expectedSummaryHints: ["草莓蛋糕", "红茶"],
+      evaluationNote: "应优先调用 episode 记忆，并把时间约束落到前天。",
+    },
+    {
+      id: "query-episode-day-before-relation",
+      title: "Episode 历史查询：前天与阿澄相关的重要互动",
+      question: "前天我和阿澄之间发生过什么值得注意的互动？",
+      expectedMemoryType: "episode",
+      expectedTimeConstraint: "day_before_yesterday",
+      expectedSummaryHints: ["阿澄", "信任"],
+      evaluationNote: "应优先调用 episode 记忆，并检索前天的关系变化样本。",
+    },
+    {
+      id: "query-episode-yesterday-main-plan",
+      title: "Episode 历史查询：昨天创建过什么重要计划",
+      question: "请查一下昨天我创建过什么重要计划，告诉我具体发生了什么。",
+      expectedMemoryType: "episode",
+      expectedTimeConstraint: "yesterday",
+      expectedSummaryHints: ["北海道旅行采风", "主计划"],
+      evaluationNote: "应优先调用 episode 记忆，并把时间约束落到昨天。",
+    },
+    {
+      id: "query-episode-yesterday-detail-update",
+      title: "Episode 历史查询：昨天活跃计划的更新",
+      question: "昨天我的活跃计划发生过什么更新？请按事件来回答。",
+      expectedMemoryType: "episode",
+      expectedTimeConstraint: "yesterday",
+      expectedSummaryHints: ["今晚先查机票价格", "整理北海道旅行预算"],
+      evaluationNote: "用于验证昨天的计划更新事件是否能通过 episode 查询命中。",
+    },
+    {
+      id: "query-episode-explicit-range",
+      title: "Episode 历史查询：精确时间窗口回忆 2026-03-19",
+      question:
+        "请查询 2026-03-19 00:00:00 到 2026-03-19 23:59:59 之间发生的重要记忆事件，按时间倒序总结给我。",
+      expectedMemoryType: "episode",
+      expectedTimeConstraint: "explicit_range",
+      expectedSummaryHints: ["阿澄", "北海道旅行采风"],
+      evaluationNote: "用于验证 LLM 是否会把明确日期转成 startTime / endTime。",
+    },
+  ];
+}
 
-  // 初始化记忆服务客户端
-  const memoryClient = getExtendedMemoryClient();
-  const useDevMode = isDev();
+/**
+ * 持久化 demo episode。
+ */
+async function saveDemoEpisodes(demoCases: DemoEpisodeCase[]): Promise<SavedDemoEpisode[]> {
+  const savedEpisodes: SavedDemoEpisode[] = [];
 
-  console.log("✅ 记忆服务客户端初始化成功");
-  console.log(`   服务地址: http://localhost:9196`);
-  console.log(`   环境标识: ${useDevMode ? "开发环境 (dev)" : "生产环境 (prod)"}`);
-  console.log(`   Group ID: ${useDevMode ? "dev" : "prod"}\n`);
+  for (const demoCase of demoCases) {
+    const doc = await saveMemoryEpisode(demoCase.episode);
+    savedEpisodes.push({ demoCase, doc });
+  }
+
+  return savedEpisodes;
+}
+
+/**
+ * 抽取并尽量持久化事实。
+ *
+ * 说明：
+ * - 这里不直接复用 processMemoryEpisode，而是把抽取结果打印出来，便于人工评估；
+ * - 当 Python memory service 不可用时，会退化为“只回写本地 fact id”，不阻断 demo 观察流程。
+ */
+async function extractAndPersistFacts(
+  savedEpisode: SavedDemoEpisode,
+): Promise<DemoExtractionResult> {
+  const { demoCase, doc } = savedEpisode;
+
+  if (!process.env.DEEPSEEK_API_KEY?.trim()) {
+    return {
+      demoCase,
+      status: "skipped_by_env",
+      factIds: [],
+      facts: [],
+      wroteToMemoryService: false,
+      fallbackReason: "未配置 DEEPSEEK_API_KEY，跳过事实抽取。",
+    };
+  }
+
+  if (!doc.id) {
+    return {
+      demoCase,
+      status: "failed",
+      factIds: [],
+      facts: [],
+      wroteToMemoryService: false,
+      errorMessage: "保存后的 episode 缺少文档 id，无法继续抽取。",
+    };
+  }
 
   try {
-    console.log("开始写入 mock 记忆数据...\n");
+    await updateMemoryEpisodeExtraction(doc.id, {
+      extractionStatus: "processing",
+    });
 
-    // 写入不同时间点的记忆记录
-    for (let i = 0; i < mockBehaviors.length; i++) {
-      const behavior = mockBehaviors[i];
+    const facts = await llmMemoryExtractor.extract({
+      id: doc.id,
+      source: doc.source,
+      type: doc.type,
+      subjectId: doc.subjectId,
+      counterpartyId: doc.counterpartyId,
+      happenedAt: doc.happenedAt,
+      summaryText: doc.summaryText,
+      importance: doc.importance,
+      payload: doc.payload,
+      extractionStatus: "processing",
+      extractedFactIds: doc.extractedFactIds,
+      isDev: doc.isDev,
+    });
 
-      // 构建具体的时间点
-      const referenceTime = dayjs()
-        .subtract(behavior.daysAgo, "day")
-        .hour(behavior.hour)
-        .minute(Math.floor(Math.random() * 30))
-        .second(0);
-
-      // 构建描述（包含执行结果）
-      let description = behavior.reason;
-      if (behavior.executionResult) {
-        description += ` ${behavior.executionResult}`;
-      }
-
-      await memoryClient.writeEpisode({
-        is_dev: useDevMode,
-        type: "ゆいじゅ的 Behavior",
-        reference_time: referenceTime.toDate(),
-        content: {
-          time: getTimeWithWeekday(referenceTime),
-          action: behavior.action,
-          reason: description,
-          duration_minutes: `持续了${behavior.durationMin}分钟`,
-        },
+    if (facts.length === 0) {
+      await updateMemoryEpisodeExtraction(doc.id, {
+        extractionStatus: "skipped",
+        extractedFactIds: [],
       });
 
-      const timeLabel = behavior.daysAgo === 0 ? "今天" : `${behavior.daysAgo}天前`;
-      console.log(
-        `[${i + 1}/${mockBehaviors.length}] ✅ ${behavior.action} - ${timeLabel} ${referenceTime.format("HH:mm")}`,
-      );
+      return {
+        demoCase,
+        status: "skipped",
+        factIds: [],
+        facts: [],
+        wroteToMemoryService: false,
+      };
     }
 
-    console.log("\n🎉 所有 mock 记忆数据写入成功！");
-    console.log("\n📊 数据概览：");
-    console.log(`   - 共写入 ${mockBehaviors.length} 条记忆记录`);
-    console.log(`   - 时间范围：过去 7 天内`);
-    console.log(`   - 行为类型：${[...new Set(mockBehaviors.map((b) => b.action))].join(", ")}`);
+    const memoryClient = getMemoryServiceClientFromEnv();
+    let factIds = facts.map((fact) => fact.id);
+    let wroteToMemoryService = false;
+    let fallbackReason: string | undefined;
 
-    // 简单测试搜索功能
-    console.log("\n🔍 测试记忆搜索功能...");
-    const testQueries = ["学习", "咖啡", "睡觉"];
-    for (const query of testQueries) {
+    if (memoryClient) {
       try {
-        const results = await memoryClient.searchMemory({
-          query,
-          is_dev: useDevMode,
-          top_k: 3,
+        factIds = await memoryClient.writeFacts({
+          is_dev: doc.isDev,
+          facts,
         });
-        console.log(`   搜索"${query}": 找到 ${results.length} 条相关记忆`);
-      } catch (e) {
-        console.log(`   搜索"${query}": 搜索功能暂不可用 (${(e as Error).message})`);
+        wroteToMemoryService = true;
+      } catch (error) {
+        fallbackReason = `memory service 写入失败，已回退为本地 fact id：${toErrorMessage(error)}`;
       }
     }
 
-    console.log("\n📝 下一步：");
-    console.log("   1. 访问 Graphiti 前端界面查看存储的记忆");
-    console.log("   2. 尝试不同的搜索关键词验证检索效果");
-    console.log("   3. 检查记忆的时间排序和内容完整性");
-    console.log("   4. 如需重新测试，可调用 clearDevData() 函数清理数据");
+    await updateMemoryEpisodeExtraction(doc.id, {
+      extractionStatus: "done",
+      extractedFactIds: factIds,
+    });
+
+    return {
+      demoCase,
+      status: "done",
+      factIds,
+      facts,
+      wroteToMemoryService,
+      fallbackReason,
+    };
   } catch (error) {
-    console.error("\n❌ 写入记忆数据失败:", error);
-    console.log("\n💡 请检查：");
-    console.log("   1. Python 记忆服务是否正在运行（端口 9196）");
-    console.log("   2. 服务地址配置是否正确");
-    console.log("   3. 网络连接是否正常");
+    await updateMemoryEpisodeExtraction(doc.id, {
+      extractionStatus: "failed",
+    });
+
+    return {
+      demoCase,
+      status: "failed",
+      factIds: [],
+      facts: [],
+      wroteToMemoryService: false,
+      errorMessage: toErrorMessage(error),
+    };
   }
 }
 
 /**
- * 测试记忆搜索功能
- * 参考 @packages/utils/src/llm/tools/memory-search.ts 的实现
- * 在函数内部测试多个关键词的搜索效果，验证记忆查询功能
+ * 统一格式化异常信息，避免控制台打印出过长对象。
  */
-export async function searchMemory(): Promise<void> {
-  console.log("🔍 开始测试记忆搜索功能...\n");
-  const memoryClient = getExtendedMemoryClient();
-  const useDevMode = isDev();
+function toErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
 
-  // 测试搜索关键词，覆盖各种行为场景
-  const testQueries = [
-    "ゆいじゅ 今天早上做了什么？",
-    // "ゆいじゅ 吃早餐",
-    // "ゆいじゅ 学习",
-    // "ゆいじゅ 打工",
-    // "ゆいじゅ 咖啡",
-    // "ゆいじゅ 睡觉",
-    // "学习",
-    // "咖啡",
-    // "睡觉",
+  return String(error);
+}
+
+/**
+ * 打印样本写入结果，方便快速核对本轮 demo 输入集。
+ */
+function printSeedSummary(savedEpisodes: SavedDemoEpisode[]): void {
+  console.log("\n=== 1. 已写入的 Demo Episode ===");
+
+  for (const { demoCase, doc } of savedEpisodes) {
+    console.log(`- [${demoCase.category}] ${demoCase.title}`);
+    console.log(`  caseId: ${demoCase.id}`);
+    console.log(`  episodeId: ${doc.id ?? "unknown"}`);
+    console.log(`  shouldWriteFact: ${demoCase.expectation.shouldWriteFact}`);
+    console.log(
+      `  expectedFactHints: ${demoCase.expectation.expectedFactHints.join("、") || "无"}`,
+    );
+    console.log(`  summary: ${doc.summaryText}`);
+    console.log(`  note: ${demoCase.expectation.evaluationNote}`);
+  }
+}
+
+/**
+ * 打印抽取结果。
+ *
+ * 说明：
+ * - expectedFactHints 是“人工评估提示”，不是硬编码断言；
+ * - 这里更适合你在调 prompt / 微调后进行横向对比。
+ */
+function printExtractionSummary(results: DemoExtractionResult[]): void {
+  console.log("\n=== 2. 事实抽取结果 ===");
+
+  for (const result of results) {
+    console.log(`- ${result.demoCase.title}`);
+    console.log(`  status: ${result.status}`);
+    console.log(
+      `  expected: ${result.demoCase.expectation.shouldWriteFact ? "应写入长期记忆" : "不应写入长期记忆"}`,
+    );
+
+    if (result.fallbackReason) {
+      console.log(`  fallback: ${result.fallbackReason}`);
+    }
+
+    if (result.errorMessage) {
+      console.log(`  error: ${result.errorMessage}`);
+    }
+
+    if (result.facts.length === 0) {
+      console.log("  facts: 无");
+      continue;
+    }
+
+    console.log(`  wroteToMemoryService: ${result.wroteToMemoryService}`);
+    console.log(`  factIds: ${result.factIds.join("、")}`);
+
+    for (const fact of result.facts) {
+      console.log(
+        `  fact: [${fact.type}] ${fact.subject} / ${fact.predicate} / ${fact.object} / confidence=${fact.confidence}`,
+      );
+      console.log(`  summary: ${fact.summary}`);
+    }
+  }
+}
+
+/**
+ * 打印查询结果。
+ *
+ * 说明：
+ * - 查询失败不会中断整个 demo；
+ * - 这样即使 Python memory service 或 Redis 没启动，你也仍然能先看 episode 写入和抽取效果。
+ */
+function printToolInvocationTrace(result: {
+  steps: Array<{
+    finishReason: string;
+    toolCalls: unknown[];
+    toolResults: unknown[];
+  }>;
+}): void {
+  if (result.steps.length === 0) {
+    console.log("  steps: 无");
+    return;
+  }
+
+  for (const [index, step] of result.steps.entries()) {
+    console.log(`  step ${index + 1}:`);
+    console.log(`    finishReason: ${step.finishReason}`);
+
+    if (step.toolCalls.length > 0) {
+      console.log("    toolCalls:");
+      console.log(JSON.stringify(step.toolCalls, null, 2));
+    }
+
+    if (step.toolResults.length > 0) {
+      console.log("    toolResults:");
+      console.log(JSON.stringify(step.toolResults, null, 2));
+    }
+
+    if (step.toolCalls.length === 0 && step.toolResults.length === 0) {
+      console.log("    无 tool 调用");
+    }
+  }
+}
+
+async function runAndPrintQueries(queries: DemoQueryCase[]): Promise<void> {
+  console.log("\n=== 3. 查询验证 ===");
+
+  for (const queryCase of queries) {
+    console.log(`- ${queryCase.title}`);
+    console.log(`  question: ${queryCase.question}`);
+    console.log(`  expectedMemoryType: ${queryCase.expectedMemoryType}`);
+    console.log(`  expectedTimeConstraint: ${queryCase.expectedTimeConstraint}`);
+    console.log(`  expectedHints: ${queryCase.expectedSummaryHints.join("、")}`);
+    console.log(`  note: ${queryCase.evaluationNote}`);
+
+    try {
+      const result = await generateText({
+        model: minimax_model,
+        system: getCharacterCardPrompt({
+          userName: "翊小久",
+        }),
+        prompt: queryCase.question,
+        tools: {
+          memorySearch: memorySearchTool,
+        },
+        stopWhen: stepCountIs(5),
+      });
+
+      printToolInvocationTrace(result);
+      console.log(`  assistant: ${result.text || "无文本输出"}`);
+    } catch (error) {
+      console.log(`  error: ${toErrorMessage(error)}`);
+    }
+  }
+}
+
+/**
+ * 打印推荐的人工评测问题。
+ *
+ * 说明：
+ * - 这些问题更贴近真实使用方式；
+ * - 即便当前 episode 检索还是关键词匹配，你后续做 rerank / semantic search 时也能复用。
+ */
+function printManualEvaluationPrompts(): void {
+  const prompts = [
+    "悠酱稳定喜欢吃什么、喝什么？",
+    "悠酱和阿澄现在是什么关系？",
+    "悠酱当前最重要的计划是什么？",
+    "哪些只是一次性发生的事情，不应该进入长期记忆？",
+    "哪些计划变化只是执行层细节，不值得沉淀为长期事实？",
   ];
 
+  console.log("\n=== 4. 建议你后续继续追踪的人工评测问题 ===");
+  for (const prompt of prompts) {
+    console.log(`- ${prompt}`);
+  }
+}
+
+/**
+ * 主入口：写入 demo、执行抽取、验证查询。
+ */
+async function demoMemoryTest() {
+  const demoCases = buildDemoEpisodeCases();
+
   try {
-    for (const query of testQueries) {
-      console.log(`📝 搜索关键词："${query}"`);
-      const results = await memoryClient.searchMemory({
-        query,
-        is_dev: false,
-        top_k: 5,
-      });
+    await connectDB();
 
-      if (results.length > 0) {
-        console.log(`✅ 找到 ${results.length} 条相关记忆`);
-        results.forEach((result, index) => {
-          console.log(`   [${index + 1}] ${result.memory}`);
-          if (result.time) {
-            console.log(`      时间：${result.time}`);
-          }
-          if (result.score) {
-            console.log(`      分数：${result.score.toFixed(3)}`);
-          }
-        });
-      } else {
-        console.log(`⚠️  未找到相关记忆`);
-      }
-      console.log(); // 换行分隔不同查询的结果
+    const savedEpisodes = await saveDemoEpisodes(demoCases);
+    printSeedSummary(savedEpisodes);
+
+    const extractionResults: DemoExtractionResult[] = [];
+    for (const savedEpisode of savedEpisodes) {
+      const result = await extractAndPersistFacts(savedEpisode);
+      extractionResults.push(result);
     }
+    printExtractionSummary(extractionResults);
 
-    console.log("🎉 记忆搜索功能测试完成！");
-    console.log("\n📊 测试总结：");
-    console.log(`   - 共测试 ${testQueries.length} 个搜索关键词`);
-    console.log(`   - 使用环境：${useDevMode ? "开发环境 (dev)" : "生产环境 (prod)"}`);
-    console.log(`   - 服务地址：http://localhost:9196`);
-  } catch (e) {
-    console.error("❌ 搜索测试失败:", (e as Error).message);
-    throw e;
+    await savePlanStateData(buildDemoPlanState());
+    await runAndPrintQueries(buildDemoQueries());
+    printManualEvaluationPrompts();
+  } finally {
+    await closeRedis().catch(() => undefined);
+    await mongoose.disconnect().catch(() => undefined);
   }
 }
 
 export async function main() {
   // await clearDevData();
-  await searchMemory();
+  await demoMemoryTest();
 }
