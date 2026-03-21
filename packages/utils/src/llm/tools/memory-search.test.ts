@@ -13,12 +13,12 @@ describe("memorySearchTool", () => {
   it("使用新契约调用 query router", async () => {
     searchMock.mockResolvedValueOnce([
       {
-        source: "fact",
+        source: "diary",
         score: 1,
-        summary: "悠酱喜欢草莓牛奶",
-        evidenceIds: ["episode_1"],
+        summary: "今天和小久聊过之后，心里一直有一点轻轻的开心。",
+        evidenceIds: ["diary_1"],
         metadata: {
-          source: "graphiti",
+          displayDate: "2026-03-17",
         },
       },
     ]);
@@ -26,8 +26,8 @@ describe("memorySearchTool", () => {
     const { memorySearchTool } = await import("./memory-search");
     const result = await (memorySearchTool.execute as (...args: unknown[]) => Promise<unknown>)(
       {
-        query: "悠酱喜欢什么",
-        memoryType: "fact",
+        query: "昨天我和小久聊了什么",
+        memoryType: "diary",
         timeRange: "yesterday",
         startTime: "2026-03-17 00:00:00",
         endTime: "2026-03-17 23:59:59",
@@ -39,8 +39,8 @@ describe("memorySearchTool", () => {
     );
 
     expect(searchMock).toHaveBeenCalledWith({
-      query: "悠酱喜欢什么",
-      memoryType: "fact",
+      query: "昨天我和小久聊了什么",
+      memoryType: "diary",
       timeRange: "yesterday",
       startTime: "2026-03-17 00:00:00",
       endTime: "2026-03-17 23:59:59",
@@ -50,9 +50,9 @@ describe("memorySearchTool", () => {
     });
     expect(result).toEqual([
       expect.objectContaining({
-        evidenceIds: ["episode_1"],
+        evidenceIds: ["diary_1"],
         metadata: {
-          source: "graphiti",
+          displayDate: "2026-03-17",
         },
       }),
     ]);

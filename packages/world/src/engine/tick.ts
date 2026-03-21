@@ -10,6 +10,7 @@ import {
   type RunningActionState,
 } from "@yuiju/utils";
 import { getActionList } from "@/action";
+import { triggerDiaryGenerationAfterAction } from "@/diary";
 import { getActionById } from "@/action/utils";
 import { chooseActionAgent } from "@/llm/agent";
 import { buildBehaviorEpisode, buildPlanUpdateEpisodes } from "@/memory/episode-builder";
@@ -150,6 +151,13 @@ export async function tick(params: TickParams): Promise<TickReturn> {
         logger.debug("[tick] built behavior episode", behaviorEpisode);
         processPendingMemoryEpisodes({ limit: 1, isDev: isDev() }).catch((error) => {
           logger.error("[tick] process pending memory episodes failed", error);
+        });
+
+        // 只有正式睡觉会在写入成功后触发当日日记生成，避免午睡/短睡打断日记节奏。
+        await triggerDiaryGenerationAfterAction({
+          action: selectedAction.action,
+          happenedAt: behaviorEpisode.happenedAt,
+          isDev: isDev(),
         });
       } catch (e) {
         logger.error("[tick] build world_action episode failed", e);
