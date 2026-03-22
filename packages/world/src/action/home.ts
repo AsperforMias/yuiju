@@ -1,4 +1,6 @@
-import { ActionId, type ActionMetadata, allTrue, MajorScene } from "@yuiju/utils";
+import { ActionId, type ActionMetadata, allTrue, isDev, MajorScene } from "@yuiju/utils";
+import { generateDiaryForDate, resolveDiaryDateForSleep } from "@/diary";
+import { logger } from "@/utils/logger";
 import {
   isAfternoon,
   isEvening,
@@ -137,7 +139,15 @@ export const homeAction: ActionMetadata[] = [
       return allTrue([isNight(context)]);
     },
     async executor(context) {
-      context.characterState.setAction(ActionId.Sleep);
+      await context.characterState.setAction(ActionId.Sleep);
+
+      // 进入正式睡眠后，后台异步生成“当天日记”，不阻塞行为主链路。
+      void generateDiaryForDate({
+        diaryDate: resolveDiaryDateForSleep(context.worldState.time.toDate()),
+        isDev: isDev(),
+      }).catch((error) => {
+        logger.error("[homeAction.Sleep] generate diary failed", error);
+      });
     },
     durationMin: async (context) => {
       const now = context.worldState.time.clone();

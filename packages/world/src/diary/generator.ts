@@ -7,26 +7,14 @@ import {
   type IMemoryEpisode,
   upsertMemoryDiary,
 } from "@yuiju/utils";
-import { generateText, Output } from "ai";
+import { generateText } from "ai";
 import dayjs from "dayjs";
-import { z } from "zod";
 import { logger } from "@/utils/logger";
 
 const MAX_EPISODES_PER_DAY = 500;
-const RAW_CONVERSATION_CHAR_BUDGET = 6000;
-const SINGLE_CONVERSATION_CHAR_LIMIT = 2200;
-const CONVERSATION_CHUNK_CHAR_LIMIT = 1400;
-const CONVERSATION_CHUNK_MESSAGE_LIMIT = 10;
-
-const conversationSummarySchema = z.object({
-  topicSummary: z.string().min(1),
-  emotionSummary: z.string().min(1),
-  preferenceSignals: z.array(z.string()).max(4),
-  relationSignals: z.array(z.string()).max(4),
-  representativeQuotes: z.array(z.string()).max(3),
-});
-
-type ConversationSummary = z.infer<typeof conversationSummarySchema>;
+const SLEEP_DIARY_ROLLOVER_HOUR = 6;
+const RAW_CONVERSATION_CHAR_BUDGET = 50_000;
+const CONVERSATION_EPISODES_PER_CHUNK = 30;
 
 interface ConversationMessage {
   speaker_name: string;
@@ -55,29 +43,6 @@ export interface GenerateDiaryForDateInput {
   isDev: boolean;
 }
 
-export interface DiaryGeneratorDependencies {
-  loadEpisodes?: (input: {
-    diaryDate: Date;
-    subjectId: string;
-    isDev: boolean;
-  }) => Promise<IMemoryEpisode[]>;
-  saveDiary?: typeof upsertMemoryDiary;
-  summarizeConversationChunk?: (input: {
-    counterpartyName: string;
-    chunkLabel: string;
-    messages: ConversationMessage[];
-  }) => Promise<ConversationSummary>;
-  mergeConversationSummaries?: (input: {
-    counterpartyName: string;
-    chunkSummaries: ConversationSummary[];
-  }) => Promise<ConversationSummary>;
-  writeDiaryText?: (input: {
-    subject: string;
-    diaryDate: Date;
-    materials: DiaryMaterialItem[];
-  }) => Promise<string>;
-}
-
 function getConversationPayload(episode: IMemoryEpisode): ConversationPayload {
   return (episode.payload ?? {}) as ConversationPayload;
 }
@@ -91,54 +56,6 @@ function estimateConversationChars(episode: IMemoryEpisode): number {
   return getConversationMessages(episode).reduce((total, message) => {
     return total + message.speaker_name.length + message.content.length + message.timestamp.length;
   }, 0);
-}
-
-function chunkConversationMessages(messages: ConversationMessage[]): ConversationMessage[][] {
-  const chunks: ConversationMessage[][] = [];
-  let currentChunk: ConversationMessage[] = [];
-  let currentChars = 0;
-
-  for (const message of messages) {
-    const messageChars =
-      message.speaker_name.length + message.content.length + message.timestamp.length;
-    const shouldFlush =
-      currentChunk.length >= CONVERSATION_CHUNK_MESSAGE_LIMIT ||
-      currentChars + messageChars > CONVERSATION_CHUNK_CHAR_LIMIT;
-
-    if (shouldFlush && currentChunk.length > 0) {
-      chunks.push(currentChunk);
-      currentChunk = [];
-      currentChars = 0;
-    }
-
-    currentChunk.push(message);
-    currentChars += messageChars;
-  }
-
-  if (currentChunk.length > 0) {
-    chunks.push(currentChunk);
-  }
-
-  return chunks;
-}
-
-function renderConversationSummary(counterpartyName: string, summary: ConversationSummary): string {
-  const segments = [
-    `对话对象：${counterpartyName}`,
-    `核心话题：${summary.topicSummary}`,
-    `情绪变化：${summary.emotionSummary}`,
-    summary.preferenceSignals.length > 0
-      ? `偏好/信号：${summary.preferenceSignals.join("；")}`
-      : undefined,
-    summary.relationSignals.length > 0
-      ? `关系/互动：${summary.relationSignals.join("；")}`
-      : undefined,
-    summary.representativeQuotes.length > 0
-      ? `代表性原话：${summary.representativeQuotes.join(" | ")}`
-      : undefined,
-  ];
-
-  return segments.filter((item): item is string => Boolean(item)).join("\n");
 }
 
 function buildRawConversationMaterial(episode: IMemoryEpisode): DiaryMaterialItem {
@@ -160,76 +77,74 @@ function buildRawConversationMaterial(episode: IMemoryEpisode): DiaryMaterialIte
   };
 }
 
-function buildEpisodeMaterial(episode: IMemoryEpisode): DiaryMaterialItem {
-  return {
-    type: episode.type,
-    happenedAt: dayjs(episode.happenedAt).toISOString(),
-    content: episode.summaryText,
-  };
+function buildConversationEpisodePrompt(episode: IMemoryEpisode): string {
+  const payload = getConversationPayload(episode);
+  const messages = getConversationMessages(episode)
+    .map((message) => `${message.timestamp} ${message.speaker_name}：${message.content}`)
+    .join("\n");
+
+  return [
+    `对话对象：${payload.counterpartyName ?? episode.counterpartyId ?? "未知对象"}`,
+    `窗口摘要：${episode.summaryText}`,
+    messages ? `消息记录：\n${messages}` : undefined,
+  ]
+    .filter((item): item is string => Boolean(item))
+    .join("\n");
 }
 
-async function defaultSummarizeConversationChunk(input: {
-  counterpartyName: string;
-  chunkLabel: string;
-  messages: ConversationMessage[];
-}): Promise<ConversationSummary> {
-  const { output } = await generateText({
-    model: deepseek("deepseek-chat"),
-    output: Output.object({
-      schema: conversationSummarySchema,
-    }),
-    prompt: [
-      "你是日记生成前的聊天压缩器，需要把一段聊天窗口素材压缩成稳定摘要。",
-      "目标不是生成文艺文风，而是保留后续写日记真正需要的信息。",
-      "请重点保留：对话对象、核心话题、情绪变化、明确表达的偏好/关系信号、少量有代表性的原话。",
-      "不要编造没有发生的内容，不要输出与材料无关的推断。",
-      `对话对象：${input.counterpartyName}`,
-      `分段标识：${input.chunkLabel}`,
-      `聊天记录：\n${input.messages
-        .map((message) => `${message.timestamp} ${message.speaker_name}：${message.content}`)
-        .join("\n")}`,
-    ].join("\n"),
-  });
+function chunkConversationEpisodes(episodes: IMemoryEpisode[]): IMemoryEpisode[][] {
+  const chunks: IMemoryEpisode[][] = [];
+  let currentChunk: IMemoryEpisode[] = [];
 
-  return output;
-}
+  for (const episode of episodes) {
+    const shouldFlush = currentChunk.length >= CONVERSATION_EPISODES_PER_CHUNK;
 
-async function defaultMergeConversationSummaries(input: {
-  counterpartyName: string;
-  chunkSummaries: ConversationSummary[];
-}): Promise<ConversationSummary> {
-  if (input.chunkSummaries.length === 1) {
-    return input.chunkSummaries[0];
+    if (shouldFlush && currentChunk.length > 0) {
+      chunks.push(currentChunk);
+      currentChunk = [];
+    }
+
+    currentChunk.push(episode);
   }
 
-  const { output } = await generateText({
+  if (currentChunk.length > 0) {
+    chunks.push(currentChunk);
+  }
+
+  return chunks;
+}
+
+async function summarizeConversationEpisodes(input: {
+  chunkIndex: number;
+  chunkCount: number;
+  episodes: IMemoryEpisode[];
+}): Promise<DiaryMaterialItem> {
+  const result = await generateText({
     model: deepseek("deepseek-chat"),
-    output: Output.object({
-      schema: conversationSummarySchema,
-    }),
     prompt: [
-      "你需要把多段聊天摘要合并成一条适合写日记的对话摘要。",
-      "保留最重要的话题、情绪变化、偏好/关系信号与少量代表性原话，不要重复，不要编造。",
-      `对话对象：${input.counterpartyName}`,
-      `待合并摘要：\n${input.chunkSummaries
-        .map((summary, index) => {
-          return [
-            `## 摘要 ${index + 1}`,
-            `核心话题：${summary.topicSummary}`,
-            `情绪变化：${summary.emotionSummary}`,
-            `偏好/信号：${summary.preferenceSignals.join("；") || "无"}`,
-            `关系/互动：${summary.relationSignals.join("；") || "无"}`,
-            `代表性原话：${summary.representativeQuotes.join(" | ") || "无"}`,
-          ].join("\n");
-        })
+      "你是日记生成前的聊天素材压缩器。",
+      "请把下面这一组聊天窗口压成一小段自然语言摘要，供后续写日记使用。",
+      "目标是帮助模型写出日记，不是做精确信息抽取。",
+      "只需要概括这一组聊天大概聊了什么、整体氛围怎样、有哪些悠酱可能会记住的小片段。",
+      "不要输出条目列表，不要硬拆对象/话题/情绪字段，不要编造材料里没有的内容。",
+      `分组标识：第 ${input.chunkIndex + 1} 组，共 ${input.chunkCount} 组`,
+      `聊天窗口数量：${input.episodes.length}`,
+      `聊天材料：\n${input.episodes
+        .map((episode, index) => `## 窗口 ${index + 1}\n${buildConversationEpisodePrompt(episode)}`)
         .join("\n\n")}`,
     ].join("\n"),
   });
 
-  return output;
+  return {
+    type: "conversation_batch_summary",
+    happenedAt: dayjs(
+      input.episodes.at(-1)?.happenedAt ?? input.episodes[0]?.happenedAt,
+    ).toISOString(),
+    content: result.text.trim(),
+  };
 }
 
-async function defaultWriteDiaryText(input: {
+async function writeDiaryText(input: {
   subject: string;
   diaryDate: Date;
   materials: DiaryMaterialItem[];
@@ -271,56 +186,25 @@ async function loadEpisodesForDiary(input: {
   });
 }
 
-async function buildConversationMaterial(
-  episode: IMemoryEpisode,
-  dependencies: DiaryGeneratorDependencies,
-) {
-  const payload = getConversationPayload(episode);
-  const counterpartyName = payload.counterpartyName ?? episode.counterpartyId ?? "未知对象";
-  const summarizeConversationChunk =
-    dependencies.summarizeConversationChunk ?? defaultSummarizeConversationChunk;
-  const mergeConversationSummaries =
-    dependencies.mergeConversationSummaries ?? defaultMergeConversationSummaries;
-  const messages = getConversationMessages(episode);
-  const chunks = chunkConversationMessages(messages);
-  const chunkSummaries: ConversationSummary[] = [];
-
-  for (const [index, chunk] of chunks.entries()) {
-    chunkSummaries.push(
-      await summarizeConversationChunk({
-        counterpartyName,
-        chunkLabel: `第 ${index + 1} 段，共 ${chunks.length} 段`,
-        messages: chunk,
-      }),
-    );
-  }
-
-  const mergedSummary = await mergeConversationSummaries({
-    counterpartyName,
-    chunkSummaries,
-  });
-
-  return {
-    type: "conversation_summary",
-    happenedAt: dayjs(episode.happenedAt).toISOString(),
-    content: renderConversationSummary(counterpartyName, mergedSummary),
-  } satisfies DiaryMaterialItem;
-}
-
 /**
  * 将同一天的 Episode 转换成适合写日记的素材列表。
  *
  * 说明：
  * - world 侧事件直接保留原始摘要；
- * - message 侧若总量超限，则改走“两段总结”压缩，避免长聊天把日记 prompt 撑爆。
+ * - message 侧默认整天直喂，只有总量超限时，才按较大的 episode 分组做粗粒度聊天摘要。
  */
 export async function buildDiaryMaterials(
   episodes: IMemoryEpisode[],
-  dependencies: DiaryGeneratorDependencies = {},
 ): Promise<DiaryMaterialItem[]> {
   const nonConversationMaterials = episodes
     .filter((episode) => episode.type !== "conversation")
-    .map(buildEpisodeMaterial);
+    .map(function buildEpisodeMaterial(episode: IMemoryEpisode): DiaryMaterialItem {
+      return {
+        type: episode.type,
+        happenedAt: dayjs(episode.happenedAt).toISOString(),
+        content: episode.summaryText,
+      };
+    });
 
   const conversationEpisodes = episodes.filter((episode) => episode.type === "conversation");
   const totalConversationChars = conversationEpisodes.reduce((total, episode) => {
@@ -330,16 +214,21 @@ export async function buildDiaryMaterials(
   const conversationMaterials: DiaryMaterialItem[] = [];
   const shouldSummarizeConversations = totalConversationChars > RAW_CONVERSATION_CHAR_BUDGET;
 
-  for (const episode of conversationEpisodes) {
-    if (
-      !shouldSummarizeConversations &&
-      estimateConversationChars(episode) <= SINGLE_CONVERSATION_CHAR_LIMIT
-    ) {
+  if (!shouldSummarizeConversations) {
+    for (const episode of conversationEpisodes) {
       conversationMaterials.push(buildRawConversationMaterial(episode));
-      continue;
     }
-
-    conversationMaterials.push(await buildConversationMaterial(episode, dependencies));
+  } else {
+    const chunks = chunkConversationEpisodes(conversationEpisodes);
+    for (const [index, chunk] of chunks.entries()) {
+      conversationMaterials.push(
+        await summarizeConversationEpisodes({
+          chunkIndex: index,
+          chunkCount: chunks.length,
+          episodes: chunk,
+        }),
+      );
+    }
   }
 
   return [...nonConversationMaterials, ...conversationMaterials].sort((left, right) => {
@@ -348,18 +237,29 @@ export async function buildDiaryMaterials(
 }
 
 /**
+ * 将“入睡时刻”映射为应写入的日记日期。
+ *
+ * 说明：
+ * - 22:00-23:59 入睡，记为当天；
+ * - 00:00-05:59 熬夜后入睡，记为前一天；
+ * - 该规则与当前 isNight 的时间边界保持一致。
+ */
+export function resolveDiaryDateForSleep(happenedAt: Date): Date {
+  const sleepTime = dayjs(happenedAt);
+
+  if (sleepTime.hour() < SLEEP_DIARY_ROLLOVER_HOUR) {
+    return sleepTime.subtract(1, "day").startOf("day").toDate();
+  }
+
+  return sleepTime.startOf("day").toDate();
+}
+
+/**
  * 为指定自然日生成或覆盖一篇 Diary。
  */
-export async function generateDiaryForDate(
-  input: GenerateDiaryForDateInput,
-  dependencies: DiaryGeneratorDependencies = {},
-): Promise<boolean> {
+export async function generateDiaryForDate(input: GenerateDiaryForDateInput): Promise<boolean> {
   const subject = input.subject ?? DEFAULT_DIARY_SUBJECT;
-  const loadEpisodes = dependencies.loadEpisodes ?? loadEpisodesForDiary;
-  const saveDiary = dependencies.saveDiary ?? upsertMemoryDiary;
-  const writeDiaryText = dependencies.writeDiaryText ?? defaultWriteDiaryText;
-
-  const episodes = await loadEpisodes({
+  const episodes = await loadEpisodesForDiary({
     diaryDate: input.diaryDate,
     subjectId: DEFAULT_MEMORY_SUBJECT_ID,
     isDev: input.isDev,
@@ -373,7 +273,7 @@ export async function generateDiaryForDate(
     return false;
   }
 
-  const materials = await buildDiaryMaterials(episodes, dependencies);
+  const materials = await buildDiaryMaterials(episodes);
   if (materials.length === 0) {
     logger.debug("[generateDiaryForDate] no diary materials built", {
       subject,
@@ -396,7 +296,7 @@ export async function generateDiaryForDate(
     return false;
   }
 
-  await saveDiary({
+  await upsertMemoryDiary({
     subject,
     diaryDate: input.diaryDate,
     text: diaryText,
