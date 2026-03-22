@@ -1,9 +1,8 @@
+import { ActionId, type InventoryItem, MajorScene } from "@yuiju/utils";
 import dayjs from "dayjs";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-
 import { shopAction } from "@/action/shop";
 import { chooseShopProductAgent } from "@/llm/agent";
-import { ActionId, MajorScene, type InventoryItem } from "@yuiju/utils";
 
 process.env.NODE_ENV = "development";
 

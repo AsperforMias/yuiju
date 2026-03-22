@@ -19,11 +19,10 @@ import { connectDB } from "../connect";
 export interface IMemoryEpisode extends Document {
   source: MemoryEpisodeSource;
   type: MemoryEpisodeType;
-  subjectId: string;
-  counterpartyId?: string;
+  subject: string;
+  counterparty?: string;
   happenedAt: Date;
   summaryText: string;
-  importance: number;
   payload: Record<string, unknown>;
   extractionStatus: MemoryEpisodeExtractionStatus;
   extractedFactIds?: string[];
@@ -55,11 +54,10 @@ const MemoryEpisodeSchema = new Schema<IMemoryEpisode>(
       required: true,
       index: true,
     },
-    subjectId: { type: String, required: true, index: true },
-    counterpartyId: { type: String, required: false, index: true },
+    subject: { type: String, required: true, index: true },
+    counterparty: { type: String, required: false, index: true },
     happenedAt: { type: Date, required: true, index: true },
     summaryText: { type: String, required: true },
-    importance: { type: Number, required: true, default: 0.5 },
     payload: { type: Schema.Types.Mixed, required: true },
     extractionStatus: {
       type: String,
@@ -81,9 +79,9 @@ const MemoryEpisodeSchema = new Schema<IMemoryEpisode>(
   },
 );
 
-MemoryEpisodeSchema.index({ subjectId: 1, happenedAt: -1 });
-MemoryEpisodeSchema.index({ subjectId: 1, type: 1, happenedAt: -1 });
-MemoryEpisodeSchema.index({ subjectId: 1, isDev: 1, happenedAt: -1 });
+MemoryEpisodeSchema.index({ subject: 1, happenedAt: -1 });
+MemoryEpisodeSchema.index({ subject: 1, type: 1, happenedAt: -1 });
+MemoryEpisodeSchema.index({ subject: 1, isDev: 1, happenedAt: -1 });
 
 export const MemoryEpisodeModel =
   (mongoose.models.MemoryEpisode as mongoose.Model<IMemoryEpisode> | undefined) ??
@@ -92,8 +90,8 @@ export const MemoryEpisodeModel =
 export interface GetRecentMemoryEpisodesOptions {
   limit?: number;
   types?: MemoryEpisodeType[];
-  subjectId?: string;
-  counterpartyId?: string;
+  subject?: string;
+  counterparty?: string;
   isDev?: boolean;
   onlyDate?: Date;
   happenedAfter?: Date;
@@ -180,11 +178,11 @@ export async function getRecentMemoryEpisodes(
   if (options.types?.length) {
     filter.type = { $in: options.types };
   }
-  if (options.subjectId) {
-    filter.subjectId = options.subjectId;
+  if (options.subject) {
+    filter.subject = options.subject;
   }
-  if (options.counterpartyId) {
-    filter.counterpartyId = options.counterpartyId;
+  if (options.counterparty) {
+    filter.counterparty = options.counterparty;
   }
   if (typeof options.isDev === "boolean") {
     filter.isDev = options.isDev;

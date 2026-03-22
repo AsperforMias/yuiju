@@ -270,13 +270,13 @@ function compareResultsByScoreAndTime(
 function buildEpisodeRerankDocument(doc: {
   summaryText: string;
   type: string;
-  counterpartyId?: string;
+  counterparty?: string;
   payload?: Record<string, unknown>;
 }): string {
   const action =
     typeof doc.payload?.action === "string" ? `行为: ${doc.payload.action}` : undefined;
   const planId = getPlanIdFromPayload(doc.payload);
-  const counterparty = doc.counterpartyId ? `对象: ${doc.counterpartyId}` : undefined;
+  const counterparty = doc.counterparty ? `对象: ${doc.counterparty}` : undefined;
 
   return [
     doc.summaryText,
@@ -305,9 +305,9 @@ export async function searchEpisodes(input: MemorySearchInput): Promise<MemorySe
 
   const docs = await getRecentMemoryEpisodes({
     limit: Math.max(normalized.topK, EPISODE_SEARCH_LIMIT),
-    subjectId: DEFAULT_MEMORY_SUBJECT_ID,
+    subject: DEFAULT_MEMORY_SUBJECT_ID,
     isDev: isDev(),
-    counterpartyId: normalized.counterpartyName || undefined,
+    counterparty: normalized.counterpartyName || undefined,
     sortDirection: normalized.timeSort,
     ...timeRangeFilter,
   });

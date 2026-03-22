@@ -46,7 +46,7 @@ activityRoute.get("/activity", async (context) => {
         "plan_superseded",
         "system",
       ],
-      subjectId: DEFAULT_MEMORY_SUBJECT_ID,
+      subject: DEFAULT_MEMORY_SUBJECT_ID,
       isDev: isDev(),
       onlyToday: true,
     });

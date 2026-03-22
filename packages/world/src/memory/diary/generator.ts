@@ -69,7 +69,7 @@ function buildRawConversationMaterial(episode: IMemoryEpisode): DiaryMaterialIte
     type: "conversation",
     happenedAt: dayjs(episode.happenedAt).toISOString(),
     content: [
-      `对话对象：${payload.counterpartyName ?? episode.counterpartyId ?? "未知对象"}`,
+      `对话对象：${payload.counterpartyName ?? episode.counterparty ?? "未知对象"}`,
       `窗口摘要：${episode.summaryText}`,
       messages ? `消息记录：\n${messages}` : undefined,
     ]
@@ -85,7 +85,7 @@ function buildConversationEpisodePrompt(episode: IMemoryEpisode): string {
     .join("\n");
 
   return [
-    `对话对象：${payload.counterpartyName ?? episode.counterpartyId ?? "未知对象"}`,
+    `对话对象：${payload.counterpartyName ?? episode.counterparty ?? "未知对象"}`,
     `窗口摘要：${episode.summaryText}`,
     messages ? `消息记录：\n${messages}` : undefined,
   ]
@@ -175,12 +175,12 @@ async function writeDiaryText(input: {
 
 async function loadEpisodesForDiary(input: {
   diaryDate: Date;
-  subjectId: string;
+  subject: string;
   isDev: boolean;
 }): Promise<IMemoryEpisode[]> {
   return await getRecentMemoryEpisodes({
     limit: MAX_EPISODES_PER_DAY,
-    subjectId: input.subjectId,
+    subject: input.subject,
     isDev: input.isDev,
     onlyDate: input.diaryDate,
     sortDirection: "asc",
@@ -262,7 +262,7 @@ export async function generateDiaryForDate(input: GenerateDiaryForDateInput): Pr
   const subject = input.subject ?? DEFAULT_DIARY_SUBJECT;
   const episodes = await loadEpisodesForDiary({
     diaryDate: input.diaryDate,
-    subjectId: DEFAULT_MEMORY_SUBJECT_ID,
+    subject: DEFAULT_MEMORY_SUBJECT_ID,
     isDev: input.isDev,
   });
 

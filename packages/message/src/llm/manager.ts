@@ -41,7 +41,7 @@ export class LLMManager {
         memorySearch: memorySearchTool,
         queryCharacterState: queryCharacterStateTool,
       },
-      stopWhen: stepCountIs(5),
+      stopWhen: stepCountIs(10),
     });
 
     // 添加助手回复到对话历史

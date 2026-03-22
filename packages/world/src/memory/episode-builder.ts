@@ -7,8 +7,6 @@ import type {
 } from "@yuiju/utils";
 import { ActionId, DEFAULT_MEMORY_SUBJECT_ID } from "@yuiju/utils";
 
-const DEFAULT_IMPORTANCE = 0.5;
-
 export interface BuildBehaviorEpisodeInput {
   context: ActionContext;
   selectedAction: ActionAgentDecision;
@@ -86,10 +84,9 @@ export function buildBehaviorEpisode(
   return {
     source: "world_tick",
     type: "behavior",
-    subjectId: DEFAULT_MEMORY_SUBJECT_ID,
+    subject: DEFAULT_MEMORY_SUBJECT_ID,
     happenedAt: input.happenedAt,
     summaryText,
-    importance: DEFAULT_IMPORTANCE,
     extractionStatus: "pending",
     isDev: input.isDev,
     payload: {
@@ -142,10 +139,9 @@ function createPlanLifecycleEpisode(input: {
   return {
     source: "world_tick",
     type: episodeType,
-    subjectId: DEFAULT_MEMORY_SUBJECT_ID,
+    subject: DEFAULT_MEMORY_SUBJECT_ID,
     happenedAt: input.happenedAt,
     summaryText: buildPlanLifecycleSummaryText(change, scopeText, actionText),
-    importance: DEFAULT_IMPORTANCE,
     extractionStatus: "pending",
     isDev: input.isDev,
     payload: {

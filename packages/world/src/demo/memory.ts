@@ -80,7 +80,6 @@ function createConversationEpisode(input: {
   caseId: string;
   counterpartyName: string;
   happenedAt: Date;
-  importance: number;
   messages: ConversationMessageItem[];
 }): MemoryEpisode<Record<string, unknown>> {
   const previewText = input.messages
@@ -91,14 +90,13 @@ function createConversationEpisode(input: {
   return {
     source: "chat",
     type: "conversation",
-    subjectId: DEFAULT_MEMORY_SUBJECT_ID,
-    counterpartyId: input.counterpartyName,
+    subject: DEFAULT_MEMORY_SUBJECT_ID,
+    counterparty: input.counterpartyName,
     happenedAt: input.happenedAt,
     summaryText: [
       `【${DEMO_TAG} / ${input.caseId}】悠酱与 ${input.counterpartyName} 发生了一段对话`,
       `最近内容：${previewText}`,
     ].join("；"),
-    importance: input.importance,
     extractionStatus: "pending",
     isDev: DEMO_IS_DEV,
     payload: {
@@ -128,19 +126,17 @@ function createBehaviorEpisode(input: {
   executionResult: string;
   durationMinutes: number;
   location: string;
-  importance: number;
 }): MemoryEpisode<Record<string, unknown>> {
   return {
     source: "world_tick",
     type: "behavior",
-    subjectId: DEFAULT_MEMORY_SUBJECT_ID,
+    subject: DEFAULT_MEMORY_SUBJECT_ID,
     happenedAt: input.happenedAt,
     summaryText: [
       `【${DEMO_TAG} / ${input.caseId}】悠酱执行了行为「${input.action}」`,
       `原因：${input.reason}`,
       `结果：${input.executionResult}`,
     ].join("；"),
-    importance: input.importance,
     extractionStatus: "pending",
     isDev: DEMO_IS_DEV,
     payload: {
@@ -173,15 +169,13 @@ function createPlanEpisode(input: {
   before?: Record<string, unknown>;
   after?: Record<string, unknown>;
   changeReason: string;
-  importance: number;
 }): MemoryEpisode<Record<string, unknown>> {
   return {
     source: "world_tick",
     type: input.type,
-    subjectId: DEFAULT_MEMORY_SUBJECT_ID,
+    subject: DEFAULT_MEMORY_SUBJECT_ID,
     happenedAt: input.happenedAt,
     summaryText: `【${DEMO_TAG} / ${input.caseId}】${input.summaryText}`,
-    importance: input.importance,
     extractionStatus: "pending",
     isDev: DEMO_IS_DEV,
     payload: {
@@ -214,7 +208,6 @@ function buildDemoEpisodeCases(): DemoEpisodeCase[] {
         caseId: "preference-dessert-tea",
         counterpartyName: "小满",
         happenedAt: new Date("2026-03-19T09:15:00+08:00"),
-        importance: 0.92,
         messages: [
           {
             speaker_name: "小满",
@@ -247,7 +240,6 @@ function buildDemoEpisodeCases(): DemoEpisodeCase[] {
         caseId: "negative-greeting",
         counterpartyName: "夏实",
         happenedAt: new Date("2026-03-19T11:30:00+08:00"),
-        importance: 0.1,
         messages: [
           {
             speaker_name: "夏实",
@@ -279,7 +271,6 @@ function buildDemoEpisodeCases(): DemoEpisodeCase[] {
         executionResult: "喝完觉得还行，但没有继续讨论，也没有复购打算。",
         durationMinutes: 8,
         location: "学校走廊",
-        importance: 0.26,
       }),
       expectation: {
         shouldBecomeFact: false,
@@ -295,7 +286,6 @@ function buildDemoEpisodeCases(): DemoEpisodeCase[] {
         caseId: "relation-trust-chengfeng",
         counterpartyName: "澄风",
         happenedAt: new Date("2026-03-19T17:45:00+08:00"),
-        importance: 0.94,
         messages: [
           {
             speaker_name: "澄风",
@@ -339,7 +329,6 @@ function buildDemoEpisodeCases(): DemoEpisodeCase[] {
           source: "system",
         },
         changeReason: "把这件事确认为当前阶段最重要的主计划。",
-        importance: 0.9,
       }),
       expectation: {
         shouldBecomeFact: true,
@@ -374,7 +363,6 @@ function buildDemoEpisodeCases(): DemoEpisodeCase[] {
           source: "system",
         },
         changeReason: "这是执行层的临时细节调整，不应该沉淀为长期记忆。",
-        importance: 0.32,
       }),
       expectation: {
         shouldBecomeFact: false,
