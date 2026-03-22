@@ -10,13 +10,11 @@ import { rerankEpisodesWithSiliconFlow } from "./rerank";
 dayjs.extend(customParseFormat);
 
 export type MemoryQueryType = "episode" | "diary" | "fact";
-export type MemoryQueryTimeRange = "today" | "yesterday" | "day_before_yesterday";
 export type MemoryQueryTimeSort = "asc" | "desc";
 
 export interface MemorySearchInput {
   query: string;
   memoryType: MemoryQueryType;
-  timeRange?: MemoryQueryTimeRange;
   startTime?: string;
   endTime?: string;
   timeSort?: MemoryQueryTimeSort;
@@ -35,10 +33,6 @@ export interface MemorySearchResult {
   metadata?: Record<string, unknown>;
 }
 
-interface MemoryQueryRouter {
-  search(input: MemorySearchInput): Promise<MemorySearchResult[]>;
-}
-
 const DEFAULT_TOP_K = 5;
 const EPISODE_SEARCH_LIMIT = 20;
 const EPISODE_RERANK_THRESHOLD = 3;
@@ -47,7 +41,6 @@ const MEMORY_TIME_FORMAT = "YYYY-MM-DD HH:mm:ss";
 interface NormalizedMemorySearchInput {
   query: string;
   memoryType: MemoryQueryType;
-  timeRange?: MemoryQueryTimeRange;
   startTime: string;
   endTime: string;
   timeSort: MemoryQueryTimeSort;
@@ -70,7 +63,6 @@ function normalizeInput(input: MemorySearchInput): NormalizedMemorySearchInput {
   return {
     query: input.query.trim(),
     memoryType: input.memoryType,
-    timeRange: input.timeRange,
     startTime: normalizedStartTime,
     endTime: normalizedEndTime,
     timeSort: input.timeSort ?? "desc",
@@ -108,79 +100,16 @@ function scoreEpisode(query: string, summaryText: string): number {
   return score;
 }
 
-function getTimeRangeBounds(input: {
-  timeRange?: MemoryQueryTimeRange;
-  startTime?: string;
-  endTime?: string;
-}): {
-  happenedAfter?: Date;
-  happenedBefore?: Date;
-  onlyDate?: Date;
-} {
-  // 精确时间优先于快捷时间；若 LLM 仅填对一侧，则退化为单边时间过滤。
-  const parsedStartTime = parseMemoryTime(input.startTime ?? "");
-  const parsedEndTime = parseMemoryTime(input.endTime ?? "");
-
-  if (parsedStartTime || parsedEndTime) {
-    let happenedAfter = parsedStartTime;
-    let happenedBefore = parsedEndTime;
-
-    if (happenedAfter && happenedBefore && happenedAfter > happenedBefore) {
-      [happenedAfter, happenedBefore] = [happenedBefore, happenedAfter];
-    }
-
-    return {
-      happenedAfter,
-      happenedBefore,
-    };
-  }
-
-  if (input.timeRange === "today") {
-    return {
-      onlyDate: dayjs().toDate(),
-    };
-  }
-
-  if (input.timeRange === "yesterday") {
-    return {
-      onlyDate: dayjs().subtract(1, "day").toDate(),
-    };
-  }
-
-  if (input.timeRange === "day_before_yesterday") {
-    return {
-      onlyDate: dayjs().subtract(2, "day").toDate(),
-    };
-  }
-
-  return {};
-}
-
-function normalizeDayRange(input: {
-  timeRange?: MemoryQueryTimeRange;
-  startTime?: string;
-  endTime?: string;
-}): {
+function normalizeDayRange(input: { startTime?: string; endTime?: string }): {
   startDay?: Date;
   endDay?: Date;
 } {
-  const bounds = getTimeRangeBounds(input);
-
-  if (bounds.onlyDate) {
-    const normalizedDay = dayjs(bounds.onlyDate).startOf("day").toDate();
-    return {
-      startDay: normalizedDay,
-      endDay: normalizedDay,
-    };
-  }
+  const parsedStartTime = parseMemoryTime(input.startTime ?? "");
+  const parsedEndTime = parseMemoryTime(input.endTime ?? "");
 
   return {
-    startDay: bounds.happenedAfter
-      ? dayjs(bounds.happenedAfter).startOf("day").toDate()
-      : undefined,
-    endDay: bounds.happenedBefore
-      ? dayjs(bounds.happenedBefore).startOf("day").toDate()
-      : undefined,
+    startDay: parsedStartTime ? dayjs(parsedStartTime).startOf("day").toDate() : undefined,
+    endDay: parsedEndTime ? dayjs(parsedEndTime).startOf("day").toDate() : undefined,
   };
 }
 
@@ -217,13 +146,9 @@ function resolveEpisodeTimeFilter(input: NormalizedMemorySearchInput): {
     };
   }
 
-  if (!input.timeRange || input.timeRange === "today") {
-    return {
-      onlyDate: dayjs().toDate(),
-    };
-  }
-
-  return null;
+  return {
+    onlyDate: dayjs().toDate(),
+  };
 }
 
 function resolveDiaryTimeFilter(input: NormalizedMemorySearchInput): {
@@ -248,12 +173,6 @@ function resolveDiaryTimeFilter(input: NormalizedMemorySearchInput): {
 
     if (diaryDateAfter && diaryDateBefore && diaryDateAfter > diaryDateBefore) {
       [diaryDateAfter, diaryDateBefore] = [diaryDateBefore, diaryDateAfter];
-    }
-
-    if (input.timeRange === "yesterday" || input.timeRange === "day_before_yesterday") {
-      return {
-        onlyDate: dayRange.startDay,
-      };
     }
 
     return {
@@ -527,7 +446,7 @@ export async function searchFacts(input: MemorySearchInput): Promise<MemorySearc
     .slice(0, normalized.topK);
 }
 
-class DefaultMemoryQueryRouter implements MemoryQueryRouter {
+class MemoryQueryRouter {
   async search(input: MemorySearchInput): Promise<MemorySearchResult[]> {
     const normalized = normalizeInput(input);
 
@@ -547,4 +466,4 @@ class DefaultMemoryQueryRouter implements MemoryQueryRouter {
   }
 }
 
-export const memoryQueryRouter: MemoryQueryRouter = new DefaultMemoryQueryRouter();
+export const memoryQueryRouter: MemoryQueryRouter = new MemoryQueryRouter();
