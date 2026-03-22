@@ -1,5 +1,5 @@
 import { ActionId, type ActionMetadata, allTrue, isDev, MajorScene } from "@yuiju/utils";
-import { generateDiaryForDate, resolveDiaryDateForSleep } from "@/diary";
+import { generateDiaryForDate, resolveDiaryDateForSleep } from "@/memory/diary";
 import { logger } from "@/utils/logger";
 import {
   isAfternoon,
@@ -142,7 +142,7 @@ export const homeAction: ActionMetadata[] = [
       await context.characterState.setAction(ActionId.Sleep);
 
       // 进入正式睡眠后，后台异步生成“当天日记”，不阻塞行为主链路。
-      void generateDiaryForDate({
+      generateDiaryForDate({
         diaryDate: resolveDiaryDateForSleep(context.worldState.time.toDate()),
         isDev: isDev(),
       }).catch((error) => {

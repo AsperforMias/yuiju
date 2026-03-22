@@ -21,7 +21,11 @@ vi.mock("@yuiju/utils", async () => {
   };
 });
 
-import { buildDiaryMaterials, generateDiaryForDate, resolveDiaryDateForSleep } from "@/diary";
+import {
+  buildDiaryMaterials,
+  generateDiaryForDate,
+  resolveDiaryDateForSleep,
+} from "@/memory/diary";
 
 function createEpisode(input: {
   type: IMemoryEpisode["type"];

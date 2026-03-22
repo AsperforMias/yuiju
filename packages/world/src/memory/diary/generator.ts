@@ -9,6 +9,7 @@ import {
 } from "@yuiju/utils";
 import { generateText } from "ai";
 import dayjs from "dayjs";
+import { minimax_model } from "@/llm/utils";
 import { logger } from "@/utils/logger";
 
 const MAX_EPISODES_PER_DAY = 500;
@@ -150,7 +151,7 @@ async function writeDiaryText(input: {
   materials: DiaryMaterialItem[];
 }): Promise<string> {
   const result = await generateText({
-    model: deepseek("deepseek-chat"),
+    model: minimax_model,
     system: buildDiarySystemPrompt({
       subject: input.subject,
       diaryDate: input.diaryDate,
