@@ -5,6 +5,8 @@ interface AppConfig {
   napcat: NCWebsocketOptions;
   // QQ 聊天白名单
   whiteList: number[];
+  // 启用群聊机器人的群白名单
+  groupWhiteList: number[];
   // MongoDB connection URI
   mongoUri: string;
 }
@@ -21,5 +23,6 @@ export const config: AppConfig = {
     },
   },
   whiteList: [1918418506],
+  groupWhiteList: [838986741, 1083608109],
   mongoUri: process.env.MONGO_URI || "",
 };

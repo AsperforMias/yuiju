@@ -1,5 +1,5 @@
 import { generateText, stepCountIs } from "ai";
-import { strong_model } from "@/llm/utils";
+import { strongModel } from "@yuiju/utils";
 
 const WORLD_MAP_DSL = `
 place HOME "家"
@@ -47,7 +47,7 @@ export async function main() {
   ].join("\n");
 
   const result = await generateText({
-    model: strong_model,
+    model: strongModel,
     prompt,
     stopWhen: stepCountIs(10),
   });

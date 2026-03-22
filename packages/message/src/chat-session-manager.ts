@@ -40,14 +40,12 @@ export class ChatSessionManager {
   private conversationLimit: number;
   private conversationTtlMs: number;
   private windowMs: number;
-  private memoryClient: MemoryServiceClient | null;
   private isDev: boolean;
 
   constructor(options: ChatSessionManagerOptions = {}) {
     this.conversationLimit = options.conversationLimit ?? 20;
     this.conversationTtlMs = options.conversationTtlMs ?? 3600 * 1000;
     this.windowMs = options.windowMs ?? 20 * 60 * 1000;
-    this.memoryClient = options.memoryClient ?? null;
     this.isDev = isDev();
   }
 
