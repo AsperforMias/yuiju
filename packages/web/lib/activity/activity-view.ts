@@ -138,12 +138,26 @@ function buildDetailFields(episode: IMemoryEpisode): ActivityDetailField[] {
   if (episode.type.startsWith("plan_")) {
     const before = getNestedObject(payload.before);
     const after = getNestedObject(payload.after);
+    const changeType = String(payload.changeType ?? "未知");
+
     fields.push(
       { label: "计划范围", value: String(payload.planScope ?? "未知") },
-      { label: "变更类型", value: String(payload.changeType ?? "未知") },
-      { label: "原计划", value: String(before.title ?? "无") },
-      { label: "新计划", value: String(after.title ?? "无") },
+      { label: "变更类型", value: changeType },
     );
+
+    if (changeType === "created") {
+      fields.push({ label: "新计划", value: String(after.title ?? "无") });
+    } else if (changeType === "updated") {
+      fields.push(
+        { label: "原计划", value: String(before.title ?? "无") },
+        { label: "新计划", value: String(after.title ?? "无") },
+      );
+    } else {
+      fields.push(
+        { label: "计划", value: String(before.title ?? after.title ?? "无") },
+        { label: "结果状态", value: String(after.status ?? "无") },
+      );
+    }
   }
 
   if (episode.type === "system") {

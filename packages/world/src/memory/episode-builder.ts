@@ -114,21 +114,26 @@ export function buildBehaviorEpisode(
 export function buildPlanUpdateEpisodes(
   input: BuildPlanUpdateEpisodesInput,
 ): MemoryEpisode<PlanLifecycleEpisodePayload>[] {
-  return input.changes.map((change) =>
-    createPlanLifecycleEpisode({
+  return input.changes.flatMap((change) => {
+    const episode = createPlanLifecycleEpisode({
       change,
       happenedAt: input.happenedAt,
       isDev: input.isDev,
-    }),
-  );
+    });
+    return episode ? [episode] : [];
+  });
 }
 
 function createPlanLifecycleEpisode(input: {
   change: PlanChange;
   happenedAt: Date;
   isDev: boolean;
-}): MemoryEpisode<PlanLifecycleEpisodePayload> {
+}): MemoryEpisode<PlanLifecycleEpisodePayload> | null {
   const { change } = input;
+  if (shouldSkipPlanLifecycleEpisode(change)) {
+    return null;
+  }
+
   const scopeText = change.scope === "main" ? "主计划" : "活跃计划";
   const actionText = describeChangeType(change.changeType);
   const episodeType = mapPlanChangeTypeToEpisodeType(change.changeType);
@@ -139,11 +144,7 @@ function createPlanLifecycleEpisode(input: {
     type: episodeType,
     subjectId: DEFAULT_MEMORY_SUBJECT_ID,
     happenedAt: input.happenedAt,
-    summaryText: [
-      `悠酱${actionText}${scopeText}`,
-      `原计划：${stringifyPlanValue(change.before?.title)}`,
-      `新计划：${stringifyPlanValue(change.after?.title)}`,
-    ].join("；"),
+    summaryText: buildPlanLifecycleSummaryText(change, scopeText, actionText),
     importance: DEFAULT_IMPORTANCE,
     extractionStatus: "pending",
     isDev: input.isDev,
@@ -176,6 +177,65 @@ function createPlanLifecycleEpisode(input: {
       changeReason,
     },
   };
+}
+
+/**
+ * 过滤不值得进入记忆层的计划更新事件。
+ *
+ * 说明：
+ * - 方案 B 约定：只要标题未变化，就视为内部元数据同步，不写入 memory episode；
+ * - 计划状态本身仍然会由 PlanManager 正常保存，这里只控制记忆层噪音。
+ */
+function shouldSkipPlanLifecycleEpisode(change: PlanChange): boolean {
+  if (change.changeType !== "updated") {
+    return false;
+  }
+
+  return !hasPlanTitleChanged(change);
+}
+
+function hasPlanTitleChanged(change: Pick<PlanChange, "before" | "after">): boolean {
+  return change.before?.title !== change.after?.title;
+}
+
+/**
+ * 根据不同生命周期事件生成更贴近业务语义的摘要文案。
+ *
+ * 说明：
+ * - created / updated 关注“计划内容”；
+ * - completed / abandoned / superseded 关注“原计划进入终态”，避免错误展示成“有了一个同名新计划”。
+ */
+function buildPlanLifecycleSummaryText(
+  change: PlanChange,
+  scopeText: string,
+  actionText: string,
+): string {
+  const prefix = `悠酱${actionText}${scopeText}`;
+
+  switch (change.changeType) {
+    case "created":
+      return [prefix, `新计划：${stringifyPlanValue(change.after?.title)}`].join("；");
+    case "updated":
+      return [
+        prefix,
+        `原计划：${stringifyPlanValue(change.before?.title)}`,
+        `新计划：${stringifyPlanValue(change.after?.title)}`,
+      ].join("；");
+    case "completed":
+      return [prefix, `计划：${stringifyPlanValue(change.before?.title)}`, "结果：已完成"].join(
+        "；",
+      );
+    case "abandoned":
+      return [prefix, `计划：${stringifyPlanValue(change.before?.title)}`, "结果：已放弃"].join(
+        "；",
+      );
+    case "superseded":
+      return [prefix, `计划：${stringifyPlanValue(change.before?.title)}`, "结果：已被替代"].join(
+        "；",
+      );
+    default:
+      return prefix;
+  }
 }
 
 function mapPlanChangeTypeToEpisodeType(changeType: PlanChange["changeType"]): MemoryEpisodeType {
