@@ -6,7 +6,7 @@ import {
   queryCharacterStateTool,
   smallModel,
 } from "@yuiju/utils";
-import { generateText, Output, type ModelMessage, stepCountIs } from "ai";
+import { generateText, type ModelMessage, Output, stepCountIs } from "ai";
 import { z } from "zod";
 import { ChatSessionManager } from "../chat-session-manager";
 
