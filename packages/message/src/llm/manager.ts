@@ -161,15 +161,13 @@ export class LLMManager {
     return `${input.senderName}：${input.content}`;
   }
 
-  private buildGroupJudgeSystemPrompt(input: GroupConversationInput): string {
+  private buildGroupJudgeSystemPrompt(_input: GroupConversationInput): string {
     return [
       "你是群聊回复裁决器，唯一任务是判断悠酱现在是否应该回复最新一条普通群消息。",
       "你只输出结构化结果中的 shouldReply 布尔值，不负责生成回复内容。",
       "群聊不是私聊，不需要每条都回，更不能抢话。",
-      "常见 shouldReply=true 的场景：消息明显在和悠酱说话、内容和悠酱强相关、此时接一句会让群聊更自然。",
+      "常见 shouldReply=true 的场景：消息明显在和悠酱说话、内容和悠酱强相关、内容和群主（翊小久）相关、有人需要安慰。",
       "常见 shouldReply=false 的场景：普通寒暄、无明确对象的自言自语、其他人之间自然继续即可、测试消息、回复会显得机械。",
-      "当前流程不会把 @ 悠酱的消息交给你，那类消息会直接回复。",
-      `当前群聊：${input.groupName}（${input.groupId}）`,
     ].join("\n");
   }
 
