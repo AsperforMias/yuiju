@@ -1,3 +1,4 @@
+import "../env";
 import { deepseek } from "@ai-sdk/deepseek";
 // import { createMoonshotAI } from "@ai-sdk/moonshotai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
