@@ -1,6 +1,6 @@
-import { deepseek } from "@ai-sdk/deepseek";
 import { getCharacterCardPrompt } from "@yuiju/source";
 import {
+  deepseekProvider,
   getMemoryServiceClientFromEnv,
   memorySearchTool,
   queryCharacterStateTool,
@@ -53,7 +53,7 @@ export class LLMManager {
     const messages: ModelMessage[] = this.privateSession.getLLMMessages(userName);
 
     const result = await generateText({
-      model: deepseek("deepseek-chat"),
+      model: deepseekProvider("deepseek-chat"),
       messages,
       system: systemPrompt,
       tools: {
@@ -130,7 +130,7 @@ export class LLMManager {
     const messages: ModelMessage[] = this.groupSession.getLLMMessages(sessionKey);
 
     const result = await generateText({
-      model: deepseek("deepseek-chat"),
+      model: deepseekProvider("deepseek-chat"),
       messages,
       system: systemPrompt,
       tools: {

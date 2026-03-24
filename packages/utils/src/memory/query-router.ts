@@ -1,5 +1,6 @@
 import dayjs from "dayjs";
 import customParseFormat from "dayjs/plugin/customParseFormat";
+import { getYuijuConfig } from "../config";
 import { getMemoryDiaries, getRecentMemoryEpisodes } from "../db";
 import { isDev } from "../env";
 import { DEFAULT_DIARY_SUBJECT } from "./diary";
@@ -355,7 +356,7 @@ export async function searchEpisodes(input: MemorySearchInput): Promise<MemorySe
   if (
     normalized.query &&
     candidates.length > EPISODE_RERANK_THRESHOLD &&
-    process.env.SILICONFLOW_API_KEY?.trim()
+    getYuijuConfig().llm.siliconflowApiKey.trim()
   ) {
     const reranked = await rerankEpisodesWithSiliconFlow({
       query: normalized.query,

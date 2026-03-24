@@ -1,14 +1,14 @@
 import "@yuiju/utils/env";
-import { connectDB } from "@yuiju/utils";
+import { connectDB, getYuijuConfig } from "@yuiju/utils";
 import { NCWebsocket } from "node-napcat-ts";
-import { config } from "@/config";
 import { groupMessageHandler } from "./handler/group-message";
 import { privateMessageHandler } from "./handler/private-message";
 
+const config = getYuijuConfig();
+
 const napcat = new NCWebsocket(
   {
-    ...config.napcat,
-    accessToken: process.env.NAPCAT_TOKEN || "",
+    ...config.message.napcat,
     throwPromise: true,
   },
   false,

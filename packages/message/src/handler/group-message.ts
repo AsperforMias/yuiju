@@ -1,11 +1,11 @@
 import "@yuiju/utils/env";
-import { ActionId, initCharacterStateData } from "@yuiju/utils";
+import { ActionId, getYuijuConfig, initCharacterStateData } from "@yuiju/utils";
 import { type AllHandlers, type NCWebsocket, Structs } from "node-napcat-ts";
-import { config } from "@/config";
 import { llmManager } from "@/llm/manager";
 import { parseGroupMessage } from "@/utils/group-message";
 
 let isCloseGroup = false;
+const config = getYuijuConfig();
 
 export const closeGroupMessage = () => {
   isCloseGroup = true;
@@ -25,7 +25,7 @@ export async function groupMessageHandler(
     return;
   }
 
-  if (!config.groupWhiteList.includes(context.group_id)) {
+  if (!config.message.groupWhiteList.includes(context.group_id)) {
     return;
   }
 
@@ -70,7 +70,7 @@ export async function groupMessageHandler(
       return;
     }
 
-    if (!process.env.DEEPSEEK_API_KEY) {
+    if (!config.llm.deepseekApiKey.trim()) {
       if (parsedMessage.isAtBot) {
         console.error("DeepSeek 未配置，稍后再试呢~");
       }
@@ -106,7 +106,7 @@ async function shouldReplyToGroupMessage(input: {
   senderName: string;
   content: string;
 }) {
-  if (!process.env.SILICONFLOW_API_KEY) {
+  if (!config.llm.siliconflowApiKey.trim()) {
     return false;
   }
 

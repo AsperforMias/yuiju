@@ -1,6 +1,6 @@
-import { deepseek } from "@ai-sdk/deepseek";
 import { generateText, Output } from "ai";
 import { z } from "zod";
+import { deepseekProvider } from "../llm/models";
 import type { MemoryEpisode } from "./episode";
 
 const MAX_FACTS_PER_EPISODE = 2;
@@ -247,7 +247,7 @@ export const llmMemoryExtractor: MemoryExtractor = {
     }
 
     const { output } = await generateText({
-      model: deepseek("deepseek-chat"),
+      model: deepseekProvider("deepseek-chat"),
       output: Output.object({
         schema: extractedFactSchema,
       }),

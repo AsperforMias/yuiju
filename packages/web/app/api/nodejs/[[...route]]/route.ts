@@ -1,5 +1,4 @@
-import "@yuiju/utils/env";
-import { connectDB } from "@yuiju/utils";
+import { connectDB, getYuijuConfig } from "@yuiju/utils";
 import { Hono } from "hono";
 import { handle } from "hono/vercel";
 import { activityRoute } from "./activity";
@@ -10,9 +9,9 @@ import { stateRoute } from "./state";
 let dbConnectionStatus: "connected" | "connecting" | "failed" | "not_configured" = "not_configured";
 
 const initializeDatabase = async () => {
-  if (!process.env.MONGO_URI) {
+  if (!getYuijuConfig().database.mongoUri.trim()) {
     dbConnectionStatus = "not_configured";
-    console.warn("MONGO_URI is not set; skip database connection.");
+    console.warn("yuiju.config.ts 中未配置 database.mongoUri，跳过数据库连接。");
     return;
   }
 

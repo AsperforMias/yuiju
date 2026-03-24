@@ -1,12 +1,13 @@
 import "@yuiju/utils/env";
 import { setTimeout } from "node:timers/promises";
+import { getYuijuConfig } from "@yuiju/utils";
 import { type AllHandlers, type NCWebsocket, Structs } from "node-napcat-ts";
-import { config } from "@/config";
 import { llmManager } from "@/llm/manager";
 import { getReplyDelayMs } from "@/utils/message";
 import { closeGroupMessage, openGroupMessage } from "./group-message";
 
-const whiteList = config.whiteList;
+const config = getYuijuConfig();
+const whiteList = config.message.whiteList;
 
 function groupMessageAction(action: string | null) {
   if (action === "/关闭") {
@@ -49,7 +50,7 @@ export async function privateMessageHandler(
   const userName = context.sender.nickname || String(context.sender.user_id);
 
   try {
-    if (!process.env.DEEPSEEK_API_KEY) {
+    if (!config.llm.deepseekApiKey.trim()) {
       await context.quick_action([Structs.text("DeepSeek 未配置，稍后再试呢~")]);
       return;
     }

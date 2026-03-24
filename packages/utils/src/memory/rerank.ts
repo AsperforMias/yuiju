@@ -1,3 +1,5 @@
+import { getYuijuConfig } from "../config";
+
 const SILICONFLOW_RERANK_ENDPOINT = "https://api.siliconflow.cn/v1/rerank";
 const SILICONFLOW_RERANK_MODEL = "Qwen/Qwen3-Reranker-8B";
 
@@ -30,9 +32,9 @@ export async function rerankEpisodesWithSiliconFlow<TItem extends RerankableSear
   topK: number;
   candidates: SiliconFlowRerankCandidate<TItem>[];
 }): Promise<TItem[] | null> {
-  const apiKey = process.env.SILICONFLOW_API_KEY?.trim();
+  const apiKey = getYuijuConfig().llm.siliconflowApiKey.trim();
   if (!apiKey) {
-    console.error("[rerankEpisodesWithSiliconFlow] SILICONFLOW_API_KEY is not configured");
+    console.error("[rerankEpisodesWithSiliconFlow] yuiju.config.ts 中未配置 llm.siliconflowApiKey");
     return null;
   }
 

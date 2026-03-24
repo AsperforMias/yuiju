@@ -1,20 +1,29 @@
-import "../env";
-import { deepseek } from "@ai-sdk/deepseek";
-// import { createMoonshotAI } from "@ai-sdk/moonshotai";
+import { createDeepSeek } from "@ai-sdk/deepseek";
+import { createMoonshotAI } from "@ai-sdk/moonshotai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 import { wrapLanguageModel } from "ai";
+import { getYuijuConfig } from "../config";
 
-// const moonshotAI = createMoonshotAI({
-//   apiKey: process.env.MOONSHOT_API_KEY ?? "",
-//   baseURL: "https://api.moonshot.cn/v1",
-// });
+const config = getYuijuConfig();
+
+/**
+ * DeepSeek 客户端统一在 utils 层初始化，避免调用方继续隐式依赖环境变量。
+ */
+export const deepseekProvider = createDeepSeek({
+  apiKey: config.llm.deepseekApiKey,
+});
+
+const moonshotAIProvider = createMoonshotAI({
+  apiKey: config.llm.moonshotApiKey,
+  baseURL: "https://api.moonshot.cn/v1",
+});
 
 /**
  * SiliconFlow 兼容 OpenAI 接口，这里统一收口为公共客户端，便于多包复用小模型与第三方模型。
  */
 export const siliconflow = createOpenAICompatible({
   baseURL: "https://api.siliconflow.cn/v1",
-  apiKey: process.env.SILICONFLOW_API_KEY ?? "",
+  apiKey: config.llm.siliconflowApiKey,
   name: "Siliconflow",
   supportsStructuredOutputs: true,
 });
@@ -31,7 +40,7 @@ export const smallModel = wrapLanguageModel({
  * 用于复杂决策、长链路思考的强模型。
  */
 export const strongModel = wrapLanguageModel({
-  model: deepseek("deepseek-reasoner"),
+  model: moonshotAIProvider("kimi-k2.5"),
   middleware: [],
 });
 

@@ -1,8 +1,8 @@
-import { deepseek } from "@ai-sdk/deepseek";
 import { buildDiarySystemPrompt } from "@yuiju/source";
 import {
   DEFAULT_DIARY_SUBJECT,
   DEFAULT_MEMORY_SUBJECT_ID,
+  deepseekProvider,
   getRecentMemoryEpisodes,
   type IMemoryEpisode,
   minimaxModel,
@@ -121,7 +121,7 @@ async function summarizeConversationEpisodes(input: {
   episodes: IMemoryEpisode[];
 }): Promise<DiaryMaterialItem> {
   const result = await generateText({
-    model: deepseek("deepseek-chat"),
+    model: deepseekProvider("deepseek-chat"),
     prompt: [
       "你是日记生成前的聊天素材压缩器。",
       "请把下面这一组聊天窗口压成一小段自然语言摘要，供后续写日记使用。",

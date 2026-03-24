@@ -5,18 +5,6 @@ import mongoose from "mongoose";
 import dayjs from "dayjs";
 import { generateDiaryForDate } from "@/memory/diary/generator";
 
-/**
- * 兼容当前仓库中 Mongo 环境变量命名差异。
- *
- * 说明：
- * - utils 侧读取的是 MONGO_URI；
- * - 项目文档展示的是 MONGODB_URI；
- * - demo 脚本在这里做一次兜底，避免手动改环境变量。
- */
-if (!process.env.MONGO_URI?.trim() && process.env.MONGODB_URI?.trim()) {
-  process.env.MONGO_URI = process.env.MONGODB_URI;
-}
-
 const TARGET_DATE = new Date("2026-03-19T00:00:00+08:00");
 const TARGET_IS_DEV = false;
 
