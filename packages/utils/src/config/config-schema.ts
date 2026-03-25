@@ -1,3 +1,5 @@
+import type { NCWebsocketOptions } from "node-napcat-ts";
+
 /**
  * Napcat 重连配置。
  *
@@ -26,7 +28,7 @@ export interface YuijuNapcatConfig {
  * 消息服务相关配置。
  */
 export interface YuijuMessageConfig {
-  napcat: YuijuNapcatConfig;
+  napcat: NCWebsocketOptions;
   whiteList: number[];
   groupWhiteList: number[];
 }

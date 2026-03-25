@@ -48,6 +48,7 @@
     "vitest": "^4.0.13"
   },
   "dependencies": {
+    "node-napcat-ts": "^0.4.23",
     "@ai-sdk/deepseek": "^2.0.26",
     "@ai-sdk/devtools": "^0.0.15",
     "@ai-sdk/moonshotai": "^2.0.12",

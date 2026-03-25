@@ -41,6 +41,9 @@ importers:
       mongoose:
         specifier: ^8.20.0
         version: 8.20.0(socks@2.8.7)
+      node-napcat-ts:
+        specifier: ^0.4.23
+        version: 0.4.23
       winston:
         specifier: ^3.18.3
         version: 3.18.3
@@ -87,9 +90,6 @@ importers:
       '@yuiju/utils':
         specifier: workspace:*
         version: link:../utils
-      node-napcat-ts:
-        specifier: ^0.4.20
-        version: 0.4.20
 
   packages/source:
     dependencies:
@@ -2058,8 +2058,8 @@ packages:
       sass:
         optional: true
 
-  node-napcat-ts@0.4.20:
-    resolution: {integrity: sha512-TD7l5e5ih9R9nA6h4LewaUXhwjCOMO6KmiBbMyI0TfDCiDYThfFBkT/25dlRBGJoWlAb0pyLCMJ0vrJw/2e7gw==}
+  node-napcat-ts@0.4.23:
+    resolution: {integrity: sha512-1xdgCeMzld1htzaiYb+7EfAQYD5QTq4990BKBhaKa8zB199ad25/TDQQ8blMEbHZagdB+duEtsj8zFsnZUswbg==}
 
   object-hash@3.0.0:
     resolution: {integrity: sha512-RSn9F68PjH9HqtltsSnqYC1XXoWe9Bju5+213R98cNGttag9q9yAOTzdbsqvIa7aNm5WffBZFpWYr2aWrklWAw==}
@@ -4169,7 +4169,7 @@ snapshots:
       - '@babel/core'
       - babel-plugin-macros
 
-  node-napcat-ts@0.4.20:
+  node-napcat-ts@0.4.23:
     dependencies:
       isomorphic-ws: 5.0.0(ws@8.18.3)
       nanoid: 5.1.6

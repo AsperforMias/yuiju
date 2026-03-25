@@ -1,8 +1,10 @@
 import "@yuiju/utils/env";
+import { setTimeout } from "node:timers/promises";
 import { ActionId, getYuijuConfig, initCharacterStateData } from "@yuiju/utils";
 import { type AllHandlers, type NCWebsocket, Structs } from "node-napcat-ts";
 import { llmManager } from "@/llm/manager";
 import { parseGroupMessage } from "@/utils/group-message";
+import { getReplyDelayMs } from "@/utils/message";
 
 let isCloseGroup = false;
 const config = getYuijuConfig();
@@ -70,13 +72,6 @@ export async function groupMessageHandler(
       return;
     }
 
-    if (!config.llm.deepseekApiKey.trim()) {
-      if (parsedMessage.isAtBot) {
-        console.error("DeepSeek 未配置，稍后再试呢~");
-      }
-      return;
-    }
-
     const { text } = await llmManager.chatInGroup({
       groupId: context.group_id,
       groupName: parsedMessage.groupDisplayName,
@@ -88,12 +83,25 @@ export async function groupMessageHandler(
 
     const reply = (text || "").trim() || "呜…这句话我一时没理解呢。";
     console.log(`回复群 ${parsedMessage.groupDisplayName}(${context.group_id}) 的消息: ${reply}`);
-    await context.quick_action([Structs.text(reply)], parsedMessage.isAtBot);
+
+    if (parsedMessage.isAtBot) {
+      context.quick_action([Structs.text(reply)]);
+    } else {
+      const replyList = reply.split("\n");
+      for (const [index, item] of replyList.entries()) {
+        await napcat.send_group_msg({
+          group_id: context.group_id,
+          message: [Structs.text(item)],
+        });
+
+        const nextReply = replyList[index + 1];
+        if (nextReply) {
+          await setTimeout(getReplyDelayMs(nextReply));
+        }
+      }
+    }
   } catch (error) {
     console.log(error);
-    if (parsedMessage.isAtBot) {
-      await context.quick_action([Structs.text("小久刚刚摔了一跤，重试下呀~")], true);
-    }
   }
 }
 
@@ -106,10 +114,6 @@ async function shouldReplyToGroupMessage(input: {
   senderName: string;
   content: string;
 }) {
-  if (!config.llm.siliconflowApiKey.trim()) {
-    return false;
-  }
-
   const shouldReply = await llmManager.shouldReplyGroupMessage({
     groupId: input.context.group_id,
     groupName: input.groupName,
