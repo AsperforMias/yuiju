@@ -3,10 +3,10 @@ import customParseFormat from "dayjs/plugin/customParseFormat";
 import { getYuijuConfig } from "../config";
 import { getMemoryDiaries, getRecentMemoryEpisodes } from "../db";
 import { isDev } from "../env";
+import { rerankEpisodesWithSiliconFlow } from "../llm/rerank";
 import { DEFAULT_DIARY_SUBJECT } from "./diary";
 import { DEFAULT_MEMORY_SUBJECT_ID } from "./episode";
 import { getMemoryServiceClientFromEnv, type MemorySearchItem } from "./memory-service-client";
-import { rerankEpisodesWithSiliconFlow } from "./rerank";
 
 dayjs.extend(customParseFormat);
 

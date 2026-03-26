@@ -60,7 +60,7 @@ export async function privateMessageHandler(
     const reply = (text || "").trim() || "呜…这句话我一时没理解呢。";
     console.log(`回复给 ${context.sender.nickname}(${context.sender.user_id}) 的消息: ${reply}`);
 
-    const replyList = reply.split("\n");
+    const replyList = reply.split("\n").filter(Boolean);
     for (const [index, item] of replyList.entries()) {
       await context.quick_action([Structs.text(item)]);
 

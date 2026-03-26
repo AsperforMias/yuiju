@@ -87,7 +87,7 @@ export async function groupMessageHandler(
     if (parsedMessage.isAtBot) {
       context.quick_action([Structs.text(reply)]);
     } else {
-      const replyList = reply.split("\n");
+      const replyList = reply.split("\n").filter(Boolean);
       for (const [index, item] of replyList.entries()) {
         await napcat.send_group_msg({
           group_id: context.group_id,
