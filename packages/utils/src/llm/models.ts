@@ -32,7 +32,7 @@ export const siliconflow = createOpenAICompatible({
  * 用于低成本判断、裁决等轻量任务的小模型。
  */
 export const smallModel = wrapLanguageModel({
-  model: siliconflow("Qwen/Qwen3-8B"),
+  model: siliconflow("Qwen/Qwen3.5-35B-A3B"),
   middleware: [],
 });
 
