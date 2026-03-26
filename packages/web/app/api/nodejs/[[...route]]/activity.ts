@@ -48,7 +48,8 @@ activityRoute.get("/activity", async (context) => {
       ],
       subject: DEFAULT_MEMORY_SUBJECT_ID,
       isDev: isDev(),
-      onlyToday: true,
+      // 仅拉取当前自然日的动态，保持活动页聚焦“今天发生了什么”。
+      onlyDate: new Date(),
     });
   } catch (error) {
     console.error("getRecentMemoryEpisodes failed:", error);
