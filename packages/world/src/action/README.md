@@ -27,9 +27,8 @@ action/
 - `action: ActionId` - 行为 ID 枚举值
 - `description: string` - 行为描述（传给 LLM 作为决策依据）
 - `precondition: (context) => boolean` - 前置条件函数，返回 false 时该行为不可用
-- `parameterResolver?: (context) => Promise<ActionParameter[]>` - 参数选择器（可选），用于参数化行为
-- `executor: (context, parameters?) => void` - 执行器，修改角色状态（自动保存到 Redis）
-- `durationMin: number | function` - 持续时间（分钟），支持固定值或动态计算
+- `executor: (context, selectedAction) => void` - 执行器，接收本次 Action 决策结果并修改角色状态
+- `durationMin: number | function` - 持续时间（分钟），支持基于本次决策结果做动态计算
 - `completionEvent?: string | function` - 完成事件描述，作为下次 LLM 决策的上下文
 
 ### 行为决策流程
@@ -40,16 +39,16 @@ action/
 2. **加载场景行为** - 根据当前位置（Home/School）加载场景特定行为
 3. **合并并过滤** - 合并通用行为，通过 `precondition` 过滤可用行为
 
-### 参数化行为
+### 决策结果驱动行为
 
-某些行为需要 LLM 选择具体参数，如"吃食物"需要选择吃什么。
+某些行为需要读取 LLM 在本次 Action 决策阶段产出的附加信息，例如动态时长。
 
 实现步骤：
 
-1. 实现 `parameterResolver`，返回可供 LLM 选择的参数列表
-2. 在 `executor` 中使用 LLM 选择的参数
+1. 在 `ActionAgentDecision` 中定义需要的决策字段
+2. 在 `executor` / `durationMin` 中读取 `selectedAction`
 
-参考：[anywhere.ts:38-101](anywhere.ts#L38-L101) 的 `Eat_Item` 行为
+参考：[park.ts](park.ts) 的“逛公园”行为
 
 ### 前置条件工具
 
@@ -63,7 +62,7 @@ action/
 
 1. 在 [types/action.ts](../../../utils/src/types/action.ts) 添加 `ActionId` 枚举
 2. 在对应场景文件（home.ts/school.ts/anywhere.ts）定义行为
-3. 如需参数化，添加 `parameterResolver`
+3. 如需动态决策结果，在 `ActionAgentDecision` 中补充字段
 4. 在 `executor` 中实现状态修改逻辑
 
 ## 重要说明

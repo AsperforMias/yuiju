@@ -1,6 +1,7 @@
 import {
   ActionId,
   type ActionMetadata,
+  type ChoiceOption,
   allTrue,
   CAFE_COFFEES,
   type CafeCoffee,
@@ -75,7 +76,7 @@ export const cafeAction: ActionMetadata[] = [
     async executor(context) {
       await context.characterState.setAction(ActionId.Order_Coffee);
 
-      const coffeeList = CAFE_COFFEES.map((coffee) => {
+      const coffeeList: ChoiceOption[] = CAFE_COFFEES.map((coffee) => {
         return {
           value: coffee.name,
           description: formatCoffeeDescription(coffee),

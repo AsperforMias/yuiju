@@ -8,8 +8,8 @@ import type {
   ActionAgentDecision,
   ActionContext,
   ActionMetadata,
-  ActionParameter,
   BehaviorRecord,
+  ChoiceOption,
   PlanState,
 } from "@yuiju/utils";
 import { strongModel, memorySearchTool as unifiedMemorySearchTool } from "@yuiju/utils";
@@ -109,7 +109,7 @@ export async function chooseActionAgent(
  * 选择食物
  */
 export async function chooseFoodAgent(
-  foodList: ActionParameter[],
+  foodList: ChoiceOption[],
   context: ActionContext,
   actionMemoryList: BehaviorRecord[],
   planState: PlanState,
@@ -165,7 +165,7 @@ export async function chooseFoodAgent(
  * 选择购买商品
  */
 export async function chooseShopProductAgent(
-  productList: ActionParameter[],
+  productList: ChoiceOption[],
   context: ActionContext,
   actionMemoryList: BehaviorRecord[],
   planState: PlanState,
@@ -219,7 +219,7 @@ export async function chooseShopProductAgent(
  * 选择咖啡
  */
 export async function chooseCafeCoffeeAgent(
-  coffeeList: ActionParameter[],
+  coffeeList: ChoiceOption[],
   context: ActionContext,
   actionMemoryList: BehaviorRecord[],
   planState: PlanState,

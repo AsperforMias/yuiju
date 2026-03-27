@@ -2,8 +2,10 @@ import { type ActionContext, type ActionMetadata, MajorScene } from "@yuiju/util
 import { anywhereAction } from "./anywhere";
 import { cafeAction } from "./cafe";
 import { homeAction } from "./home";
+import { parkAction } from "./park";
 import { schoolAction } from "./school";
 import { shopAction } from "./shop";
+import { shrineAction } from "./shrine";
 import { precheckAction } from "./utils";
 
 export function getActionList(context: ActionContext) {
@@ -26,6 +28,12 @@ export function getActionList(context: ActionContext) {
       break;
     case MajorScene.Cafe:
       locationAction = cafeAction;
+      break;
+    case MajorScene.Park:
+      locationAction = parkAction;
+      break;
+    case MajorScene.Shrine:
+      locationAction = shrineAction;
       break;
     default:
       break;

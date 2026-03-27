@@ -1,6 +1,7 @@
 import {
   ActionId,
   type ActionMetadata,
+  type ChoiceOption,
   allTrue,
   MajorScene,
   SHOP_PRODUCTS,
@@ -49,7 +50,7 @@ export const shopAction: ActionMetadata[] = [
 
       let remainingMoney = context.characterState.money;
 
-      const productList = SHOP_PRODUCTS.map((product) => {
+      const productList: ChoiceOption[] = SHOP_PRODUCTS.map((product) => {
         return {
           value: product.name,
           description: formatProductDescription(product),

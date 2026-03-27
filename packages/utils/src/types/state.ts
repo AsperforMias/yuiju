@@ -7,6 +7,8 @@ export enum MajorScene {
   School = "学校",
   Shop = "商店",
   Cafe = "咖啡店",
+  Park = "公园",
+  Shrine = "神社",
 }
 
 // 家的小场景
@@ -20,12 +22,20 @@ export enum SchoolSubScene {}
 // 商店的小场景（预留）
 export enum ShopSubScene {}
 
+// 公园的小场景（预留）
+export enum ParkSubScene {}
+
+// 神社的小场景（预留）
+export enum ShrineSubScene {}
+
 // 位置类型（判别联合）
 export type Location =
   | { major: MajorScene.Home; minor?: HomeSubScene }
   | { major: MajorScene.School; minor?: SchoolSubScene }
   | { major: MajorScene.Shop; minor?: ShopSubScene }
-  | { major: MajorScene.Cafe; minor?: undefined };
+  | { major: MajorScene.Cafe; minor?: undefined }
+  | { major: MajorScene.Park; minor?: ParkSubScene }
+  | { major: MajorScene.Shrine; minor?: ShrineSubScene };
 
 /**
  * 食物元数据
