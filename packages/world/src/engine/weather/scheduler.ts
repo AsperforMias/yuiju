@@ -17,7 +17,7 @@ export function startWeatherScheduler(): ScheduledTask {
   return cron.schedule(
     WEATHER_CRON_EXPRESSION,
     () => {
-      void syncCurrentWeather().catch((error) => {
+      syncCurrentWeather().catch((error) => {
         logger.error("[weather] scheduled sync failed", error);
       });
     },

@@ -1,4 +1,3 @@
-import "@yuiju/utils/env";
 import { setTimeout } from "node:timers/promises";
 import { ActionId, getYuijuConfig, initCharacterStateData } from "@yuiju/utils";
 import { type AllHandlers, type NCWebsocket, Structs } from "node-napcat-ts";

@@ -1,5 +1,5 @@
-import dayjs, { type Dayjs } from "dayjs";
 import { getYuijuConfig, type WeatherSnapshot } from "@yuiju/utils";
+import dayjs, { type Dayjs } from "dayjs";
 import { WEATHER_PERIOD_HOURS } from "./constants";
 
 export interface WeatherPeriod {
