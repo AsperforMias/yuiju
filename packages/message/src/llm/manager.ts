@@ -1,7 +1,7 @@
-import { getCharacterCardPrompt } from "@yuiju/source";
 import {
   deepseekProvider,
   getMemoryServiceClientFromEnv,
+  getCharacterCardPrompt,
   memorySearchTool,
   queryCharacterStateTool,
   smallModel,

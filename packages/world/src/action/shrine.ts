@@ -1,4 +1,6 @@
 import { ActionId, type ActionMetadata, allTrue, MajorScene } from "@yuiju/utils";
+import { chooseShrinePrayerAgent } from "@/llm/agent";
+import { planManager } from "@/plan";
 import { isNight } from "./utils";
 
 const SHRINE_OFFERING_COST = 5;
@@ -9,52 +11,44 @@ function isAtShrine(major: MajorScene) {
   return major === MajorScene.Shrine;
 }
 
-/**
- * 解析参拜时是否投币。
- *
- * 当前策略：
- * - 当余额足够支付 5 元香火钱时，自动采用“投币参拜”；
- * - 否则退化为普通参拜。
- *
- * 这样可以在不引入额外参数选择链路的前提下，让单个“参拜”行为覆盖两种结果。
- */
-function resolveShrinePrayerOption(money: number) {
-  const shouldOffer = money >= SHRINE_OFFERING_COST;
-
-  return {
-    shouldOffer,
-    moodGain: shouldOffer ? SHRINE_OFFERING_MOOD_GAIN : SHRINE_PRAY_MOOD_GAIN,
-    moneyCost: shouldOffer ? SHRINE_OFFERING_COST : 0,
-  };
-}
-
 export const shrineAction: ActionMetadata[] = [
   {
     action: ActionId.Pray_At_Shrine,
     description:
-      "在神社参拜并向神明许愿；若身上有钱会顺手投币，投币会让心情更好。[心情+?][耗时10分钟]",
+      "在神社参拜，并由内心决定是否投币祈愿；若投币，会向神明说出一句愿望。[心情+?][耗时10分钟]",
     precondition(context) {
       return allTrue([
         () => isAtShrine(context.characterState.location.major),
         () => !isNight(context),
       ]);
     },
-    async executor(context) {
-      const prayerOption = resolveShrinePrayerOption(context.characterState.money);
-
+    async executor(context, selectedAction) {
       await context.characterState.setAction(ActionId.Pray_At_Shrine);
+      const prayerDecision = await chooseShrinePrayerAgent(
+        context,
+        [],
+        await planManager.getState(),
+        SHRINE_OFFERING_COST,
+        selectedAction,
+      );
+      const shouldOffer =
+        prayerDecision?.shouldOffer === true &&
+        context.characterState.money >= SHRINE_OFFERING_COST;
 
-      if (prayerOption.moneyCost > 0) {
-        await context.characterState.changeMoney(-prayerOption.moneyCost);
+      if (shouldOffer) {
+        await context.characterState.changeMoney(-SHRINE_OFFERING_COST);
+        await context.characterState.changeMood(SHRINE_OFFERING_MOOD_GAIN);
+
+        const wish = prayerDecision?.wish?.trim();
+        if (wish) {
+          return `在神社投了${SHRINE_OFFERING_COST}元香火钱，祈愿“${wish}”，心情提升了${SHRINE_OFFERING_MOOD_GAIN}点`;
+        }
+
+        return `在神社投了${SHRINE_OFFERING_COST}元香火钱，认真祈愿，心情提升了${SHRINE_OFFERING_MOOD_GAIN}点`;
       }
 
-      await context.characterState.changeMood(prayerOption.moodGain);
-
-      if (prayerOption.shouldOffer) {
-        return `在神社投了${prayerOption.moneyCost}元香火钱，认真参拜并许愿，心情提升了${prayerOption.moodGain}点`;
-      }
-
-      return `在神社认真参拜并许愿，心情提升了${prayerOption.moodGain}点`;
+      await context.characterState.changeMood(SHRINE_PRAY_MOOD_GAIN);
+      return `在神社认真参拜，心情提升了${SHRINE_PRAY_MOOD_GAIN}点`;
     },
     durationMin: 10,
   },

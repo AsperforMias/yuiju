@@ -3,7 +3,8 @@ import {
   chooseCafeCoffeePrompt,
   chooseFoodPrompt,
   chooseShopProductPrompt,
-} from "@yuiju/source";
+  chooseShrinePrayerPrompt,
+} from "@yuiju/utils";
 import type {
   ActionAgentDecision,
   ActionContext,
@@ -12,7 +13,11 @@ import type {
   ChoiceOption,
   PlanState,
 } from "@yuiju/utils";
-import { strongModel, memorySearchTool as unifiedMemorySearchTool } from "@yuiju/utils";
+import {
+  strongModel,
+  memorySearchTool as unifiedMemorySearchTool,
+  queryWorldMapTool,
+} from "@yuiju/utils";
 import { generateText, Output, stepCountIs } from "ai";
 import dayjs from "dayjs";
 import { z } from "zod";
@@ -32,6 +37,11 @@ export type FoodAgentDecision = {
 
 export type ShopProductAgentDecision = {
   selectedList: ParameterAgentSelectedItem[];
+};
+
+export type ShrinePrayerAgentDecision = {
+  shouldOffer: boolean;
+  wish?: string;
 };
 
 /**
@@ -71,6 +81,7 @@ export async function chooseActionAgent(
         tools: {
           memorySearch: unifiedMemorySearchTool,
           queryAvailableFood: queryAvailableFood(context),
+          queryWorldMap: queryWorldMapTool,
         },
         output: Output.object({
           schema: z.object({
@@ -264,6 +275,58 @@ export async function chooseCafeCoffeeAgent(
       return output;
     } catch (error) {
       logger.error("[chooseCafeCoffeeAgent] 选择咖啡失败", error);
+    }
+  }
+}
+
+/**
+ *
+ * 选择神社参拜方式
+ */
+export async function chooseShrinePrayerAgent(
+  context: ActionContext,
+  actionMemoryList: BehaviorRecord[],
+  planState: PlanState,
+  offeringCost: number,
+  selectedAction: ActionAgentDecision,
+): Promise<ShrinePrayerAgentDecision | undefined> {
+  const systemPrompt = chooseShrinePrayerPrompt({
+    actionReason: selectedAction.reason,
+    location: `${context.characterState.location.major}${
+      context.characterState.location.minor ? "-" + context.characterState.location.minor : ""
+    }`,
+    stamina: context.characterState.stamina,
+    satiety: context.characterState.satiety,
+    mood: context.characterState.mood,
+    money: context.characterState.money,
+    offeringCost,
+    worldTime: context.worldState.time,
+    mainPlanTitle: planState.mainPlan?.title,
+    activePlanTitles: planState.activePlans.map((plan) => plan.title),
+    recentBehaviorList: actionMemoryList.map((item) => ({
+      behavior: item.behavior,
+      description: item.description,
+      time: dayjs(item.timestamp),
+    })),
+  });
+
+  for (let i = 0; i < RETRY_COUNT; i++) {
+    try {
+      const { output } = await generateText({
+        model: strongModel,
+        output: Output.object({
+          schema: z.object({
+            shouldOffer: z.boolean().describe("这次是否投币参拜"),
+            wish: z.string().max(40).optional().describe("只有在投币时才填写的一句简短祈愿"),
+          }),
+        }),
+        prompt: systemPrompt,
+      });
+
+      logger.info("[chooseShrinePrayerAgent] 神社参拜决策结果", output);
+      return output;
+    } catch (error) {
+      logger.error("[chooseShrinePrayerAgent] 神社参拜决策失败", error);
     }
   }
 }

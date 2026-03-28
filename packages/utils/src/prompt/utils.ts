@@ -1,4 +1,4 @@
-import { getTimeWithWeekday } from "@yuiju/utils";
+import { getTimeWithWeekday } from "../time";
 import type { Dayjs } from "dayjs";
 
 interface BehaviorParameter {

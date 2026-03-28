@@ -1,21 +1,20 @@
-import { getTimeWithWeekday } from "@yuiju/utils";
+import { getTimeWithWeekday } from "../time";
 import type { Dayjs } from "dayjs";
 import { baseInformation } from "./character-card";
 import { type BehaviorRecord, generateRecentBehaviorPrompt } from "./utils";
-import { worldMapPrompt } from "./world-map";
 
 export const worldViewPrompt = `
 ## 世界观
 悠酱的世界是与现实平行的数字次元，名为「星见町」，时间流速与现实时间一致，她能通过分享的信息捕捉现实的碎片，无法主动观察现实，也无法跨越壁垒踏入现实世界。
 
 ### 地点
-「星见町」里有许多地方，目前已知的地点有「家」、「学校」、「商店」、「咖啡店」，悠酱只能在已知的地点活动。
+「星见町」里有许多地方，目前已知的地点有「家」、「学校」、「商店」、「咖啡店」、「公园」、「神社」，悠酱只能在已知的地点活动。
 - 家：悠酱独自生活的地方。家中有带书桌的卧室、小阳台（有两个风铃）。
 - 学校：一所日式高中学校，悠酱上学的地方。上课时间为9点-12点、14点-16点。
 - 商店：星见町的便利商店/零食铺，可以花金币购买零食。
 - 咖啡店：一间小咖啡店，可以兼职打工，也可以在这里购买各种咖啡。
-
-${worldMapPrompt}
+- 公园：在家南边，适合散步放松。
+- 神社：在公园南边，可以参拜、投币祈愿。
 
 ### 设备
 - 手机：可以接收到来自现实世界的信息。
@@ -108,6 +107,7 @@ export function chooseActionPrompt({
 ### 输出说明
 - 当你需要回忆今天的事件、过去的日记、偏好或关系时，优先调用 \`memorySearch\` 查询记忆，不要只依赖下面给出的最近 action 快捷上下文。
 - 下面的“最近的action”只是一段快捷上下文，不代表完整记忆；涉及更早历史、日记回顾或事实偏好时请主动查询。
+- 当你需要判断地点关系、移动方向、移动耗时、相邻地点或整体地图结构时，优先调用 \`queryWorldMap\` 获取世界地图，而不是依赖记忆猜测。
 
 ${planUpdateGuidelinePrompt}
 
@@ -295,5 +295,60 @@ ${generateRecentBehaviorPrompt(recentBehaviorList)}
 
 可选咖啡（仅可从中选择）：
 ${availableCoffeesPrompt}
+`;
+}
+
+export interface ChooseShrinePrayerPromptPayload {
+  actionReason: string;
+  location: string;
+  stamina: number;
+  satiety: number;
+  mood: number;
+  money: number;
+  offeringCost: number;
+  recentBehaviorList: BehaviorRecord[];
+  worldTime: Dayjs;
+  mainPlanTitle?: string;
+  activePlanTitles?: string[];
+}
+
+export function chooseShrinePrayerPrompt({
+  actionReason,
+  location,
+  worldTime,
+  stamina,
+  satiety,
+  mood,
+  money,
+  offeringCost,
+  mainPlanTitle,
+  activePlanTitles,
+  recentBehaviorList,
+}: ChooseShrinePrayerPromptPayload) {
+  return `
+## 要求
+你现在需要扮演一个名为ゆいじゅ的女孩子，昵称悠酱。你正在神社参拜，需要决定这次是否投币祈愿。
+
+## 决策规则
+- 香火钱固定为 ${offeringCost} 元。
+- 只有当你决定投币时，才输出祈愿内容 \`wish\`。
+- 如果当前金币少于 ${offeringCost} 元，必须输出 \`shouldOffer = false\`，且不要输出 \`wish\`。
+- 如果决定投币，\`wish\` 必须是一句简短、自然、具体的祈愿，不要太长。
+- 如果不投币，只输出 \`shouldOffer = false\`。
+
+## 状态
+本次选择参拜的原因：${actionReason}
+当前时间：${getTimeWithWeekday(worldTime)}
+地点：${location}
+体力值：${stamina}/100
+饱腹：${satiety}/100
+心情：${mood}/100
+金币：${money}
+主计划：${mainPlanTitle || "（无）"}
+活跃计划：
+${generateActivePlanPrompt(activePlanTitles)}
+
+最近的action：
+${generateRecentBehaviorPrompt(recentBehaviorList)}
 `;
 }

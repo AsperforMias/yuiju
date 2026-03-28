@@ -1,7 +1,7 @@
-import { buildDiarySystemPrompt } from "@yuiju/source";
 import {
   DEFAULT_DIARY_SUBJECT,
   DEFAULT_MEMORY_SUBJECT_ID,
+  buildDiarySystemPrompt,
   deepseekProvider,
   getRecentMemoryEpisodes,
   type IMemoryEpisode,
