@@ -1,5 +1,5 @@
-import { getTimeWithWeekday } from "../time";
 import type { Dayjs } from "dayjs";
+import { getTimeWithWeekday } from "../time";
 
 interface BehaviorParameter {
   /** 参数值，如："苹果"、"面包" */

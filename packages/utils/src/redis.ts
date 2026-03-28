@@ -50,8 +50,8 @@ const DEFAULT_CHARACTER_STATE_DATA: CharacterStateData = {
 };
 
 const DEFAULT_PLAN_STATE: PlanState = {
-  activePlanIds: [],
-  activePlans: [],
+  shortTermPlanIds: [],
+  shortTermPlans: [],
   updatedAt: new Date(0).toISOString(),
 };
 
@@ -214,31 +214,33 @@ export const initPlanStateData = async (): Promise<PlanState> => {
 
   if (!raw) {
     await redis.set(REDIS_KEY_PLAN_STATE, JSON.stringify(DEFAULT_PLAN_STATE));
-    return { ...DEFAULT_PLAN_STATE, activePlanIds: [], activePlans: [] };
+    return { ...DEFAULT_PLAN_STATE, shortTermPlanIds: [], shortTermPlans: [] };
   }
 
   const parsed = safeParseJson<PlanState>(raw);
   if (!parsed || typeof parsed !== "object") {
     await redis.set(REDIS_KEY_PLAN_STATE, JSON.stringify(DEFAULT_PLAN_STATE));
-    return { ...DEFAULT_PLAN_STATE, activePlanIds: [], activePlans: [] };
+    return { ...DEFAULT_PLAN_STATE, shortTermPlanIds: [], shortTermPlans: [] };
   }
 
   const maybeState = parsed as Partial<PlanState>;
-  const activePlans = Array.isArray(maybeState.activePlans) ? maybeState.activePlans : [];
-  const mainPlan = maybeState.mainPlan;
-  const mainPlanId =
-    typeof maybeState.mainPlanId === "string" ? maybeState.mainPlanId : maybeState.mainPlan?.id;
-  const activePlanIds = Array.isArray(maybeState.activePlanIds)
-    ? maybeState.activePlanIds.filter((item): item is string => typeof item === "string")
-    : activePlans
+  const shortTermPlans = Array.isArray(maybeState.shortTermPlans) ? maybeState.shortTermPlans : [];
+  const longTermPlan = maybeState.longTermPlan;
+  const longTermPlanId =
+    typeof maybeState.longTermPlanId === "string"
+      ? maybeState.longTermPlanId
+      : maybeState.longTermPlan?.id;
+  const shortTermPlanIds = Array.isArray(maybeState.shortTermPlanIds)
+    ? maybeState.shortTermPlanIds.filter((item): item is string => typeof item === "string")
+    : shortTermPlans
         .map((plan) => (typeof plan?.id === "string" ? plan.id : undefined))
         .filter((item): item is string => Boolean(item));
 
   return {
-    mainPlanId,
-    activePlanIds,
-    mainPlan,
-    activePlans,
+    longTermPlanId,
+    shortTermPlanIds,
+    longTermPlan,
+    shortTermPlans,
     updatedAt:
       typeof maybeState.updatedAt === "string"
         ? maybeState.updatedAt

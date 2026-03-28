@@ -51,8 +51,8 @@ homeRoute.get("/summary", async (context) => {
       todayActions: state.dailyActionsDoneToday,
       inventory,
       plans: {
-        longTerm: planState.mainPlan?.title,
-        shortTerm: planState.activePlans.map((plan) => plan.title),
+        longTerm: planState.longTermPlan?.title,
+        shortTerm: planState.shortTermPlans.map((plan) => plan.title),
       },
       world: {
         time: world.time.format("YYYY-MM-DD HH:mm"),

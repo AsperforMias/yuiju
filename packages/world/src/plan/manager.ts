@@ -48,10 +48,10 @@ function createPlanItem(input: {
 
 function clonePlanState(state: PlanState): PlanState {
   return {
-    mainPlanId: state.mainPlanId,
-    activePlanIds: [...state.activePlanIds],
-    mainPlan: state.mainPlan ? { ...state.mainPlan } : undefined,
-    activePlans: state.activePlans.map((plan) => ({ ...plan })),
+    longTermPlanId: state.longTermPlanId,
+    shortTermPlanIds: [...state.shortTermPlanIds],
+    longTermPlan: state.longTermPlan ? { ...state.longTermPlan } : undefined,
+    shortTermPlans: state.shortTermPlans.map((plan) => ({ ...plan })),
     updatedAt: state.updatedAt,
   };
 }
@@ -88,15 +88,15 @@ function markPlanTerminal(
 }
 
 function rebuildPlanReferences(state: PlanState): void {
-  state.mainPlanId = state.mainPlan?.id;
-  state.activePlanIds = state.activePlans.map((plan) => plan.id);
+  state.longTermPlanId = state.longTermPlan?.id;
+  state.shortTermPlanIds = state.shortTermPlans.map((plan) => plan.id);
 }
 
 function createApplyResult(state: PlanState, changes: PlanChange[]): PlanApplyResult {
   return {
     state,
     changes,
-    relatedPlanId: state.activePlanIds[0] ?? state.mainPlanId,
+    relatedPlanId: state.shortTermPlanIds[0] ?? state.longTermPlanId,
   };
 }
 
@@ -105,7 +105,7 @@ function createApplyResult(state: PlanState, changes: PlanChange[]): PlanApplyRe
  *
  * 说明：
  * - 计划状态以 Redis `plan_state` 为唯一真相源；
- * - 显式维护 mainPlanId / activePlanIds 引用层，避免后续只靠对象嵌套推导当前活跃计划；
+ * - 显式维护 longTermPlanId / shortTermPlanIds 引用层，避免后续只靠对象嵌套推导当前短期计划；
  * - proposal 中未显式提供的字段视为“不更新”，从而把计划变更改为按条件触发。
  */
 export class PlanManager {
@@ -127,7 +127,7 @@ export class PlanManager {
    *
    * 说明：
    * - completed 只负责声明“该计划已经完成”，并将其从 Redis 运行态中移除；
-   * - 关联中的活跃计划不会被强制终止，但会同步更新 parentPlanId，避免悬挂引用。
+   * - 关联中的短期计划不会被强制终止，但会同步更新 parentPlanId，避免悬挂引用。
    */
   async completePlan(planId: string): Promise<PlanApplyResult> {
     return await this.transitionPlanToTerminal({
@@ -158,26 +158,26 @@ export class PlanManager {
     const nowIso = new Date().toISOString();
     const changes: PlanChange[] = [];
 
-    if (currentState.mainPlan && currentState.mainPlan.status !== "active") {
+    if (currentState.longTermPlan && currentState.longTermPlan.status !== "active") {
       changes.push({
-        planId: currentState.mainPlan.id,
-        scope: "main",
-        changeType: currentState.mainPlan.status,
-        before: clonePlanItem(currentState.mainPlan),
-        after: clonePlanItem(currentState.mainPlan),
+        planId: currentState.longTermPlan.id,
+        scope: "longTerm",
+        changeType: currentState.longTermPlan.status,
+        before: clonePlanItem(currentState.longTermPlan),
+        after: clonePlanItem(currentState.longTermPlan),
       });
-      currentState.mainPlan = undefined;
-      currentState.mainPlanId = undefined;
+      currentState.longTermPlan = undefined;
+      currentState.longTermPlanId = undefined;
     }
 
-    const activePlans = currentState.activePlans.filter((plan) => {
+    const shortTermPlans = currentState.shortTermPlans.filter((plan) => {
       if (plan.status === "active") {
         return true;
       }
 
       changes.push({
         planId: plan.id,
-        scope: "active",
+        scope: "shortTerm",
         changeType: plan.status,
         before: clonePlanItem(plan),
         after: clonePlanItem(plan),
@@ -185,9 +185,9 @@ export class PlanManager {
       return false;
     });
 
-    currentState.activePlans = activePlans;
+    currentState.shortTermPlans = shortTermPlans;
     rebuildPlanReferences(currentState);
-    this.syncActivePlanParentReferences(currentState, changes, nowIso);
+    this.syncShortTermPlanParentReferences(currentState, changes, nowIso);
     currentState.updatedAt = nowIso;
 
     await savePlanStateData(currentState);
@@ -203,101 +203,106 @@ export class PlanManager {
     const nowIso = new Date().toISOString();
     const changes: PlanChange[] = [];
     const defaultSource = proposal.source ?? "llm";
-    const mainPlanExplicitlyProvided = Object.hasOwn(proposal, "mainPlanTitle");
-    const activePlansExplicitlyProvided = Object.hasOwn(proposal, "activePlanTitles");
+    const longTermPlanExplicitlyProvided = Object.hasOwn(proposal, "longTermPlanTitle");
+    const shortTermPlansExplicitlyProvided = Object.hasOwn(proposal, "shortTermPlanTitles");
 
-    const previousMainPlan = clonePlanItem(currentState.mainPlan);
+    const previousLongTermPlan = clonePlanItem(currentState.longTermPlan);
 
-    if (mainPlanExplicitlyProvided) {
-      const nextMainTitle = normalizePlanTitle(proposal.mainPlanTitle);
+    if (longTermPlanExplicitlyProvided) {
+      const nextLongTermTitle = normalizePlanTitle(proposal.longTermPlanTitle);
 
-      if (!nextMainTitle && previousMainPlan) {
+      if (!nextLongTermTitle && previousLongTermPlan) {
         changes.push({
-          planId: previousMainPlan.id,
-          scope: "main",
+          planId: previousLongTermPlan.id,
+          scope: "longTerm",
           changeType: "abandoned",
-          before: previousMainPlan,
-          after: markPlanTerminal(previousMainPlan, "abandoned", nowIso),
+          before: previousLongTermPlan,
+          after: markPlanTerminal(previousLongTermPlan, "abandoned", nowIso),
         });
-        currentState.mainPlan = undefined;
-        currentState.mainPlanId = undefined;
-      } else if (nextMainTitle) {
-        if (!previousMainPlan) {
-          currentState.mainPlan = createPlanItem({
-            scope: "main",
-            title: nextMainTitle,
+        currentState.longTermPlan = undefined;
+        currentState.longTermPlanId = undefined;
+      } else if (nextLongTermTitle) {
+        if (!previousLongTermPlan) {
+          currentState.longTermPlan = createPlanItem({
+            scope: "longTerm",
+            title: nextLongTermTitle,
             nowIso,
             reason: proposal.reason,
             source: defaultSource,
             expiresAt: proposal.expiresAt,
           });
-          currentState.mainPlanId = currentState.mainPlan.id;
+          currentState.longTermPlanId = currentState.longTermPlan.id;
           changes.push({
-            planId: currentState.mainPlan.id,
-            scope: "main",
+            planId: currentState.longTermPlan.id,
+            scope: "longTerm",
             changeType: "created",
-            after: clonePlanItem(currentState.mainPlan),
+            after: clonePlanItem(currentState.longTermPlan),
           });
-        } else if (previousMainPlan.title !== nextMainTitle) {
-          const nextMainPlan = createPlanItem({
-            scope: "main",
-            title: nextMainTitle,
+        } else if (previousLongTermPlan.title !== nextLongTermTitle) {
+          const nextLongTermPlan = createPlanItem({
+            scope: "longTerm",
+            title: nextLongTermTitle,
             nowIso,
             reason: proposal.reason,
             source: defaultSource,
             expiresAt: proposal.expiresAt,
           });
           changes.push({
-            planId: previousMainPlan.id,
-            scope: "main",
+            planId: previousLongTermPlan.id,
+            scope: "longTerm",
             changeType: "superseded",
-            before: previousMainPlan,
-            after: markPlanTerminal(previousMainPlan, "superseded", nowIso),
+            before: previousLongTermPlan,
+            after: markPlanTerminal(previousLongTermPlan, "superseded", nowIso),
           });
-          currentState.mainPlan = nextMainPlan;
-          currentState.mainPlanId = nextMainPlan.id;
+          currentState.longTermPlan = nextLongTermPlan;
+          currentState.longTermPlanId = nextLongTermPlan.id;
           changes.push({
-            planId: nextMainPlan.id,
-            scope: "main",
+            planId: nextLongTermPlan.id,
+            scope: "longTerm",
             changeType: "created",
-            after: clonePlanItem(nextMainPlan),
+            after: clonePlanItem(nextLongTermPlan),
           });
         } else {
-          const updatedMainPlan: PlanItem = {
-            ...previousMainPlan,
+          const updatedLongTermPlan: PlanItem = {
+            ...previousLongTermPlan,
             parentPlanId: undefined,
-            reason: proposal.reason ?? previousMainPlan.reason,
+            reason: proposal.reason ?? previousLongTermPlan.reason,
             source: defaultSource,
-            expiresAt: proposal.expiresAt ?? previousMainPlan.expiresAt,
+            expiresAt: proposal.expiresAt ?? previousLongTermPlan.expiresAt,
             updatedAt: nowIso,
           };
 
-          if (hasMeaningfulPlanChanges({ previous: previousMainPlan, next: updatedMainPlan })) {
-            currentState.mainPlan = updatedMainPlan;
-            currentState.mainPlanId = updatedMainPlan.id;
+          if (
+            hasMeaningfulPlanChanges({
+              previous: previousLongTermPlan,
+              next: updatedLongTermPlan,
+            })
+          ) {
+            currentState.longTermPlan = updatedLongTermPlan;
+            currentState.longTermPlanId = updatedLongTermPlan.id;
             changes.push({
-              planId: updatedMainPlan.id,
-              scope: "main",
+              planId: updatedLongTermPlan.id,
+              scope: "longTerm",
               changeType: "updated",
-              before: previousMainPlan,
-              after: clonePlanItem(updatedMainPlan),
+              before: previousLongTermPlan,
+              after: clonePlanItem(updatedLongTermPlan),
             });
           }
         }
       }
     }
 
-    if (activePlansExplicitlyProvided) {
-      const nextActiveTitles = (proposal.activePlanTitles ?? [])
+    if (shortTermPlansExplicitlyProvided) {
+      const nextShortTermTitles = (proposal.shortTermPlanTitles ?? [])
         .map((title) => normalizePlanTitle(title))
         .filter((title): title is string => Boolean(title));
 
-      const previousActivePlans = currentState.activePlans.map((plan) => ({ ...plan }));
-      const previousByTitle = new Map(previousActivePlans.map((plan) => [plan.title, plan]));
-      const nextActivePlans: PlanItem[] = [];
-      const parentPlanId = currentState.mainPlanId;
+      const previousShortTermPlans = currentState.shortTermPlans.map((plan) => ({ ...plan }));
+      const previousByTitle = new Map(previousShortTermPlans.map((plan) => [plan.title, plan]));
+      const nextShortTermPlans: PlanItem[] = [];
+      const parentPlanId = currentState.longTermPlanId;
 
-      for (const title of nextActiveTitles) {
+      for (const title of nextShortTermTitles) {
         const existing = previousByTitle.get(title);
         const nextPlan = existing
           ? {
@@ -310,7 +315,7 @@ export class PlanManager {
               updatedAt: nowIso,
             }
           : createPlanItem({
-              scope: "active",
+              scope: "shortTerm",
               title,
               nowIso,
               parentPlanId,
@@ -319,19 +324,19 @@ export class PlanManager {
               expiresAt: proposal.expiresAt,
             });
 
-        nextActivePlans.push(nextPlan);
+        nextShortTermPlans.push(nextPlan);
 
         if (!existing) {
           changes.push({
             planId: nextPlan.id,
-            scope: "active",
+            scope: "shortTerm",
             changeType: "created",
             after: clonePlanItem(nextPlan),
           });
         } else if (hasMeaningfulPlanChanges({ previous: existing, next: nextPlan })) {
           changes.push({
             planId: nextPlan.id,
-            scope: "active",
+            scope: "shortTerm",
             changeType: "updated",
             before: existing,
             after: clonePlanItem(nextPlan),
@@ -339,11 +344,11 @@ export class PlanManager {
         }
       }
 
-      for (const previous of previousActivePlans) {
-        if (!nextActiveTitles.includes(previous.title)) {
+      for (const previous of previousShortTermPlans) {
+        if (!nextShortTermTitles.includes(previous.title)) {
           changes.push({
             planId: previous.id,
-            scope: "active",
+            scope: "shortTerm",
             changeType: "abandoned",
             before: previous,
             after: markPlanTerminal(previous, "abandoned", nowIso),
@@ -351,11 +356,11 @@ export class PlanManager {
         }
       }
 
-      currentState.activePlans = nextActivePlans;
+      currentState.shortTermPlans = nextShortTermPlans;
       rebuildPlanReferences(currentState);
     }
 
-    this.syncActivePlanParentReferences(currentState, changes, nowIso);
+    this.syncShortTermPlanParentReferences(currentState, changes, nowIso);
     currentState.updatedAt = nowIso;
     rebuildPlanReferences(currentState);
 
@@ -372,39 +377,39 @@ export class PlanManager {
     const nowIso = new Date().toISOString();
     const changes: PlanChange[] = [];
 
-    if (currentState.mainPlan?.id === input.planId) {
-      const before = clonePlanItem(currentState.mainPlan);
+    if (currentState.longTermPlan?.id === input.planId) {
+      const before = clonePlanItem(currentState.longTermPlan);
       const after = before ? markPlanTerminal(before, input.status, nowIso) : undefined;
       if (before && after) {
         changes.push({
           planId: before.id,
-          scope: "main",
+          scope: "longTerm",
           changeType: input.status,
           before,
           after,
         });
       }
-      currentState.mainPlan = undefined;
-      currentState.mainPlanId = undefined;
+      currentState.longTermPlan = undefined;
+      currentState.longTermPlanId = undefined;
     } else {
-      const index = currentState.activePlans.findIndex((plan) => plan.id === input.planId);
+      const index = currentState.shortTermPlans.findIndex((plan) => plan.id === input.planId);
       if (index >= 0) {
-        const before = clonePlanItem(currentState.activePlans[index]);
+        const before = clonePlanItem(currentState.shortTermPlans[index]);
         const after = before ? markPlanTerminal(before, input.status, nowIso) : undefined;
         if (before && after) {
           changes.push({
             planId: before.id,
-            scope: "active",
+            scope: "shortTerm",
             changeType: input.status,
             before,
             after,
           });
         }
-        currentState.activePlans.splice(index, 1);
+        currentState.shortTermPlans.splice(index, 1);
       }
     }
 
-    this.syncActivePlanParentReferences(currentState, changes, nowIso);
+    this.syncShortTermPlanParentReferences(currentState, changes, nowIso);
     rebuildPlanReferences(currentState);
     currentState.updatedAt = nowIso;
 
@@ -413,19 +418,19 @@ export class PlanManager {
   }
 
   /**
-   * 维护活跃计划与主计划之间的引用一致性。
+   * 维护短期计划与长期计划之间的引用一致性。
    *
    * 说明：
-   * - 当主计划被创建、替换、完成或清空后，活跃计划的 parentPlanId 也需要同步；
+   * - 当长期计划被创建、替换、完成或清空后，短期计划的 parentPlanId 也需要同步；
    * - 只有引用真实发生变化时才产出 updated 事件，避免制造低质量噪音。
    */
-  private syncActivePlanParentReferences(
+  private syncShortTermPlanParentReferences(
     state: PlanState,
     changes: PlanChange[],
     nowIso: string,
   ): void {
-    state.activePlans = state.activePlans.map((plan) => {
-      const expectedParentPlanId = state.mainPlanId;
+    state.shortTermPlans = state.shortTermPlans.map((plan) => {
+      const expectedParentPlanId = state.longTermPlanId;
       if (plan.parentPlanId === expectedParentPlanId) {
         return plan;
       }
@@ -439,7 +444,7 @@ export class PlanManager {
       if (hasMeaningfulPlanChanges({ previous: plan, next: nextPlan })) {
         changes.push({
           planId: plan.id,
-          scope: "active",
+          scope: "shortTerm",
           changeType: "updated",
           before: clonePlanItem(plan),
           after: clonePlanItem(nextPlan),

@@ -70,8 +70,8 @@ export async function chooseActionAgent(
     location: `${context.characterState.location.major}${
       context.characterState.location.minor ? `-${context.characterState.location.minor}` : ""
     }`,
-    mainPlanTitle: planState.mainPlan?.title,
-    activePlanTitles: planState.activePlans.map((plan) => plan.title),
+    longTermPlanTitle: planState.longTermPlan?.title,
+    shortTermPlanTitles: planState.shortTermPlans.map((plan) => plan.title),
   });
 
   for (let i = 0; i < RETRY_COUNT; i++) {
@@ -134,8 +134,8 @@ export async function chooseFoodAgent(
     satiety: context.characterState.satiety,
     mood: context.characterState.mood,
     worldTime: context.worldState.time,
-    mainPlanTitle: planState.mainPlan?.title,
-    activePlanTitles: planState.activePlans.map((plan) => plan.title),
+    longTermPlanTitle: planState.longTermPlan?.title,
+    shortTermPlanTitles: planState.shortTermPlans.map((plan) => plan.title),
     recentBehaviorList: actionMemoryList.map((item) => ({
       behavior: item.behavior,
       description: item.description,
@@ -195,8 +195,8 @@ export async function chooseShopProductAgent(
     mood: context.characterState.mood,
     money: context.characterState.money,
     worldTime: context.worldState.time,
-    mainPlanTitle: planState.mainPlan?.title,
-    activePlanTitles: planState.activePlans.map((plan) => plan.title),
+    longTermPlanTitle: planState.longTermPlan?.title,
+    shortTermPlanTitles: planState.shortTermPlans.map((plan) => plan.title),
     recentBehaviorList: actionMemoryList.map((item) => ({
       behavior: item.behavior,
       description: item.description,
@@ -249,8 +249,8 @@ export async function chooseCafeCoffeeAgent(
     mood: context.characterState.mood,
     money: context.characterState.money,
     worldTime: context.worldState.time,
-    mainPlanTitle: planState.mainPlan?.title,
-    activePlanTitles: planState.activePlans.map((plan) => plan.title),
+    longTermPlanTitle: planState.longTermPlan?.title,
+    shortTermPlanTitles: planState.shortTermPlans.map((plan) => plan.title),
     recentBehaviorList: actionMemoryList.map((item) => ({
       behavior: item.behavior,
       description: item.description,
@@ -301,8 +301,8 @@ export async function chooseShrinePrayerAgent(
     money: context.characterState.money,
     offeringCost,
     worldTime: context.worldState.time,
-    mainPlanTitle: planState.mainPlan?.title,
-    activePlanTitles: planState.activePlans.map((plan) => plan.title),
+    longTermPlanTitle: planState.longTermPlan?.title,
+    shortTermPlanTitles: planState.shortTermPlans.map((plan) => plan.title),
     recentBehaviorList: actionMemoryList.map((item) => ({
       behavior: item.behavior,
       description: item.description,

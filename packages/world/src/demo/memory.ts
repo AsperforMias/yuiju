@@ -143,7 +143,7 @@ function createBehaviorEpisode(input: {
  * 构建计划生命周期 Episode。
  *
  * 说明：
- * - 一个正例用于测试“主计划”是否能沉淀为长期记忆；
+ * - 一个正例用于测试“长期计划”是否能沉淀为长期记忆；
  * - 一个边界例用于测试计划执行细节是否会被过度记忆。
  */
 function createPlanEpisode(input: {
@@ -152,7 +152,7 @@ function createPlanEpisode(input: {
   happenedAt: Date;
   summaryText: string;
   planId: string;
-  planScope: "main" | "active";
+  planScope: "longTerm" | "shortTerm";
   changeType: string;
   before?: Record<string, unknown>;
   after?: Record<string, unknown>;
@@ -300,15 +300,15 @@ function buildDemoEpisodeCases(): DemoEpisodeCase[] {
     },
     {
       id: "plan-main-ranzan",
-      title: "主计划：准备岚山夜景采风",
+      title: "长期计划：准备岚山夜景采风",
       category: "positive",
       episode: createPlanEpisode({
         caseId: "plan-main-ranzan",
         type: "plan_created",
         happenedAt: new Date("2026-03-19T20:30:00+08:00"),
-        summaryText: "悠酱创建了主计划：准备岚山夜景采风",
+        summaryText: "悠酱创建了长期计划：准备岚山夜景采风",
         planId: "demo-plan-main-ranzan",
-        planScope: "main",
+        planScope: "longTerm",
         changeType: "created",
         after: {
           id: "demo-plan-main-ranzan",
@@ -316,12 +316,12 @@ function buildDemoEpisodeCases(): DemoEpisodeCase[] {
           status: "active",
           source: "system",
         },
-        changeReason: "把这件事确认为当前阶段最重要的主计划。",
+        changeReason: "把这件事确认为当前阶段最重要的长期计划。",
       }),
       expectation: {
         shouldBecomeFact: true,
-        expectedHints: ["岚山夜景采风", "主计划"],
-        note: "主计划属于长期状态信息，应稳定进入记忆。",
+        expectedHints: ["岚山夜景采风", "长期计划"],
+        note: "长期计划属于长期状态信息，应稳定进入记忆。",
       },
     },
     {
@@ -332,9 +332,9 @@ function buildDemoEpisodeCases(): DemoEpisodeCase[] {
         caseId: "plan-detail-train-price",
         type: "plan_updated",
         happenedAt: new Date("2026-03-19T21:10:00+08:00"),
-        summaryText: "悠酱更新了活跃计划：今晚先比较车票价格",
+        summaryText: "悠酱更新了短期计划：今晚先比较车票价格",
         planId: "demo-plan-active-budget",
-        planScope: "active",
+        planScope: "shortTerm",
         changeType: "updated",
         before: {
           id: "demo-plan-active-budget",
@@ -511,11 +511,11 @@ function buildQueryCases(): MemoryQueryCase[] {
       expectation: "应召回对澄风的信任增强。",
     },
     {
-      title: "Fact 查询：当前主计划",
-      query: "ゆいじゅ 当前 主计划 岚山夜景采风",
+      title: "Fact 查询：当前长期计划",
+      query: "ゆいじゅ 当前 长期计划 岚山夜景采风",
       memoryType: "fact",
       topK: 3,
-      expectation: "应召回主计划，而不是执行细节。",
+      expectation: "应召回长期计划，而不是执行细节。",
     },
     {
       title: "Fact 查询：一次性饮料边界",

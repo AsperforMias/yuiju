@@ -80,7 +80,7 @@ function resolveActivityTitle(episode: IMemoryEpisode): string {
   if (episode.type.startsWith("plan_")) {
     const after = getNestedObject(payload.after);
     const before = getNestedObject(payload.before);
-    const planScope = payload.planScope === "main" ? "主计划" : "活跃计划";
+    const planScope = payload.planScope === "longTerm" ? "长期计划" : "短期计划";
     const planTitle = String(after.title ?? before.title ?? "未命名计划");
     return `${planScope} · ${planTitle}`;
   }
@@ -135,11 +135,14 @@ function buildDetailFields(episode: IMemoryEpisode): ActivityDetailField[] {
     const before = getNestedObject(payload.before);
     const after = getNestedObject(payload.after);
     const changeType = String(payload.changeType ?? "未知");
+    const planScope =
+      payload.planScope === "longTerm"
+        ? "长期计划"
+        : payload.planScope === "shortTerm"
+          ? "短期计划"
+          : String(payload.planScope ?? "未知");
 
-    fields.push(
-      { label: "计划范围", value: String(payload.planScope ?? "未知") },
-      { label: "变更类型", value: changeType },
-    );
+    fields.push({ label: "计划范围", value: planScope }, { label: "变更类型", value: changeType });
 
     if (changeType === "created") {
       fields.push({ label: "新计划", value: String(after.title ?? "无") });

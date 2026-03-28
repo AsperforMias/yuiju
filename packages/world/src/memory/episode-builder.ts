@@ -25,7 +25,7 @@ export interface BuildPlanUpdateEpisodesInput {
 
 interface PlanLifecycleEpisodePayload {
   planId: string;
-  planScope: "main" | "active";
+  planScope: "longTerm" | "shortTerm";
   changeType: PlanChange["changeType"];
   before?: {
     id: string;
@@ -131,7 +131,7 @@ function createPlanLifecycleEpisode(input: {
     return null;
   }
 
-  const scopeText = change.scope === "main" ? "主计划" : "活跃计划";
+  const scopeText = change.scope === "longTerm" ? "长期计划" : "短期计划";
   const actionText = describeChangeType(change.changeType);
   const episodeType = mapPlanChangeTypeToEpisodeType(change.changeType);
   const changeReason = `本次 tick ${actionText}${scopeText}`;

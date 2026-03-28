@@ -1,10 +1,10 @@
 /**
  * 计划范围。
  *
- * - main: 当前主计划，通常承载长期目标。
- * - active: 当前活跃执行中的短期计划。
+ * - longTerm: 当前长期计划，通常承载跨多天推进的目标。
+ * - shortTerm: 当前短期计划，通常承载接下来几小时到当天内的安排。
  */
-export type PlanScope = "main" | "active";
+export type PlanScope = "longTerm" | "shortTerm";
 
 /**
  * 计划状态。
@@ -25,7 +25,7 @@ export type PlanSource = "llm" | "system" | "user";
  *
  * 说明：
  * - id 由业务侧按标题与范围生成稳定标识；
- * - parentPlanId 用于表达活跃计划挂靠到主计划的引用关系；
+ * - parentPlanId 用于表达短期计划挂靠到长期计划的引用关系；
  * - reason / source / expiresAt 为后续生命周期治理与记忆提炼保留稳定字段。
  */
 export interface PlanItem {
@@ -45,10 +45,10 @@ export interface PlanItem {
  * Redis 中保存的当前计划真相源。
  */
 export interface PlanState {
-  mainPlanId?: string;
-  activePlanIds: string[];
-  mainPlan?: PlanItem;
-  activePlans: PlanItem[];
+  longTermPlanId?: string;
+  shortTermPlanIds: string[];
+  longTermPlan?: PlanItem;
+  shortTermPlans: PlanItem[];
   updatedAt: string;
 }
 
@@ -56,8 +56,8 @@ export interface PlanState {
  * LLM 在 tick 阶段给出的计划变更提议。
  */
 export interface PlanProposal {
-  mainPlanTitle?: string;
-  activePlanTitles?: string[];
+  longTermPlanTitle?: string;
+  shortTermPlanTitles?: string[];
   reason?: string;
   source?: PlanSource;
   expiresAt?: string;

@@ -85,14 +85,14 @@ export async function tick(params: TickParams): Promise<TickReturn> {
   if (actionMetadata && selectedAction) {
     const actionStartedAt = new Date();
     const planProposal: {
-      mainPlanTitle?: string;
-      activePlanTitles?: string[];
+      longTermPlanTitle?: string;
+      shortTermPlanTitles?: string[];
     } = {};
     if ("updateLongTermPlan" in selectedAction) {
-      planProposal.mainPlanTitle = selectedAction.updateLongTermPlan;
+      planProposal.longTermPlanTitle = selectedAction.updateLongTermPlan;
     }
     if ("updateShortTermPlan" in selectedAction) {
-      planProposal.activePlanTitles = selectedAction.updateShortTermPlan;
+      planProposal.shortTermPlanTitles = selectedAction.updateShortTermPlan;
     }
 
     const planApplyResult = await planManager.applyProposal(planProposal);

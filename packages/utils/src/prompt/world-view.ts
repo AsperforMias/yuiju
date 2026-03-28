@@ -61,9 +61,9 @@ const planUpdateGuidelinePrompt = `
 - 如果当前行动只是满足即时需求（如吃饭、休息、发呆），通常不需要改写长期计划；只有当这会改变接下来一段时间的安排时，才考虑更新短期计划。
 `.trim();
 
-function generateActivePlanPrompt(activePlanTitles?: string[]) {
-  return activePlanTitles?.length
-    ? activePlanTitles.map((item, index) => `${index + 1}. ${item}`).join("\n")
+function generateShortTermPlanPrompt(shortTermPlanTitles?: string[]) {
+  return shortTermPlanTitles?.length
+    ? shortTermPlanTitles.map((item, index) => `${index + 1}. ${item}`).join("\n")
     : "（无）";
 }
 
@@ -81,8 +81,8 @@ export interface ChooseActionPromptPayload {
   recentBehaviorList: BehaviorRecord[];
   worldTime: Dayjs;
   eventDescription?: string;
-  mainPlanTitle?: string;
-  activePlanTitles?: string[];
+  longTermPlanTitle?: string;
+  shortTermPlanTitles?: string[];
 }
 
 export function chooseActionPrompt({
@@ -96,8 +96,8 @@ export function chooseActionPrompt({
   mood,
   worldTime,
   eventDescription,
-  mainPlanTitle,
-  activePlanTitles,
+  longTermPlanTitle,
+  shortTermPlanTitles,
 }: ChooseActionPromptPayload) {
   const actionListPrompt = actionList
     .map((item) => `- ${item.action}：${item.description}`)
@@ -127,9 +127,9 @@ ${eventDescription ? `当前事件：${eventDescription}` : ""}
 饱腹：${satiety} / 100
 心情：${mood} / 100
 金币：${money}
-主计划：${mainPlanTitle || "（无）"}
-活跃计划：
-${generateActivePlanPrompt(activePlanTitles)}
+长期计划：${longTermPlanTitle || "（无）"}
+短期计划：
+${generateShortTermPlanPrompt(shortTermPlanTitles)}
 最近的action：
 ${generateRecentBehaviorPrompt(recentBehaviorList)}
 可选Action（仅可从中选择）：
@@ -148,8 +148,8 @@ export interface ChooseFoodPromptPayload {
   mood: number;
   recentBehaviorList: BehaviorRecord[];
   worldTime: Dayjs;
-  mainPlanTitle?: string;
-  activePlanTitles?: string[];
+  longTermPlanTitle?: string;
+  shortTermPlanTitles?: string[];
 }
 
 export function chooseFoodPrompt({
@@ -159,8 +159,8 @@ export function chooseFoodPrompt({
   stamina,
   satiety,
   mood,
-  mainPlanTitle,
-  activePlanTitles,
+  longTermPlanTitle,
+  shortTermPlanTitles,
   recentBehaviorList,
 }: ChooseFoodPromptPayload) {
   const availableFoodPrompt =
@@ -177,9 +177,9 @@ export function chooseFoodPrompt({
 体力值：${stamina}/100
 饱腹：${satiety}/100
 心情：${mood}/100
-主计划：${mainPlanTitle || "（无）"}
-活跃计划：
-${generateActivePlanPrompt(activePlanTitles)}
+长期计划：${longTermPlanTitle || "（无）"}
+短期计划：
+${generateShortTermPlanPrompt(shortTermPlanTitles)}
 
 最近的action：
 ${generateRecentBehaviorPrompt(recentBehaviorList)}
@@ -201,8 +201,8 @@ export interface ChooseShopProductPromptPayload {
   money: number;
   recentBehaviorList: BehaviorRecord[];
   worldTime: Dayjs;
-  mainPlanTitle?: string;
-  activePlanTitles?: string[];
+  longTermPlanTitle?: string;
+  shortTermPlanTitles?: string[];
 }
 
 export function chooseShopProductPrompt({
@@ -213,8 +213,8 @@ export function chooseShopProductPrompt({
   satiety,
   mood,
   money,
-  mainPlanTitle,
-  activePlanTitles,
+  longTermPlanTitle,
+  shortTermPlanTitles,
   recentBehaviorList,
 }: ChooseShopProductPromptPayload) {
   const availableProductsPrompt =
@@ -233,9 +233,9 @@ export function chooseShopProductPrompt({
 饱腹：${satiety}/100
 心情：${mood}/100
 金币：${money}
-主计划：${mainPlanTitle || "（无）"}
-活跃计划：
-${generateActivePlanPrompt(activePlanTitles)}
+长期计划：${longTermPlanTitle || "（无）"}
+短期计划：
+${generateShortTermPlanPrompt(shortTermPlanTitles)}
 
 最近的action：
 ${generateRecentBehaviorPrompt(recentBehaviorList)}
@@ -257,8 +257,8 @@ export interface ChooseCafeCoffeePromptPayload {
   money: number;
   recentBehaviorList: BehaviorRecord[];
   worldTime: Dayjs;
-  mainPlanTitle?: string;
-  activePlanTitles?: string[];
+  longTermPlanTitle?: string;
+  shortTermPlanTitles?: string[];
 }
 
 export function chooseCafeCoffeePrompt({
@@ -269,8 +269,8 @@ export function chooseCafeCoffeePrompt({
   satiety,
   mood,
   money,
-  mainPlanTitle,
-  activePlanTitles,
+  longTermPlanTitle,
+  shortTermPlanTitles,
   recentBehaviorList,
 }: ChooseCafeCoffeePromptPayload) {
   const availableCoffeesPrompt =
@@ -289,9 +289,9 @@ export function chooseCafeCoffeePrompt({
 饱腹：${satiety}/100
 心情：${mood}/100
 金币：${money}
-主计划：${mainPlanTitle || "（无）"}
-活跃计划：
-${generateActivePlanPrompt(activePlanTitles)}
+长期计划：${longTermPlanTitle || "（无）"}
+短期计划：
+${generateShortTermPlanPrompt(shortTermPlanTitles)}
 
 最近的action：
 ${generateRecentBehaviorPrompt(recentBehaviorList)}
@@ -311,8 +311,8 @@ export interface ChooseShrinePrayerPromptPayload {
   offeringCost: number;
   recentBehaviorList: BehaviorRecord[];
   worldTime: Dayjs;
-  mainPlanTitle?: string;
-  activePlanTitles?: string[];
+  longTermPlanTitle?: string;
+  shortTermPlanTitles?: string[];
 }
 
 export function chooseShrinePrayerPrompt({
@@ -324,8 +324,8 @@ export function chooseShrinePrayerPrompt({
   mood,
   money,
   offeringCost,
-  mainPlanTitle,
-  activePlanTitles,
+  longTermPlanTitle,
+  shortTermPlanTitles,
   recentBehaviorList,
 }: ChooseShrinePrayerPromptPayload) {
   return `
@@ -347,9 +347,9 @@ export function chooseShrinePrayerPrompt({
 饱腹：${satiety}/100
 心情：${mood}/100
 金币：${money}
-主计划：${mainPlanTitle || "（无）"}
-活跃计划：
-${generateActivePlanPrompt(activePlanTitles)}
+长期计划：${longTermPlanTitle || "（无）"}
+短期计划：
+${generateShortTermPlanPrompt(shortTermPlanTitles)}
 
 最近的action：
 ${generateRecentBehaviorPrompt(recentBehaviorList)}
