@@ -120,7 +120,7 @@ export async function processPendingMemoryEpisodes(
 export async function emitMemoryEpisode(episode: MemoryEpisodeWriteInput): Promise<string | null> {
   const savedEpisode = await saveMemoryEpisode({
     ...episode,
-    extractionStatus: "pending",
+    extractionStatus: episode.extractionStatus ?? "pending",
   });
 
   return savedEpisode.id ?? null;

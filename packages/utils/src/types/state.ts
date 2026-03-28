@@ -1,5 +1,6 @@
 import type { Dayjs } from "dayjs";
 import type { ActionId } from "./action";
+import type { WeatherSnapshot } from "./weather";
 
 // 大场景
 export enum MajorScene {
@@ -154,10 +155,13 @@ export interface ICharacterState extends CharacterStateData {
 
 export interface WorldStateData {
   time: Dayjs;
+  weather: WeatherSnapshot | null;
 }
 
 export interface IWorldState extends WorldStateData {
   log(): WorldStateData;
   updateTime(newTime?: Dayjs): Promise<void>;
+  setWeather(snapshot: WeatherSnapshot): Promise<void>;
+  getWeather(): WeatherSnapshot | null;
   reset(): Promise<void>;
 }

@@ -265,7 +265,7 @@ export const llmMemoryExtractor: MemoryExtractor = {
     /**
      * 计划事件只保留在 Episode 真相源，不进入 Graphiti 事实图谱。
      */
-    if (episode.type.startsWith("plan_")) {
+    if (episode.type.startsWith("plan_") || episode.type === "weather_changed") {
       return [];
     }
 

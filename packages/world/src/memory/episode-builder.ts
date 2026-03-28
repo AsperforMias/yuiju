@@ -4,6 +4,7 @@ import type {
   MemoryEpisode,
   MemoryEpisodeType,
   PlanChange,
+  WeatherSnapshot,
 } from "@yuiju/utils";
 import { ActionId, DEFAULT_MEMORY_SUBJECT_ID } from "@yuiju/utils";
 
@@ -56,6 +57,11 @@ interface BehaviorEpisodePayload {
   relatedPlanId?: string;
   location: ActionContext["characterState"]["location"];
   characterStateSnapshot: ReturnType<ActionContext["characterState"]["log"]>;
+}
+
+interface WeatherChangedEpisodePayload {
+  before: WeatherSnapshot;
+  after: WeatherSnapshot;
 }
 
 /**
@@ -119,6 +125,48 @@ export function buildPlanUpdateEpisodes(
     });
     return episode ? [episode] : [];
   });
+}
+
+/**
+ * 构建天气变化 Episode。
+ *
+ * 说明：
+ * - 仅在天气类型或体感温度等级发生变化时写入；
+ * - extractionStatus 直接标记为 skipped，避免进入长期事实抽取链路。
+ */
+export function buildWeatherChangedEpisode(input: {
+  before: WeatherSnapshot | null;
+  after: WeatherSnapshot;
+  isDev: boolean;
+}): MemoryEpisode<WeatherChangedEpisodePayload> | null {
+  if (!input.before) {
+    return null;
+  }
+
+  if (
+    input.before.type === input.after.type &&
+    input.before.temperatureLevel === input.after.temperatureLevel
+  ) {
+    return null;
+  }
+
+  return {
+    source: "system",
+    type: "weather_changed",
+    subject: DEFAULT_MEMORY_SUBJECT_ID,
+    happenedAt: new Date(input.after.periodStartAt),
+    summaryText: [
+      "天气发生变化",
+      `天气：${input.before.type} -> ${input.after.type}`,
+      `体感：${input.before.temperatureLevel} -> ${input.after.temperatureLevel}`,
+    ].join("；"),
+    extractionStatus: "skipped",
+    isDev: input.isDev,
+    payload: {
+      before: input.before,
+      after: input.after,
+    },
+  };
 }
 
 function createPlanLifecycleEpisode(input: {
