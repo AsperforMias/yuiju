@@ -1,9 +1,10 @@
 import {
   deepseekProvider,
-  getMemoryServiceClientFromEnv,
   getCharacterCardPrompt,
+  getMemoryServiceClientFromEnv,
   memorySearchTool,
   queryCharacterStateTool,
+  queryWorldMapTool,
   smallModel,
 } from "@yuiju/utils";
 import { generateText, type ModelMessage, Output, stepCountIs } from "ai";
@@ -59,6 +60,7 @@ export class LLMManager {
       tools: {
         memorySearch: memorySearchTool,
         queryCharacterState: queryCharacterStateTool,
+        queryWorldMap: queryWorldMapTool,
       },
       stopWhen: stepCountIs(10),
     });
@@ -143,6 +145,7 @@ export class LLMManager {
       tools: {
         memorySearch: memorySearchTool,
         queryCharacterState: queryCharacterStateTool,
+        queryWorldMap: queryWorldMapTool,
       },
       stopWhen: stepCountIs(10),
     });

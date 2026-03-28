@@ -1,9 +1,10 @@
+import { MajorScene } from "../types/state";
+
 export type WorldMapPlaceId = "HOME" | "SCHOOL" | "SHOP" | "CAFE" | "PARK" | "SHRINE";
 
 export interface WorldMapPlace {
   id: WorldMapPlaceId;
   name: string;
-  description: string;
 }
 
 export interface WorldMapLink {
@@ -23,12 +24,12 @@ export interface WorldMapLink {
  * - 行为实现中的移动时间/消耗应尽量与这里保持一致，避免模型获取到互相矛盾的地图信息。
  */
 export const worldMapPlaces: WorldMapPlace[] = [
-  { id: "HOME", name: "家", description: "悠酱独自生活的地方。" },
-  { id: "SCHOOL", name: "学校", description: "悠酱上学的地方。" },
-  { id: "SHOP", name: "商店", description: "可以买零食和日用品的地方。" },
-  { id: "CAFE", name: "咖啡店", description: "可以点咖啡，也可以兼职打工的地方。" },
-  { id: "PARK", name: "公园", description: "适合散步放松、转换心情的地方。" },
-  { id: "SHRINE", name: "神社", description: "可以参拜、投币祈愿的安静场所。" },
+  { id: "HOME", name: MajorScene.Home },
+  { id: "SCHOOL", name: MajorScene.School },
+  { id: "SHOP", name: MajorScene.Shop },
+  { id: "CAFE", name: MajorScene.Cafe },
+  { id: "PARK", name: MajorScene.Park },
+  { id: "SHRINE", name: MajorScene.Shrine },
 ];
 
 export const worldMapLinks: WorldMapLink[] = [
@@ -69,6 +70,9 @@ export const worldMapDsl = [
   }),
 ].join("\n");
 
+/**
+ * 给人看的，不是给 LLM 看的
+ */
 export const worldMapTerminalUi = `
               ┌────────┐
               │  学校  │

@@ -1,5 +1,5 @@
-import { getTimeWithWeekday } from "../time";
 import type { Dayjs } from "dayjs";
+import { getTimeWithWeekday } from "../time";
 import { baseInformation } from "./character-card";
 import { type BehaviorRecord, generateRecentBehaviorPrompt } from "./utils";
 
@@ -13,8 +13,8 @@ export const worldViewPrompt = `
 - 学校：一所日式高中学校，悠酱上学的地方。上课时间为9点-12点、14点-16点。
 - 商店：星见町的便利商店/零食铺，可以花金币购买零食。
 - 咖啡店：一间小咖啡店，可以兼职打工，也可以在这里购买各种咖啡。
-- 公园：在家南边，适合散步放松。
-- 神社：在公园南边，可以参拜、投币祈愿。
+- 公园：适合散步放松，恢复心情。
+- 神社：供奉神明的地方，可以参拜，恢复心情。
 
 ### 设备
 - 手机：可以接收到来自现实世界的信息。
@@ -42,13 +42,16 @@ const planUpdateGuidelinePrompt = `
 ### 短期计划（对应 updateShortTermPlan）
 - 短期计划是接下来几小时到当天内要执行的具体安排，强调“接下来准备怎么做”。
 - 短期计划应当是可执行、可感知的事项，通常用于服务当前长期计划或应对当前情境。
+- 如果一次远距离移动会明显占用接下来一段时间，或它本身就是当前安排的重要组成部分，可以写入短期计划；但应优先写“去哪里做什么”，不要把连续路径拆成多个移动步骤。
 - 适合写入短期计划的例子：
   - 去商店买面包和牛奶
   - 今天去咖啡店打工
+  - 去神社参拜
 - 不适合写入短期计划的内容：
   - 变得更优秀
   - 考上理想大学
   - 让生活稳定下来
+  - 从家走到公园，再从公园走到神社
 - 只有当接下来要做的事项序列明显变化时，才更新短期计划。
 - 如果现有短期计划仍然有效，应尽量保留，不要因为当前 action 切换就重写整组计划。
 
