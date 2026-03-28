@@ -56,20 +56,14 @@ export async function chooseActionAgent(
 ): Promise<ActionAgentDecision | undefined> {
   const systemPrompt = chooseActionPrompt({
     actionList,
-    currentAction: context.characterState.action,
-    money: context.characterState.money,
-    stamina: context.characterState.stamina,
-    satiety: context.characterState.satiety,
-    mood: context.characterState.mood,
-    worldTime: context.worldState.time,
+    characterState: context.characterState,
+    worldState: context.worldState,
+    eventDescription: context.eventDescription,
     recentBehaviorList: actionMemoryList.map((item) => ({
       behavior: item.behavior,
       description: item.description,
       time: dayjs(item.timestamp),
     })),
-    location: `${context.characterState.location.major}${
-      context.characterState.location.minor ? `-${context.characterState.location.minor}` : ""
-    }`,
     longTermPlanTitle: planState.longTermPlan?.title,
     shortTermPlanTitles: planState.shortTermPlans.map((plan) => plan.title),
   });
@@ -127,13 +121,8 @@ export async function chooseFoodAgent(
 ) {
   const systemPrompt = chooseFoodPrompt({
     availableFood: foodList,
-    location: `${context.characterState.location.major}${
-      context.characterState.location.minor ? "-" + context.characterState.location.minor : ""
-    }`,
-    stamina: context.characterState.stamina,
-    satiety: context.characterState.satiety,
-    mood: context.characterState.mood,
-    worldTime: context.worldState.time,
+    characterState: context.characterState,
+    worldState: context.worldState,
     longTermPlanTitle: planState.longTermPlan?.title,
     shortTermPlanTitles: planState.shortTermPlans.map((plan) => plan.title),
     recentBehaviorList: actionMemoryList.map((item) => ({
@@ -187,14 +176,8 @@ export async function chooseShopProductAgent(
 
   const systemPrompt = chooseShopProductPrompt({
     availableProducts: productList,
-    location: `${context.characterState.location.major}${
-      context.characterState.location.minor ? "-" + context.characterState.location.minor : ""
-    }`,
-    stamina: context.characterState.stamina,
-    satiety: context.characterState.satiety,
-    mood: context.characterState.mood,
-    money: context.characterState.money,
-    worldTime: context.worldState.time,
+    characterState: context.characterState,
+    worldState: context.worldState,
     longTermPlanTitle: planState.longTermPlan?.title,
     shortTermPlanTitles: planState.shortTermPlans.map((plan) => plan.title),
     recentBehaviorList: actionMemoryList.map((item) => ({
@@ -241,14 +224,8 @@ export async function chooseCafeCoffeeAgent(
 
   const systemPrompt = chooseCafeCoffeePrompt({
     availableCoffees: coffeeList,
-    location: `${context.characterState.location.major}${
-      context.characterState.location.minor ? "-" + context.characterState.location.minor : ""
-    }`,
-    stamina: context.characterState.stamina,
-    satiety: context.characterState.satiety,
-    mood: context.characterState.mood,
-    money: context.characterState.money,
-    worldTime: context.worldState.time,
+    characterState: context.characterState,
+    worldState: context.worldState,
     longTermPlanTitle: planState.longTermPlan?.title,
     shortTermPlanTitles: planState.shortTermPlans.map((plan) => plan.title),
     recentBehaviorList: actionMemoryList.map((item) => ({
@@ -292,15 +269,9 @@ export async function chooseShrinePrayerAgent(
 ): Promise<ShrinePrayerAgentDecision | undefined> {
   const systemPrompt = chooseShrinePrayerPrompt({
     actionReason: selectedAction.reason,
-    location: `${context.characterState.location.major}${
-      context.characterState.location.minor ? "-" + context.characterState.location.minor : ""
-    }`,
-    stamina: context.characterState.stamina,
-    satiety: context.characterState.satiety,
-    mood: context.characterState.mood,
-    money: context.characterState.money,
+    characterState: context.characterState,
+    worldState: context.worldState,
     offeringCost,
-    worldTime: context.worldState.time,
     longTermPlanTitle: planState.longTermPlan?.title,
     shortTermPlanTitles: planState.shortTermPlans.map((plan) => plan.title),
     recentBehaviorList: actionMemoryList.map((item) => ({

@@ -1,15 +1,11 @@
 import { emitMemoryEpisode, type IWorldState, isDev, type WeatherSnapshot } from "@yuiju/utils";
+import dayjs from "dayjs";
 import { buildWeatherChangedEpisode } from "@/memory/episode-builder";
 import { worldState } from "@/state/world-state";
 import { logger } from "@/utils/logger";
 import { WEATHER_PERIOD_HOURS } from "./constants";
 import { generateWeatherSnapshot } from "./generator";
-import {
-  isWeatherSnapshotActiveAt,
-  isWeatherSnapshotInFuture,
-  resolveNextWeatherPeriodStart,
-  resolveWeatherPeriod,
-} from "./time";
+import { resolveWeatherPeriod, type WeatherPeriod } from "./time";
 
 export interface WeatherSyncResult {
   currentWeather: WeatherSnapshot;
@@ -54,43 +50,37 @@ async function doSyncCurrentWeather(options: SyncWeatherOptions): Promise<Weathe
   const emitEpisode = options.emitEpisode ?? emitMemoryEpisode;
   const devFlag = options.isDev ?? isDev();
   const currentPeriod = resolveWeatherPeriod(now);
+  const storedWeather = state.getWeather();
 
-  let currentWeather = state.getWeather();
-  if (currentWeather && isWeatherSnapshotActiveAt(currentWeather, now)) {
+  if (storedWeather && isCurrentPeriodSnapshot(storedWeather, currentPeriod)) {
     logger.info("[weather] current weather is already valid", {
-      weather: currentWeather,
+      weather: storedWeather,
     });
     return {
-      currentWeather,
+      currentWeather: storedWeather,
       generatedPeriodCount: 0,
       episodeCount: 0,
       reusedCurrentPeriod: true,
     };
   }
 
-  if (currentWeather && isWeatherSnapshotInFuture(currentWeather, now)) {
-    logger.warn("[weather] future weather snapshot detected, regenerate current period", {
-      weather: currentWeather,
-      now: now.toISOString(),
-    });
-    currentWeather = null;
-  }
-
-  const periodsToGenerate = buildPeriodsToGenerate(currentWeather, now);
-  let previousWeather = currentWeather;
+  const previousWeather = sanitizePreviousWeather(storedWeather, now);
+  const periodsToGenerate = collectPeriodsToGenerate(previousWeather, currentPeriod);
+  let latestWeather = previousWeather;
   let finalWeather: WeatherSnapshot | null = null;
   let episodeCount = 0;
 
   for (const period of periodsToGenerate) {
-    const isCurrentPeriod = period.startAt.isSame(currentPeriod.startAt);
     const nextWeather = generateWeatherSnapshot({
       period,
-      previousWeather,
-      updatedAt: isCurrentPeriod ? now.toISOString() : period.startAt.toISOString(),
+      previousWeather: latestWeather,
+      updatedAt: isCurrentPeriod(period, currentPeriod)
+        ? now.toISOString()
+        : period.startAt.toISOString(),
     });
 
     const weatherEpisode = buildWeatherChangedEpisode({
-      before: previousWeather,
+      before: latestWeather,
       after: nextWeather,
       isDev: devFlag,
     });
@@ -99,7 +89,7 @@ async function doSyncCurrentWeather(options: SyncWeatherOptions): Promise<Weathe
       episodeCount += 1;
     }
 
-    previousWeather = nextWeather;
+    latestWeather = nextWeather;
     finalWeather = nextWeather;
   }
 
@@ -127,19 +117,64 @@ async function doSyncCurrentWeather(options: SyncWeatherOptions): Promise<Weathe
   };
 }
 
-function buildPeriodsToGenerate(previousWeather: WeatherSnapshot | null, now: Date) {
-  const currentPeriod = resolveWeatherPeriod(now);
+/**
+ * 把缓存中的天气快照收敛成“可用于继续补算”的上一片天气。
+ *
+ * 说明：
+ * - 当前周期命中时会在主流程直接复用，这里只处理过期快照与异常未来快照；
+ * - 未来快照说明状态已经脏掉，直接丢弃并从当前周期重算更直观可靠。
+ */
+function sanitizePreviousWeather(
+  snapshot: WeatherSnapshot | null,
+  now: Date,
+): WeatherSnapshot | null {
+  if (!snapshot) {
+    return null;
+  }
 
+  if (dayjs(snapshot.periodStartAt).isAfter(now)) {
+    logger.warn("[weather] future weather snapshot detected, regenerate current period", {
+      weather: snapshot,
+      now: now.toISOString(),
+    });
+    return null;
+  }
+
+  return snapshot;
+}
+
+function isCurrentPeriodSnapshot(snapshot: WeatherSnapshot, period: WeatherPeriod): boolean {
+  return (
+    snapshot.periodStartAt === period.startAt.toISOString() &&
+    snapshot.periodEndAt === period.endAt.toISOString()
+  );
+}
+
+function isCurrentPeriod(period: WeatherPeriod, currentPeriod: WeatherPeriod): boolean {
+  return period.startAt.isSame(currentPeriod.startAt);
+}
+
+/**
+ * 根据上一片天气推导出需要补算的所有时间片。
+ *
+ * 说明：
+ * - 没有历史天气时，直接生成当前时间片；
+ * - 有历史天气时，从上一片结束时间一路补到当前时间片，避免启动后丢失过渡天气。
+ */
+function collectPeriodsToGenerate(
+  previousWeather: WeatherSnapshot | null,
+  currentPeriod: WeatherPeriod,
+) {
   if (!previousWeather) {
     return [currentPeriod];
   }
 
-  const periods: ReturnType<typeof resolveWeatherPeriod>[] = [];
-  let nextPeriodStart = resolveNextWeatherPeriodStart(previousWeather);
+  const periods: WeatherPeriod[] = [];
+  let cursor = dayjs(previousWeather.periodEndAt);
 
-  while (nextPeriodStart.isBefore(currentPeriod.endAt)) {
-    periods.push(resolveWeatherPeriod(nextPeriodStart));
-    nextPeriodStart = nextPeriodStart.add(WEATHER_PERIOD_HOURS, "hour");
+  while (cursor.isBefore(currentPeriod.endAt)) {
+    periods.push(resolveWeatherPeriod(cursor));
+    cursor = cursor.add(WEATHER_PERIOD_HOURS, "hour");
   }
 
   if (periods.length === 0) {

@@ -3,7 +3,7 @@ import {
   getCharacterCardPrompt,
   getMemoryServiceClientFromEnv,
   memorySearchTool,
-  queryCharacterStateTool,
+  queryStateTool,
   queryWorldMapTool,
   smallModel,
 } from "@yuiju/utils";
@@ -59,7 +59,7 @@ export class LLMManager {
       system: systemPrompt,
       tools: {
         memorySearch: memorySearchTool,
-        queryCharacterState: queryCharacterStateTool,
+        queryStateTool: queryStateTool,
         queryWorldMap: queryWorldMapTool,
       },
       stopWhen: stepCountIs(10),
@@ -144,7 +144,7 @@ export class LLMManager {
       system: systemPrompt,
       tools: {
         memorySearch: memorySearchTool,
-        queryCharacterState: queryCharacterStateTool,
+        queryStateTool: queryStateTool,
         queryWorldMap: queryWorldMapTool,
       },
       stopWhen: stepCountIs(10),

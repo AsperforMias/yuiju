@@ -1,4 +1,4 @@
-import { getYuijuConfig, type WeatherSnapshot } from "@yuiju/utils";
+import { getYuijuConfig } from "@yuiju/utils";
 import dayjs, { type Dayjs } from "dayjs";
 import { WEATHER_PERIOD_HOURS } from "./constants";
 
@@ -13,33 +13,33 @@ const HOUR_IN_MS = 60 * 60 * 1000;
 const formatterCache = new Map<string, Intl.DateTimeFormat>();
 
 /**
- * 解析配置时区下的本地时间部件。
+ * 读取项目时区下的本地时间部件。
  *
  * 说明：
- * - 只在 weather 模块内部使用，不额外抽成项目级通用工具；
- * - 通过 Intl 读取 IANA 时区的年月日时分秒，避免在模块内写死固定偏移。
+ * - weather 只需要“项目时区里的年月日时”，因此把时区处理集中在本文件；
+ * - 继续使用 Intl + IANA 时区，避免把 Asia/Shanghai 这类固定偏移写死。
  */
-function getZonedDateParts(input: Date) {
-  const formatter = getTimeZoneFormatter(getProjectTimezone());
+function readProjectLocalTime(input: Date) {
+  const formatter = getProjectTimezoneFormatter();
   const parts = formatter.formatToParts(input);
-
-  const mapped = Object.fromEntries(
+  const values = Object.fromEntries(
     parts
       .filter((part) => part.type !== "literal")
       .map((part) => [part.type, Number.parseInt(part.value, 10)]),
   );
 
   return {
-    year: mapped.year,
-    month: mapped.month,
-    day: mapped.day,
-    hour: mapped.hour,
-    minute: mapped.minute,
-    second: mapped.second,
+    year: values.year,
+    month: values.month,
+    day: values.day,
+    hour: values.hour,
+    minute: values.minute,
+    second: values.second,
   };
 }
 
-function getTimeZoneFormatter(timezone: string): Intl.DateTimeFormat {
+function getProjectTimezoneFormatter(): Intl.DateTimeFormat {
+  const timezone = getYuijuConfig().app.timezone;
   const cachedFormatter = formatterCache.get(timezone);
   if (cachedFormatter) {
     return cachedFormatter;
@@ -59,29 +59,24 @@ function getTimeZoneFormatter(timezone: string): Intl.DateTimeFormat {
   return formatter;
 }
 
-function getProjectTimezone(): string {
-  return getYuijuConfig().app.timezone;
-}
-
 /**
- * 把“配置时区下的本地时间”换算成真实 UTC 时间戳。
+ * 把“项目时区内的本地整点”换算成真实 UTC 时间戳。
  *
  * 说明：
  * - 这里使用小步迭代收敛 offset，兼容存在 DST 的时区；
- * - 当前项目默认是 Asia/Shanghai，但实现不再把逻辑写死到上海。
+ * - weather 的时间片边界依赖这个结果，因此统一从这里生成开始时间。
  */
-function resolveZonedDateTimestamp(input: {
+function resolveProjectHourStartTimestamp(input: {
   year: number;
   month: number;
   day: number;
   hour: number;
 }) {
-  const timezone = getProjectTimezone();
   const naiveUtcTimestamp = Date.UTC(input.year, input.month - 1, input.day, input.hour, 0, 0, 0);
   let resolvedTimestamp = naiveUtcTimestamp;
 
   for (let index = 0; index < 3; index += 1) {
-    const offsetMs = getTimeZoneOffsetMs(new Date(resolvedTimestamp), timezone);
+    const offsetMs = resolveProjectTimezoneOffsetMs(new Date(resolvedTimestamp));
     const nextTimestamp = naiveUtcTimestamp - offsetMs;
 
     if (nextTimestamp === resolvedTimestamp) {
@@ -94,19 +89,19 @@ function resolveZonedDateTimestamp(input: {
   return resolvedTimestamp;
 }
 
-function getTimeZoneOffsetMs(input: Date, timezone: string): number {
-  const zonedParts = getZonedDateParts(input);
-  const zonedTimestamp = Date.UTC(
-    zonedParts.year,
-    zonedParts.month - 1,
-    zonedParts.day,
-    zonedParts.hour,
-    zonedParts.minute,
-    zonedParts.second,
+function resolveProjectTimezoneOffsetMs(input: Date): number {
+  const localTime = readProjectLocalTime(input);
+  const projectedTimestamp = Date.UTC(
+    localTime.year,
+    localTime.month - 1,
+    localTime.day,
+    localTime.hour,
+    localTime.minute,
+    localTime.second,
     0,
   );
 
-  return zonedTimestamp - input.getTime();
+  return projectedTimestamp - input.getTime();
 }
 
 /**
@@ -114,21 +109,17 @@ function getTimeZoneOffsetMs(input: Date, timezone: string): number {
  */
 export function resolveWeatherPeriod(input: Date | Dayjs | string): WeatherPeriod {
   const baseTime = dayjs(input);
-  const zonedParts = getZonedDateParts(baseTime.toDate());
-  const year = zonedParts.year;
-  const monthIndex = zonedParts.month - 1;
-  const dayOfMonth = zonedParts.day;
-  const hour = zonedParts.hour;
-  const slotHour = (Math.floor(hour / WEATHER_PERIOD_HOURS) * WEATHER_PERIOD_HOURS) as
+  const localTime = readProjectLocalTime(baseTime.toDate());
+  const slotHour = (Math.floor(localTime.hour / WEATHER_PERIOD_HOURS) * WEATHER_PERIOD_HOURS) as
     | 0
     | 6
     | 12
     | 18;
 
-  const startTimestamp = resolveZonedDateTimestamp({
-    year,
-    month: monthIndex + 1,
-    day: dayOfMonth,
+  const startTimestamp = resolveProjectHourStartTimestamp({
+    year: localTime.year,
+    month: localTime.month,
+    day: localTime.day,
     hour: slotHour,
   });
   const endTimestamp = startTimestamp + WEATHER_PERIOD_HOURS * HOUR_IN_MS;
@@ -136,38 +127,7 @@ export function resolveWeatherPeriod(input: Date | Dayjs | string): WeatherPerio
   return {
     startAt: dayjs(startTimestamp),
     endAt: dayjs(endTimestamp),
-    month: monthIndex + 1,
+    month: localTime.month,
     slotHour,
   };
-}
-
-/**
- * 判断天气快照是否仍覆盖当前时间点。
- */
-export function isWeatherSnapshotActiveAt(
-  snapshot: WeatherSnapshot,
-  input: Date | Dayjs | string,
-): boolean {
-  const currentTimestamp = dayjs(input).valueOf();
-  const startTimestamp = dayjs(snapshot.periodStartAt).valueOf();
-  const endTimestamp = dayjs(snapshot.periodEndAt).valueOf();
-
-  return currentTimestamp >= startTimestamp && currentTimestamp < endTimestamp;
-}
-
-/**
- * 判断快照是否意外落在未来。
- */
-export function isWeatherSnapshotInFuture(
-  snapshot: WeatherSnapshot,
-  input: Date | Dayjs | string,
-): boolean {
-  return dayjs(snapshot.periodStartAt).valueOf() > dayjs(input).valueOf();
-}
-
-/**
- * 解析下一时间片的开始时间。
- */
-export function resolveNextWeatherPeriodStart(snapshot: WeatherSnapshot): Dayjs {
-  return dayjs(snapshot.periodEndAt);
 }

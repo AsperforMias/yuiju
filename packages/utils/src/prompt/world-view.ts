@@ -1,5 +1,5 @@
-import type { Dayjs } from "dayjs";
 import { getTimeWithWeekday } from "../time";
+import type { CharacterStateData, WorldStateData } from "../types/state";
 import { baseInformation } from "./character-card";
 import { type BehaviorRecord, generateRecentBehaviorPrompt } from "./utils";
 
@@ -67,19 +67,79 @@ function generateShortTermPlanPrompt(shortTermPlanTitles?: string[]) {
     : "（无）";
 }
 
+/**
+ * 生成各类决策 prompt 共享的状态文本。
+ *
+ * 说明：
+ * - 这里只放多个 prompt 都会复用的世界与角色状态，避免同一段状态描述反复手写；
+ * - 天气统一在这里输出，让行动、饮食、购物、咖啡和神社决策都能感知当前环境。
+ */
+function buildCommonStatePrompt(input: {
+  characterState: CharacterStateData;
+  worldState: WorldStateData;
+  recentBehaviorList: BehaviorRecord[];
+  longTermPlanTitle?: string;
+  shortTermPlanTitles?: string[];
+}): string {
+  const promptLocation = input.characterState.location.minor
+    ? `${input.characterState.location.major}-${input.characterState.location.minor}`
+    : input.characterState.location.major;
+  const promptWeather = input.worldState.weather
+    ? `${input.worldState.weather.type} / ${input.worldState.weather.temperatureLevel}`
+    : "（未知）";
+
+  return `当前时间：${getTimeWithWeekday(input.worldState.time)}
+当前天气：${promptWeather}
+地点：${promptLocation}
+体力值：${input.characterState.stamina}/100
+饱腹：${input.characterState.satiety}/100
+心情：${input.characterState.mood}/100
+金币：${input.characterState.money}
+长期计划：${input.longTermPlanTitle || "（无）"}
+短期计划：
+${generateShortTermPlanPrompt(input.shortTermPlanTitles)}
+
+最近的action：
+${generateRecentBehaviorPrompt(input.recentBehaviorList)}`;
+}
+
+/**
+ * 把候选项列表格式化成统一的项目符号文本。
+ *
+ * 说明：
+ * - food / shop / cafe 都使用相同的“名称 + 描述”展示结构；
+ * - 没有候选项时统一返回“（无）”，避免每个 prompt 自己写兜底逻辑。
+ */
+function buildChoiceListPrompt(
+  items:
+    | Array<{
+        value: string;
+        description?: string;
+      }>
+    | Array<{
+        action: string;
+        description?: string;
+      }>
+    | undefined,
+): string {
+  return (
+    items
+      ?.map((item) => {
+        const label = "value" in item ? item.value : item.action;
+        return `- ${label}：${item.description || ""}`;
+      })
+      .join("\n") || "（无）"
+  );
+}
+
 export interface ChooseActionPromptPayload {
   actionList: {
     action: string;
     description: string;
   }[];
-  currentAction: string;
-  location: string;
-  money: number;
-  stamina: number;
-  satiety: number;
-  mood: number;
+  characterState: CharacterStateData;
+  worldState: WorldStateData;
   recentBehaviorList: BehaviorRecord[];
-  worldTime: Dayjs;
   eventDescription?: string;
   longTermPlanTitle?: string;
   shortTermPlanTitles?: string[];
@@ -87,21 +147,21 @@ export interface ChooseActionPromptPayload {
 
 export function chooseActionPrompt({
   actionList,
-  currentAction,
-  location,
-  money,
+  characterState,
+  worldState,
   recentBehaviorList,
-  stamina,
-  satiety,
-  mood,
-  worldTime,
   eventDescription,
   longTermPlanTitle,
   shortTermPlanTitles,
 }: ChooseActionPromptPayload) {
-  const actionListPrompt = actionList
-    .map((item) => `- ${item.action}：${item.description}`)
-    .join("\n");
+  const commonStatePrompt = buildCommonStatePrompt({
+    characterState,
+    worldState,
+    recentBehaviorList,
+    longTermPlanTitle,
+    shortTermPlanTitles,
+  });
+  const actionListPrompt = buildChoiceListPrompt(actionList);
 
   return `
 ## 要求
@@ -120,18 +180,8 @@ ${worldViewPrompt}
 
 ## 状态
 ${eventDescription ? `当前事件：${eventDescription}` : ""}
-当前时间：${getTimeWithWeekday(worldTime)}
-地点：${location}
-当前Action：${currentAction}
-体力值：${stamina} / 100
-饱腹：${satiety} / 100
-心情：${mood} / 100
-金币：${money}
-长期计划：${longTermPlanTitle || "（无）"}
-短期计划：
-${generateShortTermPlanPrompt(shortTermPlanTitles)}
-最近的action：
-${generateRecentBehaviorPrompt(recentBehaviorList)}
+当前Action：${characterState.action}
+${commonStatePrompt}
 可选Action（仅可从中选择）：
 ${actionListPrompt}
 `;
@@ -142,47 +192,36 @@ export interface ChooseFoodPromptPayload {
     value: string;
     description?: string;
   }[];
-  location: string;
-  stamina: number;
-  satiety: number;
-  mood: number;
+  characterState: CharacterStateData;
+  worldState: WorldStateData;
   recentBehaviorList: BehaviorRecord[];
-  worldTime: Dayjs;
   longTermPlanTitle?: string;
   shortTermPlanTitles?: string[];
 }
 
 export function chooseFoodPrompt({
   availableFood,
-  location,
-  worldTime,
-  stamina,
-  satiety,
-  mood,
+  characterState,
+  worldState,
   longTermPlanTitle,
   shortTermPlanTitles,
   recentBehaviorList,
 }: ChooseFoodPromptPayload) {
-  const availableFoodPrompt =
-    availableFood?.map((food) => `- ${food.value}：${food.description || ""}`).join("\n") ||
-    "（无）";
+  const commonStatePrompt = buildCommonStatePrompt({
+    characterState,
+    worldState,
+    recentBehaviorList,
+    longTermPlanTitle,
+    shortTermPlanTitles,
+  });
+  const availableFoodPrompt = buildChoiceListPrompt(availableFood);
 
   return `
 ## 要求
 你现在需要扮演一个名为ゆいじゅ的女孩子，昵称悠酱。你是角色的大脑，为悠酱做出决策，现在需要你选择一种 Food，在候选列表中选择一个最合适的 Food，例如：「薯片」、「饼干」、等。
 
 ## 状态
-当前时间：${getTimeWithWeekday(worldTime)}
-地点：${location}
-体力值：${stamina}/100
-饱腹：${satiety}/100
-心情：${mood}/100
-长期计划：${longTermPlanTitle || "（无）"}
-短期计划：
-${generateShortTermPlanPrompt(shortTermPlanTitles)}
-
-最近的action：
-${generateRecentBehaviorPrompt(recentBehaviorList)}
+${commonStatePrompt}
 
 可选食物（仅可从中选择）：
 ${availableFoodPrompt}
@@ -194,51 +233,36 @@ export interface ChooseShopProductPromptPayload {
     value: string;
     description?: string;
   }[];
-  location: string;
-  stamina: number;
-  satiety: number;
-  mood: number;
-  money: number;
+  characterState: CharacterStateData;
+  worldState: WorldStateData;
   recentBehaviorList: BehaviorRecord[];
-  worldTime: Dayjs;
   longTermPlanTitle?: string;
   shortTermPlanTitles?: string[];
 }
 
 export function chooseShopProductPrompt({
   availableProducts,
-  location,
-  worldTime,
-  stamina,
-  satiety,
-  mood,
-  money,
+  characterState,
+  worldState,
   longTermPlanTitle,
   shortTermPlanTitles,
   recentBehaviorList,
 }: ChooseShopProductPromptPayload) {
-  const availableProductsPrompt =
-    availableProducts
-      ?.map((product) => `- ${product.value}：${product.description || ""}`)
-      .join("\n") || "（无）";
+  const commonStatePrompt = buildCommonStatePrompt({
+    characterState,
+    worldState,
+    recentBehaviorList,
+    longTermPlanTitle,
+    shortTermPlanTitles,
+  });
+  const availableProductsPrompt = buildChoiceListPrompt(availableProducts);
 
   return `
 ## 要求
 你现在需要扮演一个名为ゆいじゅ的女孩子，昵称悠酱。你是角色的大脑，为悠酱做出决策，现在需要你从候选商品中选择要购买的商品以及购买数量。
 
 ## 状态
-当前时间：${getTimeWithWeekday(worldTime)}
-地点：${location}
-体力值：${stamina}/100
-饱腹：${satiety}/100
-心情：${mood}/100
-金币：${money}
-长期计划：${longTermPlanTitle || "（无）"}
-短期计划：
-${generateShortTermPlanPrompt(shortTermPlanTitles)}
-
-最近的action：
-${generateRecentBehaviorPrompt(recentBehaviorList)}
+${commonStatePrompt}
 
 可选商品（仅可从中选择）：
 ${availableProductsPrompt}
@@ -250,51 +274,36 @@ export interface ChooseCafeCoffeePromptPayload {
     value: string;
     description?: string;
   }[];
-  location: string;
-  stamina: number;
-  satiety: number;
-  mood: number;
-  money: number;
+  characterState: CharacterStateData;
+  worldState: WorldStateData;
   recentBehaviorList: BehaviorRecord[];
-  worldTime: Dayjs;
   longTermPlanTitle?: string;
   shortTermPlanTitles?: string[];
 }
 
 export function chooseCafeCoffeePrompt({
   availableCoffees,
-  location,
-  worldTime,
-  stamina,
-  satiety,
-  mood,
-  money,
+  characterState,
+  worldState,
   longTermPlanTitle,
   shortTermPlanTitles,
   recentBehaviorList,
 }: ChooseCafeCoffeePromptPayload) {
-  const availableCoffeesPrompt =
-    availableCoffees
-      ?.map((coffee) => `- ${coffee.value}：${coffee.description || ""}`)
-      .join("\n") || "（无）";
+  const commonStatePrompt = buildCommonStatePrompt({
+    characterState,
+    worldState,
+    recentBehaviorList,
+    longTermPlanTitle,
+    shortTermPlanTitles,
+  });
+  const availableCoffeesPrompt = buildChoiceListPrompt(availableCoffees);
 
   return `
 ## 要求
 你现在需要扮演一个名为ゆいじゅ的女孩子，昵称悠酱。你是角色的大脑，为悠酱做出决策，现在需要你从候选咖啡中选择要点的咖啡。（数量固定为1杯）
 
 ## 状态
-当前时间：${getTimeWithWeekday(worldTime)}
-地点：${location}
-体力值：${stamina}/100
-饱腹：${satiety}/100
-心情：${mood}/100
-金币：${money}
-长期计划：${longTermPlanTitle || "（无）"}
-短期计划：
-${generateShortTermPlanPrompt(shortTermPlanTitles)}
-
-最近的action：
-${generateRecentBehaviorPrompt(recentBehaviorList)}
+${commonStatePrompt}
 
 可选咖啡（仅可从中选择）：
 ${availableCoffeesPrompt}
@@ -303,31 +312,31 @@ ${availableCoffeesPrompt}
 
 export interface ChooseShrinePrayerPromptPayload {
   actionReason: string;
-  location: string;
-  stamina: number;
-  satiety: number;
-  mood: number;
-  money: number;
+  characterState: CharacterStateData;
+  worldState: WorldStateData;
   offeringCost: number;
   recentBehaviorList: BehaviorRecord[];
-  worldTime: Dayjs;
   longTermPlanTitle?: string;
   shortTermPlanTitles?: string[];
 }
 
 export function chooseShrinePrayerPrompt({
   actionReason,
-  location,
-  worldTime,
-  stamina,
-  satiety,
-  mood,
-  money,
+  characterState,
+  worldState,
   offeringCost,
   longTermPlanTitle,
   shortTermPlanTitles,
   recentBehaviorList,
 }: ChooseShrinePrayerPromptPayload) {
+  const commonStatePrompt = buildCommonStatePrompt({
+    characterState,
+    worldState,
+    recentBehaviorList,
+    longTermPlanTitle,
+    shortTermPlanTitles,
+  });
+
   return `
 ## 要求
 你现在需要扮演一个名为ゆいじゅ的女孩子，昵称悠酱。你正在神社参拜，需要决定这次是否投币祈愿。
@@ -341,17 +350,6 @@ export function chooseShrinePrayerPrompt({
 
 ## 状态
 本次选择参拜的原因：${actionReason}
-当前时间：${getTimeWithWeekday(worldTime)}
-地点：${location}
-体力值：${stamina}/100
-饱腹：${satiety}/100
-心情：${mood}/100
-金币：${money}
-长期计划：${longTermPlanTitle || "（无）"}
-短期计划：
-${generateShortTermPlanPrompt(shortTermPlanTitles)}
-
-最近的action：
-${generateRecentBehaviorPrompt(recentBehaviorList)}
+${commonStatePrompt}
 `;
 }
