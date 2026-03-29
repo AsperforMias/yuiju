@@ -9,9 +9,7 @@ import {
 } from "@yuiju/utils";
 import { generateText, type ModelMessage, Output, stepCountIs } from "ai";
 import { z } from "zod";
-import { ChatSessionManager } from "../chat-session-manager";
-
-const GROUP_SESSION_KEY_PREFIX = "group:";
+import { ChatSessionManager, SUBJECT_NAME } from "./chat-session-manager";
 
 export interface GroupConversationInput {
   groupId: number;
@@ -19,7 +17,7 @@ export interface GroupConversationInput {
   senderName: string;
   content: string;
   timestamp: Date;
-  isAtBot: boolean;
+  isDirectedToBot: boolean;
 }
 
 export class LLMManager {
@@ -31,12 +29,13 @@ export class LLMManager {
     this.privateSession = new ChatSessionManager({
       conversationLimit,
       memoryClient: this.memoryClient,
-      windowMs: 10 * 60 * 1000,
+      windowMs: 2 * 60 * 60 * 1000,
     });
     this.groupSession = new ChatSessionManager({
       conversationLimit: 30,
       memoryClient: this.memoryClient,
-      windowMs: 10 * 60 * 1000,
+      // 2小时
+      windowMs: 2 * 60 * 60 * 1000,
     });
   }
 
@@ -46,12 +45,14 @@ export class LLMManager {
     });
 
     this.privateSession.recordMessage({
-      counterparty_name: userName,
+      sessionId: userName,
+      sessionLabel: userName,
       role: "user",
-      content: input,
+      llmContent: input,
+      speakerName: userName,
       timestamp: new Date(),
     });
-    const messages: ModelMessage[] = this.privateSession.getLLMMessages(userName);
+    const messages: ModelMessage[] = await this.privateSession.getLLMMessages(userName);
 
     const result = await generateText({
       model: deepseekProvider("deepseek-chat"),
@@ -67,9 +68,11 @@ export class LLMManager {
 
     // 添加助手回复到对话历史
     this.privateSession.recordMessage({
-      counterparty_name: userName,
+      sessionId: userName,
+      sessionLabel: userName,
       role: "assistant",
-      content: result.text,
+      llmContent: result.text,
+      speakerName: SUBJECT_NAME,
       timestamp: new Date(),
     });
 
@@ -81,9 +84,12 @@ export class LLMManager {
    */
   public recordGroupMessage(input: GroupConversationInput) {
     this.groupSession.recordMessage({
-      counterparty_name: this.buildGroupSessionKey(input.groupId),
+      sessionId: this.buildGroupSessionKey(input.groupId),
+      sessionLabel: input.groupName,
       role: "user",
-      content: this.buildGroupUserMessage(input),
+      llmContent: this.buildGroupUserMessage(input),
+      archiveContent: input.content,
+      speakerName: input.senderName,
       timestamp: input.timestamp,
     });
   }
@@ -93,10 +99,12 @@ export class LLMManager {
    *
    * 说明：
    * - 这里只返回 shouldReply，不承担具体回复生成；
-   * - 被 @ 的消息不会走这个流程，而是由 handler 直接触发回复模型。
+   * - 直接对悠酱说的话（@ 或 reply 悠酱）不会走这个流程，而是由 handler 直接触发回复模型。
    */
   public async shouldReplyGroupMessage(input: GroupConversationInput): Promise<boolean> {
-    const messages = this.groupSession.getLLMMessages(this.buildGroupSessionKey(input.groupId));
+    const messages = await this.groupSession.getLLMMessages(
+      this.buildGroupSessionKey(input.groupId),
+    );
 
     const systemPrompt = [
       "你是群聊回复裁决器，唯一任务是判断悠酱现在是否应该回复最新一条普通群消息。",
@@ -136,7 +144,7 @@ export class LLMManager {
   public async chatInGroup(input: GroupConversationInput) {
     const sessionKey = this.buildGroupSessionKey(input.groupId);
     const systemPrompt = this.buildGroupReplySystemPrompt(input);
-    const messages: ModelMessage[] = this.groupSession.getLLMMessages(sessionKey);
+    const messages: ModelMessage[] = await this.groupSession.getLLMMessages(sessionKey);
 
     const result = await generateText({
       model: deepseekProvider("deepseek-chat"),
@@ -151,9 +159,11 @@ export class LLMManager {
     });
 
     this.groupSession.recordMessage({
-      counterparty_name: sessionKey,
+      sessionId: sessionKey,
+      sessionLabel: input.groupName,
       role: "assistant",
-      content: result.text,
+      llmContent: result.text,
+      speakerName: SUBJECT_NAME,
       timestamp: new Date(),
     });
 
@@ -161,7 +171,7 @@ export class LLMManager {
   }
 
   private buildGroupSessionKey(groupId: number): string {
-    return `${GROUP_SESSION_KEY_PREFIX}${groupId}`;
+    return `group:${groupId}`;
   }
 
   /**
@@ -177,10 +187,9 @@ export class LLMManager {
         userName: input.senderName,
       }),
       "## 当前聊天场景",
-      `你现在正在 QQ 群「${input.groupName}」里说话，不是私聊。`,
+      `你现在正在 QQ 群「${input.groupName}」里说话`,
       "群聊回复要更克制、更自然，像在群里顺手接一句，不要像一对一长聊。",
-      "如果这条消息是对你的直接提及，系统已经会自动 @ 回发送者，你不要在正文里手动重复写 @。",
-      "默认 1-2 句，尽量简短，除非内容确实需要补充。",
+      "如果这条消息是在直接对你说话（例如 @ 你或 reply 你），系统已经会自动回复当前这条消息，你不要在正文里手动重复写 @。",
     ].join("\n\n");
   }
 }

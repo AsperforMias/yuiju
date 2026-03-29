@@ -91,7 +91,6 @@ export const memorySearchTool: Tool = {
       counterpartyName: input.counterpartyName,
       topK: input.topK,
     });
-    console.log(111, input, result);
     return result;
   },
 };

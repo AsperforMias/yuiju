@@ -43,7 +43,7 @@ export async function groupMessageHandler(
     senderName: parsedMessage.senderName,
     content: parsedMessage.textForLLM,
     timestamp,
-    isAtBot: parsedMessage.isAtBot,
+    isDirectedToBot: parsedMessage.isDirectedToBot,
   });
 
   console.log(
@@ -58,7 +58,7 @@ export async function groupMessageHandler(
   }
 
   try {
-    const shouldReply = parsedMessage.isAtBot
+    const shouldReply = parsedMessage.isDirectedToBot
       ? true
       : await shouldReplyToGroupMessage({
           context,
@@ -77,13 +77,13 @@ export async function groupMessageHandler(
       senderName: parsedMessage.senderName,
       content: parsedMessage.textForLLM,
       timestamp,
-      isAtBot: parsedMessage.isAtBot,
+      isDirectedToBot: parsedMessage.isDirectedToBot,
     });
 
     const reply = (text || "").trim() || "呜…这句话我一时没理解呢。";
     console.log(`回复群 ${parsedMessage.groupDisplayName}(${context.group_id}) 的消息: ${reply}`);
 
-    if (parsedMessage.isAtBot) {
+    if (parsedMessage.isDirectedToBot) {
       context.quick_action([Structs.text(reply)]);
     } else {
       const replyList = reply.split("\n").filter(Boolean);
@@ -119,7 +119,7 @@ async function shouldReplyToGroupMessage(input: {
     senderName: input.senderName,
     content: input.content,
     timestamp: new Date(input.context.time * 1000),
-    isAtBot: false,
+    isDirectedToBot: false,
   });
 
   console.log(

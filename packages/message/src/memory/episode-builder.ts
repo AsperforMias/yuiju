@@ -9,6 +9,7 @@ export interface ChatWindowMessageItem {
 }
 
 export interface UserWindowState {
+  sessionLabel: string;
   windowStartMs: number;
   lastTsMs: number;
   messages: ChatWindowMessageItem[];
@@ -31,7 +32,7 @@ interface ConversationEpisodePayload {
  * - payload 保留完整消息窗口，方便后续恢复服务端接线时直接复用。
  */
 export function buildConversationEpisode(input: {
-  counterpartyName: string;
+  sessionLabel: string;
   state: UserWindowState;
   isDev: boolean;
 }): MemoryEpisode<ConversationEpisodePayload> {
@@ -47,10 +48,10 @@ export function buildConversationEpisode(input: {
     source: "chat",
     type: "conversation",
     subject: DEFAULT_MEMORY_SUBJECT_ID,
-    counterparty: input.counterpartyName,
+    counterparty: input.sessionLabel,
     happenedAt: windowEnd,
     summaryText: [
-      `悠酱与 ${input.counterpartyName} 完成了一段对话窗口归档`,
+      `悠酱与 ${input.sessionLabel} 完成了一段对话窗口归档`,
       `时间范围：${getTimeWithWeekday(dayjs(windowStart))} 至 ${getTimeWithWeekday(dayjs(windowEnd))}`,
       `消息数量：${messageCount}`,
       previewText ? `最近内容：${previewText}` : undefined,
@@ -61,7 +62,7 @@ export function buildConversationEpisode(input: {
     isDev: input.isDev,
     payload: {
       subjectName: DEFAULT_MEMORY_SUBJECT_ID,
-      counterpartyName: input.counterpartyName,
+      counterpartyName: input.sessionLabel,
       windowStart: getTimeWithWeekday(dayjs(windowStart)),
       windowEnd: getTimeWithWeekday(dayjs(windowEnd)),
       messageCount,
