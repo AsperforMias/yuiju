@@ -30,7 +30,6 @@ export interface MemorySearchResult {
   happenedAt?: string;
   validFrom?: string;
   validTo?: string;
-  evidenceIds: string[];
   metadata?: Record<string, unknown>;
 }
 
@@ -197,18 +196,6 @@ function getPlanIdFromPayload(payload: Record<string, unknown> | undefined): str
   return null;
 }
 
-function normalizeEvidenceIds(item: MemorySearchItem): string[] {
-  if (Array.isArray(item.evidenceIds)) {
-    return item.evidenceIds.filter((value): value is string => typeof value === "string");
-  }
-
-  if (Array.isArray(item.evidence_ids)) {
-    return item.evidence_ids.filter((value): value is string => typeof value === "string");
-  }
-
-  return [];
-}
-
 function normalizeFactMetadata(item: MemorySearchItem): Record<string, unknown> | undefined {
   const metadata = item.metadata ?? {};
 
@@ -223,8 +210,6 @@ function normalizeFactMetadata(item: MemorySearchItem): Record<string, unknown> 
       key === "validTo" ||
       key === "valid_from" ||
       key === "valid_to" ||
-      key === "evidenceIds" ||
-      key === "evidence_ids" ||
       key === "metadata"
     ) {
       continue;
@@ -324,7 +309,6 @@ export async function searchEpisodes(input: MemorySearchInput): Promise<MemorySe
           score,
           summary: doc.summaryText,
           happenedAt: dayjs(doc.happenedAt).toISOString(),
-          evidenceIds: [String(doc._id)],
           metadata: {
             episodeType: doc.type,
             planId,
@@ -338,7 +322,6 @@ export async function searchEpisodes(input: MemorySearchInput): Promise<MemorySe
           score,
           summary: doc.summaryText,
           happenedAt: dayjs(doc.happenedAt).toISOString(),
-          evidenceIds: [String(doc._id)],
           metadata: {
             episodeType: doc.type,
             planId,
@@ -400,7 +383,6 @@ export async function searchDiaries(input: MemorySearchInput): Promise<MemorySea
       score: scoreEpisode(normalized.query, diary.text),
       summary: diary.text,
       happenedAt: dayjs(diary.diaryDate).toISOString(),
-      evidenceIds: [String(diary._id)],
       metadata: {
         subject: diary.subject,
         displayDate: dayjs(diary.diaryDate).format("YYYY-MM-DD"),
@@ -440,7 +422,6 @@ export async function searchFacts(input: MemorySearchInput): Promise<MemorySearc
       happenedAt: item.time ?? undefined,
       validFrom: item.validFrom ?? item.valid_from ?? undefined,
       validTo: item.validTo ?? item.valid_to ?? undefined,
-      evidenceIds: normalizeEvidenceIds(item),
       metadata: normalizeFactMetadata(item),
     }))
     .sort((left, right) => compareResultsByScoreAndTime(left, right, normalized.timeSort))

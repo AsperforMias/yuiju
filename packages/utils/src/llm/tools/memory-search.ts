@@ -82,7 +82,7 @@ export const memorySearchTool: Tool = {
     "统一记忆查询入口。必须显式选择记忆类型：episode 用于查今天发生的事，diary 用于查昨天及更早的经历回忆，fact 用于查长期事实/偏好/关系。不同记忆类型只接受各自需要的参数。",
   inputSchema: memorySearchInputSchema,
   execute: async (input) => {
-    return await memoryQueryRouter.search({
+    const result = await memoryQueryRouter.search({
       query: input.query,
       memoryType: input.memoryType,
       startTime: "startTime" in input ? input.startTime : undefined,
@@ -91,5 +91,7 @@ export const memorySearchTool: Tool = {
       counterpartyName: input.counterpartyName,
       topK: input.topK,
     });
+    console.log(111, input, result);
+    return result;
   },
 };

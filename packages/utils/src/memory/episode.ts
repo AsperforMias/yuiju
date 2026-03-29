@@ -31,8 +31,9 @@ export type MemoryEpisodeType =
 /**
  * 事实抽取状态。
  *
- * 当前阶段仅作为本地领域模型保留，统一写入时默认使用 pending，
- * 等待 Python 服务升级后再真正下发和消费该字段。
+ * 说明：
+ * - 历史命名沿用 extractionStatus，当前语义更接近“长期记忆处理状态”；
+ * - pending / processing / done / skipped / failed 分别表示待处理、处理中、已写入、被拦截、处理失败。
  */
 export type MemoryEpisodeExtractionStatus =
   | "pending"
@@ -59,6 +60,12 @@ export interface MemoryEpisode<TPayload = object> {
   summaryText: string;
   payload: TPayload;
   extractionStatus: MemoryEpisodeExtractionStatus;
+  /**
+   * 历史字段名沿用 extractedFactIds。
+   *
+   * 当前阶段该字段保存写入 Graphiti 后返回的产物 ID，
+   * 便于本地界面或诊断脚本观察处理结果。
+   */
   extractedFactIds?: string[];
   isDev?: boolean;
 }

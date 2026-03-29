@@ -5,11 +5,11 @@ import {
   updateMemoryEpisodeExtraction,
 } from "../db";
 import type { MemoryEpisode, MemoryEpisodeWriteInput } from "./episode";
-import { llmMemoryExtractor, type MemoryExtractor } from "./fact";
+import { llmMemoryAdmissionClassifier, type MemoryAdmissionClassifier } from "./memory-classifier";
 import { getMemoryServiceClientFromEnv, type MemoryServiceClient } from "./memory-service-client";
 
 export interface EpisodeProcessorDependencies {
-  extractor?: MemoryExtractor;
+  classifier?: MemoryAdmissionClassifier;
   memoryClient?: MemoryServiceClient | null;
 }
 
@@ -40,13 +40,14 @@ function toDomainEpisode(episode: IMemoryEpisode): MemoryEpisode {
  *
  * 说明：
  * - processor 与主链路分离，便于后续做定时扫描、失败重试、历史回灌；
- * - 如果没有记忆服务，仍然会执行抽取并回写本地 fact id，保证状态可闭环。
+ * - 当前阶段 TS 侧只做“是否送入长期图谱”的保守判断，实体/关系抽取交给 Python + Graphiti；
+ * - 如果没有记忆服务，也会把状态回写完成，保证本地状态机可闭环。
  */
 export async function processMemoryEpisode(
   episode: IMemoryEpisode,
   dependencies: EpisodeProcessorDependencies = {},
 ): Promise<void> {
-  const extractor = dependencies.extractor ?? llmMemoryExtractor;
+  const classifier = dependencies.classifier ?? llmMemoryAdmissionClassifier;
   const memoryClient = dependencies.memoryClient ?? getMemoryServiceClientFromEnv();
   const episodeId = episode.id;
 
@@ -59,12 +60,12 @@ export async function processMemoryEpisode(
       extractionStatus: "processing",
     });
 
-    const extractedFacts = await extractor.extract({
+    const decision = await classifier.classify({
       ...toDomainEpisode(episode),
       extractionStatus: "processing",
     });
 
-    if (extractedFacts.length === 0) {
+    if (!decision.shouldWrite) {
       await updateMemoryEpisodeExtraction(episodeId, {
         extractionStatus: "skipped",
         extractedFactIds: [],
@@ -72,19 +73,19 @@ export async function processMemoryEpisode(
       return;
     }
 
-    const factIds = memoryClient
-      ? await memoryClient.writeFacts({
+    const writtenIds = memoryClient
+      ? await memoryClient.writeEpisode({
           is_dev: episode.isDev,
-          facts: extractedFacts,
+          episode: toDomainEpisode(episode),
         })
-      : extractedFacts.map((fact) => fact.id);
+      : [];
 
     await updateMemoryEpisodeExtraction(episodeId, {
       extractionStatus: "done",
-      extractedFactIds: factIds,
+      extractedFactIds: writtenIds,
     });
   } catch (error) {
-    console.error("[processMemoryEpisode] failed to extract/write facts", error);
+    console.error("[processMemoryEpisode] failed to classify/write episode", error);
     await updateMemoryEpisodeExtraction(episodeId, {
       extractionStatus: "failed",
     });

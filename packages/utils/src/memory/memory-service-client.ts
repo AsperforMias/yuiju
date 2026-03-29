@@ -1,8 +1,8 @@
-import type { FactCandidate } from "./fact";
+import type { MemoryEpisode } from "./episode";
 
-export interface WriteFactsInput {
+export interface WriteEpisodeInput {
   is_dev?: boolean;
-  facts: FactCandidate[];
+  episode: MemoryEpisode;
 }
 
 export interface SearchMemoryInput {
@@ -22,8 +22,6 @@ export interface MemorySearchItem {
   validTo?: string | null;
   valid_from?: string | null;
   valid_to?: string | null;
-  evidenceIds?: string[];
-  evidence_ids?: string[];
   metadata?: Record<string, unknown>;
   [key: string]: unknown;
 }
@@ -32,26 +30,26 @@ export class MemoryServiceClient {
   constructor(private baseUrl: string) {}
 
   /**
-   * 写入提炼后的事实列表。
+   * 写入通过准入判断的 Episode，由 Python 服务负责进一步做 Graphiti 受控抽取。
    */
-  async writeFacts(input: WriteFactsInput): Promise<string[]> {
-    const res = await fetch(new URL("/v1/facts", this.baseUrl), {
+  async writeEpisode(input: WriteEpisodeInput): Promise<string[]> {
+    const res = await fetch(new URL("/v1/episodes", this.baseUrl), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         is_dev: input.is_dev,
-        facts: input.facts,
+        episode: input.episode,
       }),
     });
 
     if (!res.ok) {
       const text = await res.text().catch(() => "");
-      throw new Error(`MemoryService writeFacts failed: ${res.status} ${text}`);
+      throw new Error(`MemoryService writeEpisode failed: ${res.status} ${text}`);
     }
 
-    const json = (await res.json()) as { fact_ids?: unknown };
-    return Array.isArray(json.fact_ids)
-      ? json.fact_ids.filter((item): item is string => typeof item === "string")
+    const json = (await res.json()) as { memory_ids?: unknown };
+    return Array.isArray(json.memory_ids)
+      ? json.memory_ids.filter((item): item is string => typeof item === "string")
       : [];
   }
 
