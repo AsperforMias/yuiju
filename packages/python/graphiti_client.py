@@ -280,7 +280,7 @@ def load_graphiti_env() -> GraphitiEnv:
   default_neo4j_user = "neo4j"
   default_neo4j_password = "neo4j123456"
   default_llm_base_url = "https://api.siliconflow.cn/v1"
-  default_llm_model = "Pro/moonshotai/Kimi-K2.5"
+  default_llm_model = "Pro/MiniMaxAI/MiniMax-M2.5"
   default_llm_small_model = "Qwen/Qwen3.5-9B"
   default_embedding_model = "Qwen/Qwen3-Embedding-0.6B"
   default_reranker_model = "Qwen/Qwen3-Reranker-8B"

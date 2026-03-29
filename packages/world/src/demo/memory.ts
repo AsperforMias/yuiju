@@ -54,7 +54,7 @@ function createConversationEpisode(input: {
     counterparty: input.counterpartyName,
     happenedAt: input.happenedAt,
     summaryText: [
-      `【${DEMO_TAG} / ${input.caseId}】悠酱与 ${input.counterpartyName} 完成了一段对话归档`,
+      `【${DEMO_TAG} / ${input.caseId}】ゆいじゅ与 ${input.counterpartyName} 完成了一段对话归档`,
       previewText ? `最近内容：${previewText}` : undefined,
     ]
       .filter(Boolean)
@@ -95,7 +95,7 @@ function createBehaviorEpisode(input: {
     subject: DEFAULT_MEMORY_SUBJECT_ID,
     happenedAt: input.happenedAt,
     summaryText: [
-      `【${DEMO_TAG} / ${input.caseId}】悠酱执行了行为「${input.action}」`,
+      `【${DEMO_TAG} / ${input.caseId}】ゆいじゅ执行了行为「${input.action}」`,
       `原因：${input.reason}`,
       `结果：${input.executionResult}`,
     ].join("；"),
@@ -198,15 +198,15 @@ function buildToolQueryCases(): ToolQueryCase[] {
   return [
     {
       title: "问题 1：长期偏好",
-      question: "悠酱长期更偏爱什么甜品和饮料？请先用记忆查询工具确认，再给我简短回答。",
+      question: "ゆいじゅ长期更偏爱什么甜品和饮料？请先用记忆查询工具确认，再给我简短回答。",
     },
     {
       title: "问题 2：人物关系",
-      question: "悠酱最近对澄风是什么态度？请先查询长期记忆，再回答。",
+      question: "ゆいじゅ最近对澄风是什么态度？请先查询长期记忆，再回答。",
     },
     {
       title: "问题 3：一次性饮料边界",
-      question: "悠酱是不是长期喜欢海盐青柠汽水？请先查记忆工具，不要凭感觉回答。",
+      question: "ゆいじゅ是不是长期喜欢海盐青柠汽水？请先查记忆工具，不要凭感觉回答。",
     },
   ];
 }
@@ -293,10 +293,6 @@ async function runToolQueryDemo(): Promise<void> {
 
     console.log(`\n--- ${queryCase.title} ---`);
     console.log(`QUESTION: ${queryCase.question}`);
-    console.log("TOOL CALLS:");
-    console.log(JSON.stringify(result.toolCalls, null, 2));
-    console.log("TOOL RESULTS:");
-    console.log(JSON.stringify(result.toolResults, null, 2));
     console.log("ANSWER:");
     console.log(result.text);
   }
@@ -306,8 +302,8 @@ async function runToolQueryDemo(): Promise<void> {
  * 主入口：清理 Graphiti、写入样本，并通过 function tool 发起事实查询。
  */
 async function demoMemorySystem(): Promise<void> {
-  // await clearDevData();
-  // await seedDemoEpisodes();
+  await clearDevData();
+  await seedDemoEpisodes();
   await runToolQueryDemo();
 }
 

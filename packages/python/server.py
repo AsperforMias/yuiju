@@ -113,6 +113,8 @@ logging.basicConfig(
 )
 logging.getLogger("neo4j.notifications").setLevel(logging.WARNING)
 
+SELF_CANONICAL_NAME = "ゆいじゅ"
+SELF_NAME_ALIASES = {"悠酱", "悠醬", "yuiju", SELF_CANONICAL_NAME}
 CUSTOM_NODE_LABELS = ("Character", "PreferenceTarget")
 
 # Search 结果的最小可接受分数阈值。
@@ -120,8 +122,8 @@ CUSTOM_NODE_LABELS = ("Character", "PreferenceTarget")
 # - edge 是显式事实边，语义强，允许更低阈值以保留有效召回；
 # - node_summary 是节点画像兜底，噪声更高，因此阈值更严格；
 # - 这些值先用于清理明显无关结果，后续可基于真实日志继续微调。
-EDGE_RESULT_MIN_SCORE = 0.01
-NODE_SUMMARY_RESULT_MIN_SCORE = 0.05
+EDGE_RESULT_MIN_SCORE = 0.2
+NODE_SUMMARY_RESULT_MIN_SCORE = 0.15
 
 
 class Character(BaseModel):
@@ -217,15 +219,16 @@ GRAPHITI_EXCLUDED_ENTITY_TYPES = ["Entity"]
 
 GRAPHITI_CUSTOM_EXTRACTION_INSTRUCTIONS = """
 你正在为长期记忆图谱抽取实体和关系，只允许输出以下内容：
-1. Character：稳定可识别的人物或角色，例如悠酱本人、明确具名的对话对象。
+1. Character：稳定可识别的人物或角色，例如ゆいじゅ本人、明确具名的对话对象。
 2. PreferenceTarget：可被长期喜欢/讨厌/偏好/回避的对象，例如食物、饮品、地点、活动、媒体、主题。
 3. PreferenceEdge：Character -> PreferenceTarget 的长期偏好关系。
 4. RelationEdge：Character -> Character 的稳定关系或长期态度。
 
 必须遵守：
+- 主角本人只能使用 `ゆいじゅ` 作为 Character 名称，不要生成 `悠酱` 或其他别名。
 - 如果当前 episode 只描述单次行为、一次性消费、寒暄、天气、计划、金币变化、执行细节，返回空结果。
 - 只有当文本明确体现“稳定偏好”或“稳定关系变化”时，才允许抽取关系。
-- 如果文本明确出现“长期喜欢 / 总会优先选择 / 基本不会改 / 首选 / 最让我安心”这类稳定偏好信号，必须优先抽取 PreferenceEdge，而不只是创建 PreferenceTarget 节点。
+- 如果文本明确出现“长期喜欢 / 总会优先选择 / 基本不会改 / 首选 / 最让我安心”这类稳定偏好信号，必须创建 Character -> PreferenceTarget 的 PreferenceEdge，不能只把偏好信息写进 Character summary。
 - 对于“甜品长期最偏爱霜莓千层蛋糕”“饮料总会先选柚香热红茶”这类表达，应该形成 Character -> PreferenceTarget 的偏好边。
 - 不要创建任何泛化实体，不要把事件、计划、流程、时间片当成实体。
 - 如果拿不准是否具有长期价值，宁可不抽取。
@@ -308,6 +311,45 @@ def _namespace_group_id(is_dev: bool) -> str:
   return "dev" if is_dev else "prod"
 
 
+def _canonicalize_character_name(name: str | None, *, is_subject: bool = False) -> str | None:
+  """
+  统一图谱中的角色命名。
+
+  说明：
+  - 主角本人始终收敛为 `ゆいじゅ`，避免 `悠酱` / `ゆいじゅ` 混用导致重复节点与召回漂移；
+  - 非主角名称默认保持原样，仅做首尾空白清理。
+  """
+
+  if is_subject:
+    return SELF_CANONICAL_NAME
+
+  normalized = (name or "").strip()
+  if not normalized:
+    return None
+
+  if normalized in SELF_NAME_ALIASES:
+    return SELF_CANONICAL_NAME
+
+  return normalized
+
+
+def _canonicalize_memory_text(text: str) -> str:
+  """
+  统一写入 Graphiti 的文本中的主角别名。
+
+  说明：
+  - 仅将主角别名替换为 `ゆいじゅ`，避免 summaryText 中再次引入重复 self 节点；
+  - 其他人物名称不做重写，保持原始语义。
+  """
+
+  normalized = text
+  for alias in SELF_NAME_ALIASES:
+    if alias == SELF_CANONICAL_NAME:
+      continue
+    normalized = normalized.replace(alias, SELF_CANONICAL_NAME)
+  return normalized
+
+
 def _build_episode_payload_context(episode: GraphitiEpisodePayload) -> dict[str, Any]:
   """
   收敛送给 Graphiti 的 episode payload。
@@ -324,7 +366,6 @@ def _build_episode_payload_context(episode: GraphitiEpisodePayload) -> dict[str,
       "action": payload.get("action"),
       "reason": payload.get("reason"),
       "executionResult": payload.get("executionResult"),
-      "durationMinutes": payload.get("durationMinutes"),
       "location": payload.get("location"),
     }
 
@@ -338,20 +379,15 @@ def _build_episode_payload_context(episode: GraphitiEpisodePayload) -> dict[str,
           continue
         speaker_name = item.get("speaker_name")
         content = item.get("content")
-        timestamp = item.get("timestamp")
         recent_messages.append(
           {
-            "speaker_name": str(speaker_name or ""),
+            "speaker_name": _canonicalize_character_name(str(speaker_name or "")) or "",
             "content": str(content or ""),
-            "timestamp": str(timestamp or ""),
           }
         )
 
     return {
-      "counterpartyName": payload.get("counterpartyName"),
-      "messageCount": payload.get("messageCount"),
-      "windowStart": payload.get("windowStart"),
-      "windowEnd": payload.get("windowEnd"),
+      "counterpartyName": _canonicalize_character_name(str(payload.get("counterpartyName") or "")),
       "recentMessages": recent_messages,
     }
 
@@ -374,42 +410,26 @@ def _stringify_episode_content(
     "episode_id": episode.id,
     "episode_type": episode.type,
     "episode_source": episode.source,
-    "subject_name": episode.subject,
-    "counterparty_name": episode.counterparty,
+    "subject_name": _canonicalize_character_name(episode.subject, is_subject=True),
+    "counterparty_name": _canonicalize_character_name(episode.counterparty),
     "happened_at": episode.happenedAt.astimezone(timezone.utc).isoformat(),
-    "language_hint": "尽量使用中文表述实体与关系",
-    "memory_scope": "只抽取稳定偏好与稳定人物关系",
   }
 
   content = {
-    "summaryText": episode.summaryText,
+    "summaryText": _canonicalize_memory_text(episode.summaryText),
     "payloadContext": _build_episode_payload_context(episode),
   }
 
-  extraction_hint_lines = [
-    "抽取目标：只保留稳定偏好与稳定人物关系。",
-  ]
-
-  if episode.type == "conversation":
-    extraction_hint_lines.extend(
-      [
-        "如果当前对话中出现明确、持续性的偏好表达，必须把偏好对象抽成 PreferenceTarget，并补一条 PreferenceEdge。",
-        "不要只把“霜莓千层蛋糕”“柚香热红茶”保留在角色 summary 里；只要证据明确，就应落成偏好边。",
-      ]
-    )
-
-  extraction_hints = "\n".join(extraction_hint_lines)
-
   return "\n".join(
     [
-      "这是一个已经通过业务准入判断的长期记忆候选 episode。",
-      "请只在存在稳定偏好或稳定人物关系时抽取实体与关系；否则返回空结果。",
-      extraction_hints,
+      "任务：只抽取稳定偏好与稳定人物关系；没有就返回空结果。",
+      f"主角固定名称：{SELF_CANONICAL_NAME}。不要生成“悠酱”等别名实体。",
+      "稳定偏好必须产出 PreferenceEdge，不能只写进节点 summary。",
       "[meta]",
-      json.dumps(meta, ensure_ascii=False),
+      json.dumps(meta, ensure_ascii=False, separators=(",", ":")),
       "[/meta]",
       "[content]",
-      json.dumps(content, ensure_ascii=False, indent=2),
+      json.dumps(content, ensure_ascii=False, separators=(",", ":")),
       "[/content]",
     ]
   )
