@@ -70,6 +70,13 @@ export enum ActionId {
   Pray_At_Shrine = "参拜",
   /** 从神社回公园 */
   Go_To_Park_From_Shrine = "从神社回公园",
+
+  /** 从商店去月汐海岸 */
+  Go_To_Coast_From_Shop = "从商店去月汐海岸",
+  /** 从月汐海岸回商店 */
+  Go_To_Shop_From_Coast = "从月汐海岸去商店",
+  /** 在月汐海岸散步 */
+  Walk_In_Coast = "在月汐海岸散步",
 }
 
 export interface ActionContext {

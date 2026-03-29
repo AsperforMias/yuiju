@@ -13,7 +13,7 @@ type ParkWalkTier = {
 };
 
 /**
- * 公园散步的预设档位。
+ * 南风公园散步的预设档位。
  *
  * 说明：
  * - 这里使用固定档位而不是任意分钟数，避免 LLM 给出过于离散的时长；
@@ -33,7 +33,7 @@ function isAtPark(major: MajorScene) {
 }
 
 /**
- * 将 LLM 给出的任意时长收敛到公园支持的预设档位。
+ * 将 LLM 给出的任意时长收敛到南风公园支持的预设档位。
  *
  * 规则：
  * - 若未给出时长，则默认选择 30 分钟档；
@@ -55,7 +55,7 @@ export const parkAction: ActionMetadata[] = [
   {
     action: ActionId.Walk_In_Park,
     description:
-      "在公园散步放松，可以按 10/30/60/120 分钟四档安排时长，时间越久心情提升越多。[耗时需要给出]",
+      "在南风公园散步放松，可以按 10/30/60/120 分钟四档安排时长，时间越久心情提升越多。[耗时需要给出]",
     precondition(context) {
       return isAtPark(context.characterState.location.major);
     },
@@ -64,7 +64,7 @@ export const parkAction: ActionMetadata[] = [
       await context.characterState.setAction(ActionId.Walk_In_Park);
       await context.characterState.changeMood(selectedTier.moodGain);
 
-      return `在公园散步了${selectedTier.durationMin}分钟，心情提升了${selectedTier.moodGain}点`;
+      return `在南风公园散步了${selectedTier.durationMin}分钟，心情提升了${selectedTier.moodGain}点`;
     },
     async durationMin(_context, selectedAction?: ActionAgentDecision) {
       return resolveParkWalkTier(selectedAction?.durationMinute).durationMin;
@@ -72,21 +72,21 @@ export const parkAction: ActionMetadata[] = [
   },
   {
     action: ActionId.Go_Home_From_Park,
-    description: "从公园回家。[体力-2][饱腹-1][耗时10分钟]",
+    description: "从南风公园回家。[体力-3][饱腹-2][耗时10分钟]",
     precondition(context) {
       return isAtPark(context.characterState.location.major);
     },
     async executor(context) {
       await context.characterState.setAction(ActionId.Go_Home_From_Park);
       await context.characterState.setLocation({ major: MajorScene.Home });
-      await context.characterState.changeStamina(-2);
-      await context.characterState.changeSatiety(-1);
+      await context.characterState.changeStamina(-3);
+      await context.characterState.changeSatiety(-2);
     },
     durationMin: 10,
   },
   {
     action: ActionId.Go_To_Shrine_From_Park,
-    description: "从公园前往神社。[体力-2][饱腹-1][耗时10分钟]",
+    description: "从南风公园前往结灯神社。[体力-3][饱腹-2][耗时10分钟]",
     precondition(context) {
       return allTrue([
         () => isAtPark(context.characterState.location.major),
@@ -96,8 +96,8 @@ export const parkAction: ActionMetadata[] = [
     async executor(context) {
       await context.characterState.setAction(ActionId.Go_To_Shrine_From_Park);
       await context.characterState.setLocation({ major: MajorScene.Shrine });
-      await context.characterState.changeStamina(-2);
-      await context.characterState.changeSatiety(-1);
+      await context.characterState.changeStamina(-3);
+      await context.characterState.changeSatiety(-2);
     },
     durationMin: 10,
   },

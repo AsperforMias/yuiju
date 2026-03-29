@@ -5,11 +5,12 @@ import type { WeatherSnapshot } from "./weather";
 // 大场景
 export enum MajorScene {
   Home = "家",
-  School = "学校",
-  Shop = "商店",
-  Cafe = "咖啡店",
-  Park = "公园",
-  Shrine = "神社",
+  School = "星见丘高校",
+  Shop = "小町商店",
+  Cafe = "薄暮咖啡馆",
+  Park = "南风公园",
+  Shrine = "结灯神社",
+  Coast = "月汐海岸",
 }
 
 // 家的小场景
@@ -17,17 +18,20 @@ export enum HomeSubScene {
   House = "house",
 }
 
-// 学校的小场景
+// 星见丘高校的小场景
 export enum SchoolSubScene {}
 
-// 商店的小场景（预留）
+// 小町商店的小场景（预留）
 export enum ShopSubScene {}
 
-// 公园的小场景（预留）
+// 南风公园的小场景（预留）
 export enum ParkSubScene {}
 
-// 神社的小场景（预留）
+// 结灯神社的小场景（预留）
 export enum ShrineSubScene {}
+
+// 海岸的小场景（预留）
+export enum CoastSubScene {}
 
 // 位置类型（判别联合）
 export type Location =
@@ -36,7 +40,8 @@ export type Location =
   | { major: MajorScene.Shop; minor?: ShopSubScene }
   | { major: MajorScene.Cafe; minor?: undefined }
   | { major: MajorScene.Park; minor?: ParkSubScene }
-  | { major: MajorScene.Shrine; minor?: ShrineSubScene };
+  | { major: MajorScene.Shrine; minor?: ShrineSubScene }
+  | { major: MajorScene.Coast; minor?: CoastSubScene };
 
 /**
  * 食物元数据

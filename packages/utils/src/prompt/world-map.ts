@@ -1,6 +1,6 @@
 import { MajorScene } from "../types/state";
 
-export type WorldMapPlaceId = "HOME" | "SCHOOL" | "SHOP" | "CAFE" | "PARK" | "SHRINE";
+export type WorldMapPlaceId = "HOME" | "SCHOOL" | "SHOP" | "CAFE" | "PARK" | "SHRINE" | "COAST";
 
 export interface WorldMapPlace {
   id: WorldMapPlaceId;
@@ -30,6 +30,7 @@ export const worldMapPlaces: WorldMapPlace[] = [
   { id: "CAFE", name: MajorScene.Cafe },
   { id: "PARK", name: MajorScene.Park },
   { id: "SHRINE", name: MajorScene.Shrine },
+  { id: "COAST", name: MajorScene.Coast },
 ];
 
 export const worldMapLinks: WorldMapLink[] = [
@@ -53,6 +54,10 @@ export const worldMapLinks: WorldMapLink[] = [
 
   { from: "PARK", to: "SHRINE", timeMinutes: 10, stamina: -2, satiety: -1, dir: "S" },
   { from: "SHRINE", to: "PARK", timeMinutes: 10, stamina: -2, satiety: -1, dir: "N" },
+
+  // 月汐海岸位于小町商店正东侧，作为一条更适合放松散步的外沿路线。
+  { from: "SHOP", to: "COAST", timeMinutes: 30, stamina: -2, satiety: -1, dir: "E" },
+  { from: "COAST", to: "SHOP", timeMinutes: 30, stamina: -2, satiety: -1, dir: "W" },
 ];
 
 export const worldMapDsl = [
@@ -74,25 +79,25 @@ export const worldMapDsl = [
  * 给人看的，不是给 LLM 看的
  */
 export const worldMapTerminalUi = `
-              ┌────────┐
-              │  学校  │
-              └───┬────┘
-                  │
-        ┌─────────┼─────────┐
-    ┌───┴───┐     │     ┌───┴───┐
-    │ 咖啡店 │     │     │  商店  │
-    └───┬───┘     │     └───┬───┘
-        └─────────┼─────────┘
-                  │
-              ┌───┴────┐
-              │   家   │
-              └───┬────┘
-                  │
-              ┌───┴────┐
-              │  公园  │
-              └───┬────┘
-                  │
-              ┌───┴────┐
-              │  神社  │
-              └────────┘
+             ┌────────────┐
+             │ 星见丘高校 │
+             └─────┬──────┘
+                   │
+      ┌────────────┼────────────────────────────┐
+  ┌───┴────────┐   │                  ┌─────────┴───┐──────┌──────────┐
+  │ 薄暮咖啡馆 │   │                  │   小町商店   │      │ 月汐海岸 │
+  └───┬────────┘   │                  └─────────┬───┘──────└──────────┘
+      └────────────┼────────────────────────────┘
+                   │
+               ┌───┴────┐
+               │   家   │
+               └───┬────┘
+                   │
+               ┌───┴────┐
+               │ 南风公园 │
+               └───┬────┘
+                   │
+               ┌───┴────┐
+               │ 结灯神社 │
+               └─────────┘
 `.trim();

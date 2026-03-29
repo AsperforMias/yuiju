@@ -1,6 +1,7 @@
 import { type ActionContext, ActionId } from "@yuiju/utils";
 import { anywhereAction } from "./anywhere";
 import { cafeAction } from "./cafe";
+import { coastAction } from "./coast";
 import { homeAction } from "./home";
 import { parkAction } from "./park";
 import { schoolAction } from "./school";
@@ -33,6 +34,7 @@ export const getActionById = (action: ActionId) => {
     ...schoolAction,
     ...shopAction,
     ...cafeAction,
+    ...coastAction,
     ...parkAction,
     ...shrineAction,
   ].find((item) => item.action === action)!;
