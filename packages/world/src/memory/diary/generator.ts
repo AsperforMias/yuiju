@@ -1,11 +1,11 @@
 import {
+  buildDiarySystemPrompt,
   DEFAULT_DIARY_SUBJECT,
   DEFAULT_MEMORY_SUBJECT_ID,
-  buildDiarySystemPrompt,
   deepseekProvider,
   getRecentMemoryEpisodes,
   type IMemoryEpisode,
-  minimaxModel,
+  strongModel,
   upsertMemoryDiary,
 } from "@yuiju/utils";
 import { generateText } from "ai";
@@ -151,7 +151,7 @@ async function writeDiaryText(input: {
   materials: DiaryMaterialItem[];
 }): Promise<string> {
   const result = await generateText({
-    model: minimaxModel,
+    model: strongModel,
     system: buildDiarySystemPrompt({
       subject: input.subject,
       diaryDate: input.diaryDate,

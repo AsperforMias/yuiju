@@ -5,13 +5,10 @@ import { memoryQueryRouter } from "../../memory";
 const sharedFields = {
   query: z
     .string()
-    .describe(
-      "具体的搜索内容。如果你要搜索自己的记忆，请使用你的日文名（ゆいじゅ）。例如：ゆいじゅ喜欢草莓吗？",
-    ),
-  counterpartyName: z
-    .string()
     .optional()
-    .describe("可选，对特定对象进行过滤，例如某位聊天对象或关系主体。"),
+    .describe(
+      "仅 fact 查询有效。用于搜索长期事实、偏好、关系等语义内容；episode 和 diary 会忽略该字段。",
+    ),
   topK: z.number().int().min(1).max(20).optional().describe("返回结果上限，默认 5。"),
 };
 
@@ -40,11 +37,11 @@ const memorySearchInputSchema = z
     startTime: z
       .string()
       .optional()
-      .describe("仅 diary 查询有效。可选，精确开始时间，格式必须为 YYYY-MM-DD HH:mm:ss。"),
+      .describe("仅 diary 查询有效。可选，开始自然日时间，格式必须为 YYYY-MM-DD HH:mm:ss。"),
     endTime: z
       .string()
       .optional()
-      .describe("仅 diary 查询有效。可选，精确结束时间，格式必须为 YYYY-MM-DD HH:mm:ss。"),
+      .describe("仅 diary 查询有效。可选，结束自然日时间，格式必须为 YYYY-MM-DD HH:mm:ss。"),
   })
   .superRefine((input, ctx) => {
     if (input.memoryType === "episode") {
@@ -59,7 +56,21 @@ const memorySearchInputSchema = z
     }
 
     if (input.memoryType === "diary") {
+      if (input.timeSort) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "diary 查询不接受 timeSort 参数。",
+        });
+      }
+
       return;
+    }
+
+    if (!input.query?.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "fact 查询必须提供 query 参数。",
+      });
     }
 
     if (input.timeSort) {
@@ -79,7 +90,7 @@ const memorySearchInputSchema = z
 
 export const memorySearchTool: Tool = {
   description:
-    "统一记忆查询入口。必须显式选择记忆类型：episode 用于查今天发生的事，diary 用于查昨天及更早的经历回忆，fact 用于查长期事实/偏好/关系。不同记忆类型只接受各自需要的参数。",
+    "统一记忆查询入口。必须显式选择记忆类型：episode 用于查今天的事件，忽略 query；diary 用于查昨天及更早的日记，忽略 query；fact 用于查长期事实/偏好/关系，必须提供 query。不同记忆类型只接受各自需要的参数。",
   inputSchema: memorySearchInputSchema,
   execute: async (input) => {
     const result = await memoryQueryRouter.search({
@@ -88,9 +99,9 @@ export const memorySearchTool: Tool = {
       startTime: "startTime" in input ? input.startTime : undefined,
       endTime: "endTime" in input ? input.endTime : undefined,
       timeSort: input.memoryType === "episode" ? (input.timeSort ?? "desc") : undefined,
-      counterpartyName: input.counterpartyName,
       topK: input.topK,
     });
+    console.log(11, input, result);
     return result;
   },
 };

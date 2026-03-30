@@ -1,10 +1,10 @@
 import {
-  deepseekProvider,
   getCharacterCardPrompt,
   getMemoryServiceClientFromEnv,
   memorySearchTool,
   queryStateTool,
   queryWorldMapTool,
+  qwen3Model,
   smallModel,
 } from "@yuiju/utils";
 import { generateText, type ModelMessage, Output, stepCountIs } from "ai";
@@ -55,15 +55,20 @@ export class LLMManager {
     const messages: ModelMessage[] = await this.privateSession.getLLMMessages(userName);
 
     const result = await generateText({
-      model: deepseekProvider("deepseek-chat"),
+      model: qwen3Model,
       messages,
       system: systemPrompt,
+      providerOptions: {
+        Siliconflow: {
+          enable_thinking: false,
+        },
+      },
       tools: {
         memorySearch: memorySearchTool,
         queryStateTool: queryStateTool,
         queryWorldMap: queryWorldMapTool,
       },
-      stopWhen: stepCountIs(10),
+      stopWhen: stepCountIs(20),
     });
 
     // 添加助手回复到对话历史
@@ -147,15 +152,20 @@ export class LLMManager {
     const messages: ModelMessage[] = await this.groupSession.getLLMMessages(sessionKey);
 
     const result = await generateText({
-      model: deepseekProvider("deepseek-chat"),
+      model: qwen3Model,
       messages,
       system: systemPrompt,
+      providerOptions: {
+        Siliconflow: {
+          enable_thinking: false,
+        },
+      },
       tools: {
         memorySearch: memorySearchTool,
         queryStateTool: queryStateTool,
         queryWorldMap: queryWorldMapTool,
       },
-      stopWhen: stepCountIs(10),
+      stopWhen: stepCountIs(20),
     });
 
     this.groupSession.recordMessage({

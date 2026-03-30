@@ -1,9 +1,8 @@
 import dayjs from "dayjs";
 import customParseFormat from "dayjs/plugin/customParseFormat";
-import { getYuijuConfig } from "../config";
 import { getMemoryDiaries, getRecentMemoryEpisodes } from "../db";
 import { isDev } from "../env";
-import { rerankEpisodesWithSiliconFlow } from "../llm/rerank";
+import { formatProjectTime } from "../time";
 import { DEFAULT_DIARY_SUBJECT } from "./diary";
 import { DEFAULT_MEMORY_SUBJECT_ID } from "./episode";
 import { getMemoryServiceClientFromEnv, type MemorySearchItem } from "./memory-service-client";
@@ -14,12 +13,11 @@ export type MemoryQueryType = "episode" | "diary" | "fact";
 export type MemoryQueryTimeSort = "asc" | "desc";
 
 export interface MemorySearchInput {
-  query: string;
+  query?: string;
   memoryType: MemoryQueryType;
   startTime?: string;
   endTime?: string;
   timeSort?: MemoryQueryTimeSort;
-  counterpartyName?: string;
   topK?: number;
 }
 
@@ -34,8 +32,6 @@ export interface MemorySearchResult {
 }
 
 const DEFAULT_TOP_K = 5;
-const EPISODE_SEARCH_LIMIT = 20;
-const EPISODE_RERANK_THRESHOLD = 3;
 const MEMORY_TIME_FORMAT = "YYYY-MM-DD HH:mm:ss";
 
 interface NormalizedMemorySearchInput {
@@ -44,7 +40,6 @@ interface NormalizedMemorySearchInput {
   startTime: string;
   endTime: string;
   timeSort: MemoryQueryTimeSort;
-  counterpartyName: string;
   topK: number;
 }
 
@@ -61,12 +56,11 @@ function normalizeInput(input: MemorySearchInput): NormalizedMemorySearchInput {
   const normalizedEndTime = input.endTime?.trim() ?? "";
 
   return {
-    query: input.query.trim(),
+    query: input.query?.trim() ?? "",
     memoryType: input.memoryType,
     startTime: normalizedStartTime,
     endTime: normalizedEndTime,
     timeSort: input.timeSort ?? "desc",
-    counterpartyName: input.counterpartyName?.trim() ?? "",
     topK: normalizeTopK(input.topK),
   };
 }
@@ -82,22 +76,6 @@ function parseMemoryTime(value: string): Date | undefined {
   }
 
   return parsed.toDate();
-}
-
-function scoreEpisode(query: string, summaryText: string): number {
-  const normalizedQuery = query.trim();
-  if (!normalizedQuery) {
-    return 0;
-  }
-
-  let score = 0;
-  for (const token of normalizedQuery.split(/\s+/)) {
-    if (summaryText.includes(token)) {
-      score += 1;
-    }
-  }
-
-  return score;
 }
 
 function normalizeDayRange(input: { startTime?: string; endTime?: string }): {
@@ -253,33 +231,11 @@ function compareResultsByScoreAndTime(
   return timeSort === "asc" ? -timeDiff : timeDiff;
 }
 
-function buildEpisodeRerankDocument(doc: {
-  summaryText: string;
-  type: string;
-  counterparty?: string;
-  payload?: Record<string, unknown>;
-}): string {
-  const action =
-    typeof doc.payload?.action === "string" ? `行为: ${doc.payload.action}` : undefined;
-  const planId = getPlanIdFromPayload(doc.payload);
-  const counterparty = doc.counterparty ? `对象: ${doc.counterparty}` : undefined;
-
-  return [
-    doc.summaryText,
-    `类型: ${doc.type}`,
-    action,
-    counterparty,
-    planId ? `计划: ${planId}` : undefined,
-  ]
-    .filter((item): item is string => Boolean(item))
-    .join("\n");
-}
-
 /**
  * 查询 Episode 记忆。
  *
  * 说明：
- * - 统一在 Mongo Episode 集合中按时间窗口与对象过滤；
+ * - episode 检索只关心时间窗口与返回顺序，不再依赖 query 相关性评分；
  * - 返回结构会补充 episodeType / planId 等 metadata，供上游稳定消费。
  */
 export async function searchEpisodes(input: MemorySearchInput): Promise<MemorySearchResult[]> {
@@ -290,69 +246,30 @@ export async function searchEpisodes(input: MemorySearchInput): Promise<MemorySe
   }
 
   const docs = await getRecentMemoryEpisodes({
-    limit: Math.max(normalized.topK, EPISODE_SEARCH_LIMIT),
+    limit: normalized.topK,
     subject: DEFAULT_MEMORY_SUBJECT_ID,
     isDev: isDev(),
-    counterparty: normalized.counterpartyName || undefined,
     sortDirection: normalized.timeSort,
     ...timeRangeFilter,
   });
 
-  const candidates = docs
-    .map((doc) => {
-      const score = scoreEpisode(normalized.query, doc.summaryText);
-      const planId = getPlanIdFromPayload(doc.payload);
+  return docs.map((doc) => {
+    const planId = getPlanIdFromPayload(doc.payload);
 
-      return {
-        item: {
-          source: "episode" as const,
-          score,
-          summary: doc.summaryText,
-          happenedAt: dayjs(doc.happenedAt).toISOString(),
-          metadata: {
-            episodeType: doc.type,
-            planId,
-            source: doc.source,
-            displayTime: dayjs(doc.happenedAt).format("MM-DD HH:mm"),
-          },
-        },
-        document: buildEpisodeRerankDocument(doc),
-        result: {
-          source: "episode" as const,
-          score,
-          summary: doc.summaryText,
-          happenedAt: dayjs(doc.happenedAt).toISOString(),
-          metadata: {
-            episodeType: doc.type,
-            planId,
-            source: doc.source,
-            displayTime: dayjs(doc.happenedAt).format("MM-DD HH:mm"),
-          },
-        },
-      };
-    })
-    .filter((item) => item.result.score > 0 || !normalized.query)
-    .sort((left, right) => {
-      return compareResultsByScoreAndTime(left.result, right.result, normalized.timeSort);
-    });
-
-  if (
-    normalized.query &&
-    candidates.length > EPISODE_RERANK_THRESHOLD &&
-    getYuijuConfig().llm.siliconflowApiKey.trim()
-  ) {
-    const reranked = await rerankEpisodesWithSiliconFlow({
-      query: normalized.query,
-      topK: normalized.topK,
-      candidates,
-    });
-
-    if (reranked) {
-      return reranked;
-    }
-  }
-
-  return candidates.slice(0, normalized.topK).map((candidate) => candidate.result);
+    return {
+      source: "episode" as const,
+      // episode 检索现在只按时间筛选与排序，score 固定为 0 以表达“无相关度参与”。
+      score: 0,
+      summary: doc.summaryText,
+      happenedAt: formatProjectTime(doc.happenedAt, "MM-DD HH:mm"),
+      metadata: {
+        episodeType: doc.type,
+        planId,
+        source: doc.source,
+        displayTime: formatProjectTime(doc.happenedAt, "MM-DD HH:mm"),
+      },
+    };
+  });
 }
 
 /**
@@ -360,6 +277,7 @@ export async function searchEpisodes(input: MemorySearchInput): Promise<MemorySe
  *
  * 说明：
  * - Diary 只负责昨天及更早的“经历回忆”；
+ * - 检索只关心日期范围与返回顺序，不再依赖 query 相关性评分；
  * - 结果直接返回完整日记正文，保持叙事感，不额外拆摘要字段。
  */
 export async function searchDiaries(input: MemorySearchInput): Promise<MemorySearchResult[]> {
@@ -370,27 +288,24 @@ export async function searchDiaries(input: MemorySearchInput): Promise<MemorySea
   }
 
   const diaries = await getMemoryDiaries({
-    limit: Math.max(normalized.topK, 20),
+    limit: normalized.topK,
     subject: DEFAULT_DIARY_SUBJECT,
     isDev: isDev(),
     sortDirection: normalized.timeSort,
     ...timeFilter,
   });
 
-  return diaries
-    .map((diary) => ({
-      source: "diary" as const,
-      score: scoreEpisode(normalized.query, diary.text),
-      summary: diary.text,
-      happenedAt: dayjs(diary.diaryDate).toISOString(),
-      metadata: {
-        subject: diary.subject,
-        displayDate: dayjs(diary.diaryDate).format("YYYY-MM-DD"),
-      },
-    }))
-    .filter((item) => item.score > 0 || !normalized.query)
-    .sort((left, right) => compareResultsByScoreAndTime(left, right, normalized.timeSort))
-    .slice(0, normalized.topK);
+  return diaries.map((diary) => ({
+    source: "diary" as const,
+    // diary 检索现在只按日期范围筛选与排序，score 固定为 0 以表达“无相关度参与”。
+    score: 0,
+    summary: diary.text,
+    happenedAt: formatProjectTime(diary.diaryDate, "YYYY-MM-DD"),
+    metadata: {
+      subject: diary.subject,
+      displayDate: formatProjectTime(diary.diaryDate, "YYYY-MM-DD"),
+    },
+  }));
 }
 
 /**
@@ -402,6 +317,10 @@ export async function searchDiaries(input: MemorySearchInput): Promise<MemorySea
  */
 export async function searchFacts(input: MemorySearchInput): Promise<MemorySearchResult[]> {
   const normalized = normalizeInput(input);
+  if (!normalized.query) {
+    return [];
+  }
+
   const client = getMemoryServiceClientFromEnv();
   if (!client) {
     return [];
@@ -410,7 +329,6 @@ export async function searchFacts(input: MemorySearchInput): Promise<MemorySearc
   const facts = await client.searchMemory({
     query: normalized.query,
     top_k: normalized.topK,
-    counterparty_name: normalized.counterpartyName || undefined,
     is_dev: isDev(),
   });
 

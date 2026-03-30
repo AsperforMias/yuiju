@@ -19,12 +19,11 @@ export type StructuredMemorySearchItem = MemorySearchResult;
  * 兼容包装：后续新代码应直接使用 memoryQueryRouter.search。
  */
 export async function searchStructuredMemory(input: {
-  query: string;
+  query?: string;
   mode: MemorySearchMode;
   startTime?: string;
   endTime?: string;
   timeSort?: MemoryQueryTimeSort;
-  counterpartyName?: string;
   topK?: number;
 }): Promise<StructuredMemorySearchItem[]> {
   return await memoryQueryRouter.search({
@@ -33,7 +32,6 @@ export async function searchStructuredMemory(input: {
     startTime: input.startTime,
     endTime: input.endTime,
     timeSort: input.timeSort,
-    counterpartyName: input.counterpartyName,
     topK: input.topK,
   });
 }
