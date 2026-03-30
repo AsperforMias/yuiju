@@ -1,13 +1,10 @@
 import dayjs from "dayjs";
-import customParseFormat from "dayjs/plugin/customParseFormat";
 import { getMemoryDiaries, getRecentMemoryEpisodes } from "../db";
 import { isDev } from "../env";
-import { formatProjectTime } from "../time";
+import { formatProjectTime, parseProjectTime } from "../time";
 import { DEFAULT_DIARY_SUBJECT } from "./diary";
 import { DEFAULT_MEMORY_SUBJECT_ID } from "./episode";
 import { getMemoryServiceClientFromEnv, type MemorySearchItem } from "./memory-service-client";
-
-dayjs.extend(customParseFormat);
 
 export type MemoryQueryType = "episode" | "diary" | "fact";
 export type MemoryQueryTimeSort = "asc" | "desc";
@@ -66,16 +63,7 @@ function normalizeInput(input: MemorySearchInput): NormalizedMemorySearchInput {
 }
 
 function parseMemoryTime(value: string): Date | undefined {
-  if (!value) {
-    return undefined;
-  }
-
-  const parsed = dayjs(value, MEMORY_TIME_FORMAT, true);
-  if (!parsed.isValid()) {
-    return undefined;
-  }
-
-  return parsed.toDate();
+  return parseProjectTime(value, MEMORY_TIME_FORMAT);
 }
 
 function normalizeDayRange(input: { startTime?: string; endTime?: string }): {
