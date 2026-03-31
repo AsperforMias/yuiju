@@ -7,7 +7,7 @@ import {
   qwen3Model,
   smallModel,
 } from "@yuiju/utils";
-import { generateText, type ModelMessage, Output, stepCountIs } from "ai";
+import { generateText, Output, stepCountIs } from "ai";
 import { z } from "zod";
 import { ChatSessionManager, SUBJECT_NAME } from "./chat-session-manager";
 
@@ -40,10 +40,6 @@ export class LLMManager {
   }
 
   public async chatWithLLM(input: string, userName: string) {
-    const systemPrompt = getCharacterCardPrompt({
-      userName,
-    });
-
     this.privateSession.recordMessage({
       sessionId: userName,
       sessionLabel: userName,
@@ -52,7 +48,14 @@ export class LLMManager {
       speakerName: userName,
       timestamp: new Date(),
     });
-    const messages: ModelMessage[] = await this.privateSession.getLLMMessages(userName);
+    const { messages, summary } = await this.privateSession.getLLMMessages(userName);
+    const systemPrompt = this.buildSystemPromptWithSummary({
+      baseSystemPrompt: getCharacterCardPrompt({
+        userName,
+      }),
+      sessionLabel: userName,
+      summary,
+    });
 
     const result = await generateText({
       model: qwen3Model,
@@ -107,17 +110,21 @@ export class LLMManager {
    * - 直接对悠酱说的话（@ 或 reply 悠酱）不会走这个流程，而是由 handler 直接触发回复模型。
    */
   public async shouldReplyGroupMessage(input: GroupConversationInput): Promise<boolean> {
-    const messages = await this.groupSession.getLLMMessages(
+    const { messages, summary } = await this.groupSession.getLLMMessages(
       this.buildGroupSessionKey(input.groupId),
     );
 
-    const systemPrompt = [
-      "你是群聊回复裁决器，唯一任务是判断悠酱现在是否应该回复最新一条普通群消息。",
-      "你只输出结构化结果中的 shouldReply 布尔值，不负责生成回复内容。",
-      "群聊不是私聊，不需要每条都回，更不能抢话。回复策略应该保守，只在必要时才回复",
-      "shouldReply=true 的场景：消息中提到了悠酱、内容和悠酱强相关、有人心情难受需要安慰。",
-      "其余场景 shouldReply=false",
-    ].join("\n");
+    const systemPrompt = this.buildSystemPromptWithSummary({
+      baseSystemPrompt: [
+        "你是群聊回复裁决器，唯一任务是判断悠酱现在是否应该回复最新一条普通群消息。",
+        "你只输出结构化结果中的 shouldReply 布尔值，不负责生成回复内容。",
+        "群聊不是私聊，不需要每条都回，更不能抢话。回复策略应该保守，只在必要时才回复",
+        "shouldReply=true 的场景：消息中提到了悠酱、内容和悠酱强相关、有人心情难受需要安慰。",
+        "其余场景 shouldReply=false",
+      ].join("\n"),
+      sessionLabel: input.groupName,
+      summary,
+    });
 
     const { output } = await generateText({
       model: smallModel,
@@ -148,8 +155,12 @@ export class LLMManager {
    */
   public async chatInGroup(input: GroupConversationInput) {
     const sessionKey = this.buildGroupSessionKey(input.groupId);
-    const systemPrompt = this.buildGroupReplySystemPrompt(input);
-    const messages: ModelMessage[] = await this.groupSession.getLLMMessages(sessionKey);
+    const { messages, summary } = await this.groupSession.getLLMMessages(sessionKey);
+    const systemPrompt = this.buildSystemPromptWithSummary({
+      baseSystemPrompt: this.buildGroupReplySystemPrompt(input),
+      sessionLabel: input.groupName,
+      summary,
+    });
 
     const result = await generateText({
       model: qwen3Model,
@@ -182,6 +193,27 @@ export class LLMManager {
 
   private buildGroupSessionKey(groupId: number): string {
     return `group:${groupId}`;
+  }
+
+  /**
+   * 将滚动摘要统一拼接到顶层 system prompt，避免 provider 因 messages 中夹带 system
+   * 消息而报错，同时让所有调用点复用同一套摘要注入规则。
+   */
+  private buildSystemPromptWithSummary(input: {
+    baseSystemPrompt: string;
+    sessionLabel: string;
+    summary?: string;
+  }): string {
+    if (!input.summary) {
+      return input.baseSystemPrompt;
+    }
+
+    return [
+      input.baseSystemPrompt,
+      "## 会话历史摘要",
+      `以下是当前会话「${input.sessionLabel}」的历史摘要，仅供续接对话时参考：`,
+      input.summary,
+    ].join("\n\n");
   }
 
   /**

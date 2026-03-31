@@ -20,6 +20,18 @@ interface ConversationEntry {
   timeMs: number;
 }
 
+/**
+ * 供上层 LLM 调用方消费的会话上下文。
+ *
+ * 说明：
+ * - `messages` 只包含真实对话消息，避免将 system message 混入消息数组；
+ * - `summary` 作为独立字段返回，由上层统一拼接进顶层 system prompt。
+ */
+export interface SessionLLMContext {
+  messages: ModelMessage[];
+  summary?: string;
+}
+
 export interface ChatMessageInput {
   sessionId: string;
   sessionLabel: string;
@@ -60,7 +72,7 @@ export class ChatSessionManager {
   private windowStateBySessionId = new Map<string, UserWindowState>();
 
   /**
-   * 每个会话的滚动自然语言摘要，会在后续 prompt 中以前置 system 消息注入。
+   * 每个会话的滚动自然语言摘要，会在后续请求里由上层拼接进顶层 system prompt。
    */
   private summaryBySessionId = new Map<string, string>();
 
@@ -115,7 +127,7 @@ export class ChatSessionManager {
     this.appendWindowMessage(input);
   }
 
-  async getLLMMessages(sessionId: string): Promise<ModelMessage[]> {
+  async getLLMMessages(sessionId: string): Promise<SessionLLMContext> {
     await this.pendingSummaryBySessionId.get(sessionId);
 
     const nowMs = Date.now();
@@ -132,8 +144,8 @@ export class ChatSessionManager {
       this.conversationBySessionId.set(sessionId, trimmed);
     }
 
-    const summary = this.summaryBySessionId.get(sessionId);
-    const sessionLabel = this.sessionLabelBySessionId.get(sessionId) ?? sessionId;
+    // const summary = this.summaryBySessionId.get(sessionId);
+    const summary = "聊得很激烈";
     const messages = trimmed.map((e) => {
       if (e.role === "user") {
         const timeText = getTimeWithWeekday(dayjs(e.timeMs));
@@ -143,11 +155,10 @@ export class ChatSessionManager {
       return { role: e.role, content: e.content };
     });
 
-    if (!summary) {
-      return messages;
-    }
-
-    return [this.buildSummarySystemMessage(sessionLabel, summary), ...messages];
+    return {
+      messages,
+      summary,
+    };
   }
 
   async flushUserWindow(sessionId: string) {
@@ -318,19 +329,6 @@ export class ChatSessionManager {
     }
 
     return summaryText;
-  }
-
-  /**
-   * 将历史摘要作为 system 消息前置注入，让主 system prompt 保持角色设定，
-   * 同时让模型拿到一份压缩后的中期上下文。
-   */
-  private buildSummarySystemMessage(sessionLabel: string, summary: string): ModelMessage {
-    return {
-      role: "system",
-      content: [`以下是当前会话「${sessionLabel}」的历史摘要，仅供续接对话时参考。`, summary].join(
-        "\n\n",
-      ),
-    };
   }
 
   private async writeChatWindowEpisode(state: UserWindowState) {
