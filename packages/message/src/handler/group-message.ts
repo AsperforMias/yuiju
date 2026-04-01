@@ -80,7 +80,13 @@ export async function groupMessageHandler(
       isDirectedToBot: parsedMessage.isDirectedToBot,
     });
 
-    const reply = (text || "").trim() || "呜…这句话我一时没理解呢。";
+    const reply = (text || "").trim();
+
+    if (!reply || reply === "null") {
+      console.log("reply 为空");
+      return;
+    }
+
     console.log(`回复群 ${parsedMessage.groupDisplayName}(${context.group_id}) 的消息: ${reply}`);
 
     if (parsedMessage.isDirectedToBot) {

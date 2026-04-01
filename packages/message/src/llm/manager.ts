@@ -63,7 +63,7 @@ export class LLMManager {
       system: systemPrompt,
       providerOptions: {
         Siliconflow: {
-          enable_thinking: false,
+          enable_thinking: true,
         },
       },
       tools: {
@@ -118,8 +118,8 @@ export class LLMManager {
       baseSystemPrompt: [
         "你是群聊回复裁决器，唯一任务是判断悠酱现在是否应该回复最新一条普通群消息。",
         "你只输出结构化结果中的 shouldReply 布尔值，不负责生成回复内容。",
-        "群聊不是私聊，不需要每条都回，更不能抢话。回复策略应该保守，只在必要时才回复",
-        "shouldReply=true 的场景：消息中提到了悠酱、内容和悠酱强相关、有人心情难受需要安慰。",
+        "群聊不是私聊，不需要每条都回，更不能抢话。回复策略应该保守，只在必要时才回复。",
+        "shouldReply=true 的场景：消息中提到了悠酱",
         "其余场景 shouldReply=false",
       ].join("\n"),
       sessionLabel: input.groupName,
@@ -168,7 +168,7 @@ export class LLMManager {
       system: systemPrompt,
       providerOptions: {
         Siliconflow: {
-          enable_thinking: false,
+          enable_thinking: true,
         },
       },
       tools: {
@@ -230,8 +230,8 @@ export class LLMManager {
       }),
       "## 当前聊天场景",
       `你现在正在 QQ 群「${input.groupName}」里说话`,
-      "群聊回复要更克制、更自然，像在群里顺手接一句，不要像一对一长聊。",
-      "如果这条消息是在直接对你说话（例如 @ 你或 reply 你），系统已经会自动回复当前这条消息，你不要在正文里手动重复写 @。",
+      "- 群聊回复要更克制、更自然，像在群里顺手接一句，不要像一对一长聊。",
+      "- 如果这条消息是在直接对你说话（例如 @ 你或 reply 你），系统已经会自动回复当前这条消息，你不要在正文里手动重复写 @。",
     ].join("\n\n");
   }
 }

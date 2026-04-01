@@ -57,7 +57,11 @@ export async function privateMessageHandler(
 
     const { text } = await llmManager.chatWithLLM(receiveMessage, userName);
 
-    const reply = (text || "").trim() || "呜…这句话我一时没理解呢。";
+    const reply = (text || "").trim();
+    if (!reply || reply === "null") {
+      console.log("reply 为空");
+      return;
+    }
     console.log(`回复给 ${context.sender.nickname}(${context.sender.user_id}) 的消息: ${reply}`);
 
     const replyList = reply.split("\n").filter(Boolean);
