@@ -63,7 +63,7 @@ export class LLMManager {
       system: systemPrompt,
       providerOptions: {
         Siliconflow: {
-          enable_thinking: true,
+          enable_thinking: false,
         },
       },
       tools: {
@@ -168,7 +168,7 @@ export class LLMManager {
       system: systemPrompt,
       providerOptions: {
         Siliconflow: {
-          enable_thinking: true,
+          enable_thinking: false,
         },
       },
       tools: {
