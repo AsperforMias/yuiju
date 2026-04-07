@@ -1,10 +1,10 @@
 import {
+  deepseekProvider,
   getCharacterCardPrompt,
   getMemoryServiceClientFromEnv,
   memorySearchTool,
   queryStateTool,
   queryWorldMapTool,
-  qwen3Model,
   smallModel,
 } from "@yuiju/utils";
 import { generateText, Output, stepCountIs } from "ai";
@@ -58,14 +58,14 @@ export class LLMManager {
     });
 
     const result = await generateText({
-      model: qwen3Model,
+      model: deepseekProvider("deepseek-chat"),
       messages,
       system: systemPrompt,
-      providerOptions: {
-        Siliconflow: {
-          enable_thinking: false,
-        },
-      },
+      // providerOptions: {
+      //   Siliconflow: {
+      //     enable_thinking: false,
+      //   },
+      // },
       tools: {
         memorySearch: memorySearchTool,
         queryStateTool: queryStateTool,
@@ -163,14 +163,14 @@ export class LLMManager {
     });
 
     const result = await generateText({
-      model: qwen3Model,
+      model: deepseekProvider("deepseek-chat"),
       messages,
       system: systemPrompt,
-      providerOptions: {
-        Siliconflow: {
-          enable_thinking: false,
-        },
-      },
+      // providerOptions: {
+      //   Siliconflow: {
+      //     enable_thinking: false,
+      //   },
+      // },
       tools: {
         memorySearch: memorySearchTool,
         queryStateTool: queryStateTool,

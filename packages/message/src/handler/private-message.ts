@@ -14,7 +14,7 @@ function groupMessageAction(action: string | null) {
     closeGroupMessage();
     return true;
   }
-  if (action === "/开放") {
+  if (action === "/关闭") {
     openGroupMessage();
     return true;
   }
