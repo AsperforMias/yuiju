@@ -119,7 +119,7 @@ export class LLMManager {
         "你是群聊回复裁决器，唯一任务是判断悠酱现在是否应该回复最新一条普通群消息。",
         "你只输出结构化结果中的 shouldReply 布尔值，不负责生成回复内容。",
         "群聊不是私聊，不需要每条都回，更不能抢话。回复策略应该保守，只在必要时才回复。",
-        "shouldReply=true 的场景：消息中提到了悠酱",
+        "shouldReply=true 的场景：消息中提到了悠酱，在和悠酱对话。",
         "其余场景 shouldReply=false",
       ].join("\n"),
       sessionLabel: input.groupName,

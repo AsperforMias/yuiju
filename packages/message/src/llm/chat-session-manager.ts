@@ -144,8 +144,7 @@ export class ChatSessionManager {
       this.conversationBySessionId.set(sessionId, trimmed);
     }
 
-    // const summary = this.summaryBySessionId.get(sessionId);
-    const summary = "聊得很激烈";
+    const summary = this.summaryBySessionId.get(sessionId);
     const messages = trimmed.map((e) => {
       if (e.role === "user") {
         const timeText = getTimeWithWeekday(dayjs(e.timeMs));
