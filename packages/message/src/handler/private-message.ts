@@ -3,7 +3,7 @@ import { setTimeout } from "node:timers/promises";
 import { getYuijuConfig } from "@yuiju/utils";
 import { type AllHandlers, type NCWebsocket, Structs } from "node-napcat-ts";
 import { llmManager } from "@/llm/manager";
-import { getReplyDelayMs } from "@/utils/message";
+import { createStoredPrivateMessage, getReplyDelayMs } from "@/utils/message";
 import { closeGroupMessage, openGroupMessage } from "./group-message";
 
 const config = getYuijuConfig();
@@ -54,7 +54,8 @@ export async function privateMessageHandler(
       return;
     }
 
-    const { quick_action: _quickAction, ...storedMessage } = context;
+    const { quick_action: _quickAction, ...rawMessage } = context;
+    const storedMessage = await createStoredPrivateMessage(rawMessage, _napcat);
     const { text } = await llmManager.chatWithLLM(storedMessage);
 
     const reply = (text || "").trim();

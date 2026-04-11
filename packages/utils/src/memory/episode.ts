@@ -1,3 +1,14 @@
+import { SUBJECT_NAME } from "../constants";
+
+/**
+ * 当前主角色在记忆系统中的默认 subject 标识。
+ *
+ * 说明：
+ * - 目前项目只有单主角场景，subject 直接复用角色名；
+ * - 单独导出常量，方便 episode / diary / 检索链路共用统一标识。
+ */
+export const DEFAULT_MEMORY_SUBJECT_ID = SUBJECT_NAME;
+
 /**
  * 统一 Episode 写入来源。
  *

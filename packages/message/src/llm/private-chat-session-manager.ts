@@ -10,95 +10,50 @@ import dayjs from "dayjs";
 import {
   getProtocolMessageSenderName,
   type HistoryJsonItem,
-  type StoredProtocolMessage,
-  segmentsTransfer,
-} from "@/utils/group-message";
-import { buildConversationEpisode, type UserWindowState } from "../memory/episode-builder";
+  projectHistoryMessageContent,
+  type StoredPrivateMessage,
+} from "@/utils/message";
+import { buildConversationEpisode } from "../memory/episode-builder";
+import {
+  AbstractChatSessionManager,
+  type ChatMessageInput,
+  type ChatSessionManagerOptions,
+  type SessionHistoryContext,
+} from "./abstract-chat-session-manager";
 
-export interface SessionHistoryContext {
-  /**
-   * 当前会话的滚动摘要。
-   *
-   * 说明：
-   * - 摘要会单独返回给上层，由 prompt 构建器决定如何注入；
-   * - 不再把摘要伪装成 JSON 历史项，避免和真实消息结构混在一起。
-   */
-  summary?: string;
-  historyJson: string;
-}
-
-export interface ChatMessageInput {
-  sessionId: string;
+interface PrivateWindowState {
   sessionLabel: string;
-  message: StoredProtocolMessage;
+  windowStartMs: number;
+  lastTsMs: number;
+  messages: StoredPrivateMessage[];
 }
 
-export interface ChatSessionManagerOptions {
-  conversationLimit?: number;
-  conversationTtlMs?: number;
-  /**
-   * 静默刷新时间
-   */
-  windowMs?: number;
-}
-
-export class ChatSessionManager {
-  /**
-   * 每个会话最近一段原始协议消息，会在读取和写入时按 TTL 与最大条数双重裁剪。
-   */
-  private conversationBySessionId = new Map<string, StoredProtocolMessage[]>();
-
-  /**
-   * 每个会话当前仍在进行中的聊天窗口。
-   *
-   * 说明：
-   * - 用于判断是否发生“静默超时切窗”；
-   * - 窗口结束后会触发摘要更新与 memory episode 归档。
-   */
-  private windowStateBySessionId = new Map<string, UserWindowState>();
-
-  /**
-   * 每个会话的滚动自然语言摘要，会在后续请求里作为独立上下文提供给 prompt。
-   */
+/**
+ * 私聊会话管理器。
+ *
+ * 说明：
+ * - 只负责私聊历史、窗口切分、摘要和归档；
+ * - 与群聊完全拆开，避免通用实现继续耦合两种场景。
+ */
+export class PrivateChatSessionManager extends AbstractChatSessionManager<StoredPrivateMessage> {
+  private conversationBySessionId = new Map<string, StoredPrivateMessage[]>();
+  private windowStateBySessionId = new Map<string, PrivateWindowState>();
   private summaryBySessionId = new Map<string, string>();
-
-  /**
-   * 每个会话当前正在执行的摘要刷新任务。
-   *
-   * 说明：
-   * - 用来串行化同一会话的摘要更新，避免连续切窗时发生覆盖；
-   * - 读取历史 JSON 前会先等待该任务完成，保证 summary 与消息窗口一致。
-   */
   private pendingSummaryBySessionId = new Map<string, Promise<void>>();
-
-  /**
-   * 单个会话最多保留多少条原始消息给 LLM。
-   */
   private conversationLimit: number;
-
-  /**
-   * 原始消息的存活时间，超过该时间的消息不会再进入 LLM 上下文。
-   */
   private conversationTtlMs: number;
-
-  /**
-   * 两条消息之间允许的最大静默间隔；超过该时间视为旧窗口结束。
-   */
   private windowMs: number;
-
-  /**
-   * 当前运行环境标记，会透传到 memory episode 里，区分 dev / production。
-   */
   private isDev: boolean;
 
-  constructor(options: ChatSessionManagerOptions = {}) {
-    this.conversationLimit = options.conversationLimit ?? 20;
-    this.conversationTtlMs = options.conversationTtlMs ?? 3600 * 1000;
+  constructor(options: ChatSessionManagerOptions) {
+    super();
+    this.conversationLimit = options.conversationLimit;
+    this.conversationTtlMs = options.conversationTtlMs;
     this.windowMs = options.windowMs ?? 20 * 60 * 1000;
     this.isDev = isDev();
   }
 
-  recordMessage(input: ChatMessageInput) {
+  recordMessage(input: ChatMessageInput<StoredPrivateMessage>) {
     this.appendConversationEntry(input);
     this.appendWindowMessage(input);
   }
@@ -108,14 +63,7 @@ export class ChatSessionManager {
 
     const trimmedMessages = this.getTrimmedConversation(sessionId);
     const summary = this.summaryBySessionId.get(sessionId);
-
-    const historyItems: HistoryJsonItem[] = trimmedMessages.map((message) => ({
-      type: "message",
-      role: message.post_type === "message_sent" ? "assistant" : "user",
-      speaker: getProtocolMessageSenderName(message),
-      time: getTimeWithWeekday(dayjs.unix(message.time)),
-      content: message.message,
-    }));
+    const historyItems = this.buildHistoryItems(trimmedMessages);
 
     return {
       summary,
@@ -131,13 +79,13 @@ export class ChatSessionManager {
     await this.finalizeWindow(sessionId, state);
   }
 
-  private appendConversationEntry(input: ChatMessageInput) {
+  private appendConversationEntry(input: ChatMessageInput<StoredPrivateMessage>) {
     const list = this.conversationBySessionId.get(input.sessionId) ?? [];
     list.push(input.message);
     this.conversationBySessionId.set(input.sessionId, this.trimConversation(list));
   }
 
-  private appendWindowMessage(input: ChatMessageInput) {
+  private appendWindowMessage(input: ChatMessageInput<StoredPrivateMessage>) {
     const messageTimeMs = this.getMessageTimeMs(input.message);
     const state = this.windowStateBySessionId.get(input.sessionId);
 
@@ -169,22 +117,14 @@ export class ChatSessionManager {
     state.messages.push(input.message);
   }
 
-  /**
-   * 会话窗口结束后，同时推进两条链路：
-   * 1. 归档为 memory episode，供长期记忆消费；
-   * 2. 更新滚动摘要，供后续 prompt 作为中期上下文使用。
-   */
-  private async finalizeWindow(sessionId: string, state: UserWindowState) {
+  private async finalizeWindow(sessionId: string, state: PrivateWindowState) {
     await Promise.allSettled([
       this.enqueueSummaryRefresh(sessionId, state),
       this.writeChatWindowEpisode(state),
     ]);
   }
 
-  /**
-   * 将滚动摘要更新串行化，避免同一会话在短时间内多次切窗时发生摘要覆盖。
-   */
-  private enqueueSummaryRefresh(sessionId: string, state: UserWindowState): Promise<void> {
+  private enqueueSummaryRefresh(sessionId: string, state: PrivateWindowState): Promise<void> {
     const previousTask = this.pendingSummaryBySessionId.get(sessionId) ?? Promise.resolve();
 
     const task = previousTask
@@ -205,7 +145,7 @@ export class ChatSessionManager {
 
           this.summaryBySessionId.set(sessionId, nextSummary);
         } catch (error) {
-          console.error("Failed to update chat session summary:", error);
+          console.error("Failed to update private chat session summary:", error);
         }
       })
       .finally(() => {
@@ -219,21 +159,14 @@ export class ChatSessionManager {
   }
 
   /**
-   * 使用小模型维护一段滚动摘要，供后续 prompt 单独注入。
+   * 私聊摘要与 history JSON 复用同一份消息格式化逻辑，避免两套输出漂移。
    */
   private async generateSessionSummary(input: {
     sessionLabel: string;
     previousSummary?: string;
-    state: UserWindowState;
+    state: PrivateWindowState;
   }): Promise<string | null> {
-    const transcript = input.state.messages
-      .map((message) => {
-        const speaker = getProtocolMessageSenderName(message);
-        const time = getTimeWithWeekday(dayjs.unix(message.time));
-        const content = segmentsTransfer(message.message, message.self_id);
-        return `[${time}] ${speaker}：${content}`;
-      })
-      .join("\n");
+    const transcript = JSON.stringify(this.buildHistoryItems(input.state.messages), null, 2);
 
     const result = await generateText({
       model: smallModel,
@@ -260,7 +193,22 @@ export class ChatSessionManager {
     return summaryText;
   }
 
-  private async writeChatWindowEpisode(state: UserWindowState) {
+  /**
+   * 构建供下游复用的结构化历史项。
+   *
+   * 说明：
+   * - `getHistoryJson` 与摘要 prompt 都应复用这份格式，避免结构漂移；
+   * - 这里只做纯格式化，不负责 trim、summary 合并等会话控制逻辑。
+   */
+  private buildHistoryItems(messages: StoredPrivateMessage[]): HistoryJsonItem[] {
+    return messages.map((message) => ({
+      speaker: getProtocolMessageSenderName(message),
+      time: getTimeWithWeekday(dayjs.unix(message.time)),
+      content: projectHistoryMessageContent(message.message),
+    }));
+  }
+
+  private async writeChatWindowEpisode(state: PrivateWindowState) {
     const episode = buildConversationEpisode({
       sessionLabel: state.sessionLabel,
       state,
@@ -273,11 +221,11 @@ export class ChatSessionManager {
         console.error("Failed to process pending memory episodes:", error);
       });
     } catch (error) {
-      console.error("Failed to write chat window episode:", error);
+      console.error("Failed to write private chat window episode:", error);
     }
   }
 
-  private getTrimmedConversation(sessionId: string): StoredProtocolMessage[] {
+  private getTrimmedConversation(sessionId: string): StoredPrivateMessage[] {
     const list = this.conversationBySessionId.get(sessionId) ?? [];
     const trimmed = this.trimConversation(list);
 
@@ -288,7 +236,7 @@ export class ChatSessionManager {
     return trimmed;
   }
 
-  private trimConversation(list: StoredProtocolMessage[]): StoredProtocolMessage[] {
+  private trimConversation(list: StoredPrivateMessage[]): StoredPrivateMessage[] {
     const cutoffMs = Date.now() - this.conversationTtlMs;
     const filtered = list.filter((message) => this.getMessageTimeMs(message) >= cutoffMs);
 
@@ -297,7 +245,7 @@ export class ChatSessionManager {
       : filtered;
   }
 
-  private getMessageTimeMs(message: StoredProtocolMessage): number {
+  private getMessageTimeMs(message: StoredPrivateMessage): number {
     return message.time * 1000;
   }
 }

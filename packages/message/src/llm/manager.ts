@@ -16,23 +16,27 @@ import {
   getProtocolMessageSenderName,
   type StoredGroupMessage,
   type StoredPrivateMessage,
-} from "@/utils/group-message";
-import { ChatSessionManager } from "./chat-session-manager";
+} from "@/utils/message";
+import type { AbstractChatSessionManager } from "./abstract-chat-session-manager";
+import { GroupChatSessionManager } from "./group-chat-session-manager";
+import { PrivateChatSessionManager } from "./private-chat-session-manager";
 
 export class LLMManager {
-  private privateSession: ChatSessionManager;
-  private groupSession: ChatSessionManager;
+  private privateSession: AbstractChatSessionManager<StoredPrivateMessage>;
+  private groupSession: AbstractChatSessionManager<StoredGroupMessage>;
   private syntheticMessageId = 0;
 
-  constructor(conversationLimit: number = 10) {
-    this.privateSession = new ChatSessionManager({
-      conversationLimit,
-      windowMs: 2 * 60 * 60 * 1000,
+  constructor() {
+    this.privateSession = new PrivateChatSessionManager({
+      conversationLimit: 20,
+      windowMs: 8 * 60 * 60 * 1000,
+      conversationTtlMs: 8 * 60 * 60 * 1000,
     });
-    this.groupSession = new ChatSessionManager({
-      conversationLimit: 30,
-      // 2小时
-      windowMs: 2 * 60 * 60 * 1000,
+    this.groupSession = new GroupChatSessionManager({
+      conversationLimit: 20,
+      // 8小时
+      windowMs: 8 * 60 * 60 * 1000,
+      conversationTtlMs: 8 * 60 * 60 * 1000,
     });
   }
 
@@ -143,6 +147,7 @@ export class LLMManager {
   public async chatInGroup(message: StoredGroupMessage) {
     const sessionKey = this.buildGroupSessionKey(message.group_id);
     const { historyJson, summary } = await this.groupSession.getHistoryJson(sessionKey);
+    console.log(historyJson);
 
     const result = await generateText({
       model: deepseekProvider("deepseek-chat"),

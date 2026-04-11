@@ -3,12 +3,13 @@ import { ActionId, getYuijuConfig, initCharacterStateData } from "@yuiju/utils";
 import { type AllHandlers, type NCWebsocket, Structs } from "node-napcat-ts";
 import { llmManager } from "@/llm/manager";
 import {
+  createStoredGroupMessage,
   getGroupDisplayName,
   getProtocolMessageSenderName,
+  getReplyDelayMs,
   isGroupMessageDirectedToBot,
-  segmentsTransfer,
-} from "@/utils/group-message";
-import { getReplyDelayMs } from "@/utils/message";
+  type StoredGroupMessage,
+} from "@/utils/message";
 
 let isCloseGroup = false;
 const config = getYuijuConfig();
@@ -39,13 +40,14 @@ export async function groupMessageHandler(
   if (!storedContext.message.length) {
     return;
   }
-  const displayContent = segmentsTransfer(storedContext.message, storedContext.self_id);
+  const storedMessage = await createStoredGroupMessage(storedContext, napcat);
+  const displayContent = JSON.stringify(storedMessage.message);
 
-  llmManager.recordGroupMessage(storedContext);
+  llmManager.recordGroupMessage(storedMessage);
 
-  const groupName = getGroupDisplayName(storedContext);
-  const senderName = getProtocolMessageSenderName(storedContext);
-  const isDirectedToBot = isGroupMessageDirectedToBot(storedContext);
+  const groupName = getGroupDisplayName(storedMessage);
+  const senderName = getProtocolMessageSenderName(storedMessage);
+  const isDirectedToBot = isGroupMessageDirectedToBot(storedMessage);
 
   console.log(
     `收到群 ${groupName}(${context.group_id}) 中 ${senderName}(${context.sender.user_id}) 的消息: ${displayContent}`,
@@ -59,13 +61,13 @@ export async function groupMessageHandler(
   }
 
   try {
-    const shouldReply = isDirectedToBot ? true : await shouldReplyToGroupMessage(storedContext);
+    const shouldReply = isDirectedToBot ? true : await shouldReplyToGroupMessage(storedMessage);
 
     if (!shouldReply) {
       return;
     }
 
-    const { text } = await llmManager.chatInGroup(storedContext);
+    const { text } = await llmManager.chatInGroup(storedMessage);
 
     const reply = (text || "").trim();
     if (!reply || reply === "null") {
@@ -99,9 +101,7 @@ export async function groupMessageHandler(
 /**
  * 普通群消息使用独立的小模型进行裁决，避免每条消息都直接拉起大模型回复。
  */
-async function shouldReplyToGroupMessage(
-  message: Omit<AllHandlers["message.group"], "quick_action">,
-) {
+async function shouldReplyToGroupMessage(message: StoredGroupMessage) {
   const shouldReply = await llmManager.shouldReplyGroupMessage(message);
   const groupName = getGroupDisplayName(message);
 
