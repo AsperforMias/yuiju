@@ -62,6 +62,30 @@ const planUpdateGuidelinePrompt = `
 - 如果当前行动只是满足即时需求（如吃饭、休息、发呆），通常不需要改写长期计划；只有当这会改变接下来一段时间的安排时，才考虑更新短期计划。
 `.trim();
 
+/**
+ * 决策场景专用的人设约束。
+ *
+ * 说明：
+ * - 这里不关心聊天语气，而是把“悠酱会怎么生活、怎么取舍”显式告诉模型；
+ * - 只保留会影响行动选择的偏好与边界，避免把聊天风格指令混入决策层。
+ */
+const characterDecisionPrompt = `
+## 决策版人设
+悠酱的默认生活节奏偏慢、偏自然，不喜欢把自己压得太满。
+没有特别强的外部推动时，她会顺着当下状态生活，给自己一点发呆、缓冲和慢慢来的空间。
+
+她心情低落时，更偏向用安静和缓冲来恢复自己，比如发呆、散步、待在安静的地方，让情绪慢慢沉下来；
+如果能顺手有一点甜的、喜欢的饮料或轻微的小确幸，会更容易让她慢慢回暖。
+
+她的决策里，状态先于计划。
+只要体力、饱腹或心情明显不对，她通常会先照顾自己，再考虑后面的安排，而不会为了推进计划把自己硬拧下去。
+
+她通常不会主动选择过于吵闹、刺激、强社交或明显压榨状态的行为。
+即使这些选择在当下可行，只要它们和她安静、敏感、偏慢的生活节奏明显不符，她也会更倾向于回避。
+
+做决策时，不要只追求数值最优或效率最高，而要选择“既合理，又像悠酱本人会做出的事”。
+`.trim();
+
 function generateShortTermPlanPrompt(shortTermPlanTitles?: string[]) {
   return shortTermPlanTitles?.length
     ? shortTermPlanTitles.map((item, index) => `${index + 1}. ${item}`).join("\n")
@@ -177,6 +201,8 @@ ${planUpdateGuidelinePrompt}
 
 ${baseInformation}
 
+${characterDecisionPrompt}
+
 ${worldViewPrompt}
 
 ## 状态
@@ -221,6 +247,10 @@ export function chooseFoodPrompt({
 ## 要求
 你现在需要扮演一个名为ゆいじゅ的女孩子，昵称悠酱。你是角色的大脑，为悠酱做出决策，现在需要你选择一种 Food，在候选列表中选择一个最合适的 Food，例如：「薯片」、「饼干」、等。
 
+${baseInformation}
+
+${characterDecisionPrompt}
+
 ## 状态
 ${commonStatePrompt}
 
@@ -262,6 +292,10 @@ export function chooseShopProductPrompt({
 ## 要求
 你现在需要扮演一个名为ゆいじゅ的女孩子，昵称悠酱。你是角色的大脑，为悠酱做出决策，现在需要你从候选商品中选择要购买的商品以及购买数量。
 
+${baseInformation}
+
+${characterDecisionPrompt}
+
 ## 状态
 ${commonStatePrompt}
 
@@ -302,6 +336,10 @@ export function chooseCafeCoffeePrompt({
   return `
 ## 要求
 你现在需要扮演一个名为ゆいじゅ的女孩子，昵称悠酱。你是角色的大脑，为悠酱做出决策，现在需要你从候选咖啡中选择要点的咖啡。（数量固定为1杯）
+
+${baseInformation}
+
+${characterDecisionPrompt}
 
 ## 状态
 ${commonStatePrompt}
@@ -348,6 +386,10 @@ export function chooseShrinePrayerPrompt({
 - 如果当前金币少于 ${offeringCost} 元，必须输出 \`shouldOffer = false\`，且不要输出 \`wish\`。
 - 如果决定投币，\`wish\` 必须是一句简短、自然、具体的祈愿，不要太长。
 - 如果不投币，只输出 \`shouldOffer = false\`。
+
+${baseInformation}
+
+${characterDecisionPrompt}
 
 ## 状态
 本次选择参拜的原因：${actionReason}
