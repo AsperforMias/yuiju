@@ -1,7 +1,6 @@
 import {
   deepseekProvider,
   getCharacterCardPrompt,
-  getMemoryServiceClientFromEnv,
   memorySearchTool,
   queryStateTool,
   queryWorldMapTool,
@@ -10,57 +9,58 @@ import {
 import { generateText, Output, stepCountIs } from "ai";
 import { z } from "zod";
 import { ChatSessionManager, SUBJECT_NAME } from "./chat-session-manager";
-
-export interface GroupConversationInput {
-  groupId: number;
-  groupName: string;
-  senderName: string;
-  content: string;
-  timestamp: Date;
-  isDirectedToBot: boolean;
-}
+import {
+  type AssistantSentGroupMessage,
+  type AssistantSentPrivateMessage,
+  type StoredGroupMessage,
+  type StoredPrivateMessage,
+  getGroupDisplayName,
+  getProtocolMessageSenderName,
+} from "@/utils/group-message";
 
 export class LLMManager {
-  private memoryClient = getMemoryServiceClientFromEnv();
   private privateSession: ChatSessionManager;
   private groupSession: ChatSessionManager;
+  private syntheticMessageId = 0;
 
   constructor(conversationLimit: number = 10) {
     this.privateSession = new ChatSessionManager({
       conversationLimit,
-      memoryClient: this.memoryClient,
       windowMs: 2 * 60 * 60 * 1000,
     });
     this.groupSession = new ChatSessionManager({
       conversationLimit: 30,
-      memoryClient: this.memoryClient,
       // 2小时
       windowMs: 2 * 60 * 60 * 1000,
     });
   }
 
-  public async chatWithLLM(input: string, userName: string) {
+  public async chatWithLLM(message: StoredPrivateMessage) {
+    const sessionId = this.buildPrivateSessionKey(message.user_id);
+    const sessionLabel = getProtocolMessageSenderName(message);
+
     this.privateSession.recordMessage({
-      sessionId: userName,
-      sessionLabel: userName,
-      role: "user",
-      llmContent: input,
-      speakerName: userName,
-      timestamp: new Date(),
-    });
-    const { messages, summary } = await this.privateSession.getLLMMessages(userName);
-    const systemPrompt = this.buildSystemPromptWithSummary({
-      baseSystemPrompt: getCharacterCardPrompt({
-        userName,
-      }),
-      sessionLabel: userName,
-      summary,
+      sessionId,
+      sessionLabel,
+      message,
     });
 
+    const { historyJson, summary } = await this.privateSession.getHistoryJson(sessionId);
     const result = await generateText({
       model: deepseekProvider("deepseek-chat"),
-      messages,
-      system: systemPrompt,
+      system: getCharacterCardPrompt({
+        userName: sessionLabel,
+      }),
+      messages: [
+        {
+          role: "user",
+          content: this.buildHistoryUserPrompt({
+            taskInstruction: "以下是最近会话历史 JSON 数组，请基于这些上下文继续自然地回复用户。",
+            summary,
+            historyJson,
+          }),
+        },
+      ],
       // providerOptions: {
       //   Siliconflow: {
       //     enable_thinking: false,
@@ -74,31 +74,23 @@ export class LLMManager {
       stopWhen: stepCountIs(20),
     });
 
-    // 添加助手回复到对话历史
     this.privateSession.recordMessage({
-      sessionId: userName,
-      sessionLabel: userName,
-      role: "assistant",
-      llmContent: result.text,
-      speakerName: SUBJECT_NAME,
-      timestamp: new Date(),
+      sessionId,
+      sessionLabel,
+      message: this.buildAssistantPrivateMessage(message, result.text),
     });
 
     return result;
   }
 
   /**
-   * 将群消息写入群会话历史，保证裁决模型与回复模型拿到的是同一份上下文。
+   * 将群原始消息写入群会话历史，保证裁决模型与回复模型拿到的是同一份上下文。
    */
-  public recordGroupMessage(input: GroupConversationInput) {
+  public recordGroupMessage(message: StoredGroupMessage) {
     this.groupSession.recordMessage({
-      sessionId: this.buildGroupSessionKey(input.groupId),
-      sessionLabel: input.groupName,
-      role: "user",
-      llmContent: this.buildGroupUserMessage(input),
-      archiveContent: input.content,
-      speakerName: input.senderName,
-      timestamp: input.timestamp,
+      sessionId: this.buildGroupSessionKey(message.group_id),
+      sessionLabel: getGroupDisplayName(message),
+      message,
     });
   }
 
@@ -107,37 +99,31 @@ export class LLMManager {
    *
    * 说明：
    * - 这里只返回 shouldReply，不承担具体回复生成；
-   * - 直接对悠酱说的话（@ 或 reply 悠酱）不会走这个流程，而是由 handler 直接触发回复模型。
+   * - 直接对悠酱说的话（例如 @ 悠酱）不会走这个流程，而是由 handler 直接触发回复模型。
    */
-  public async shouldReplyGroupMessage(input: GroupConversationInput): Promise<boolean> {
-    const { messages, summary } = await this.groupSession.getLLMMessages(
-      this.buildGroupSessionKey(input.groupId),
+  public async shouldReplyGroupMessage(message: StoredGroupMessage): Promise<boolean> {
+    const { historyJson, summary } = await this.groupSession.getHistoryJson(
+      this.buildGroupSessionKey(message.group_id),
     );
-
-    const systemPrompt = this.buildSystemPromptWithSummary({
-      baseSystemPrompt: [
-        "你是群聊回复裁决器，唯一任务是判断悠酱现在是否应该回复最新一条普通群消息。",
-        "你只输出结构化结果中的 shouldReply 布尔值，不负责生成回复内容。",
-        "群聊不是私聊，不需要每条都回，更不能抢话。回复策略应该保守，只在必要时才回复。",
-        "shouldReply=true 的场景：消息中提到了悠酱，在和悠酱对话。",
-        "其余场景 shouldReply=false",
-      ].join("\n"),
-      sessionLabel: input.groupName,
-      summary,
-    });
 
     const { output } = await generateText({
       model: smallModel,
-      system: systemPrompt,
+      system: [
+        "你是群聊回复裁决器，唯一任务是判断悠酱现在是否应该回复最新一条普通群消息。",
+        "你只输出结构化结果中的 shouldReply 布尔值，不负责生成回复内容。",
+        "群聊不是私聊，不需要每条都回，更不能抢话。回复策略应该保守，只在必要时才回复。",
+        "shouldReply=true 的场景：消息中提到了悠酱，或者明显在和悠酱对话。",
+        "其余场景 shouldReply=false。",
+      ].join("\n"),
       messages: [
-        ...messages,
         {
           role: "user",
-          content: [
-            "请只判断上一条最新群消息是否值得悠酱回复",
-            `最新发言者：${input.senderName}`,
-            `最新消息：${input.content}`,
-          ].join("\n"),
+          content: this.buildHistoryUserPrompt({
+            taskInstruction:
+              "以下是最近会话历史 JSON 数组。请只判断悠酱是否应该回复最后一条群消息。",
+            summary,
+            historyJson,
+          }),
         },
       ],
       output: Output.object({
@@ -153,19 +139,24 @@ export class LLMManager {
   /**
    * 使用主回复模型为群聊生成自然语言回复。
    */
-  public async chatInGroup(input: GroupConversationInput) {
-    const sessionKey = this.buildGroupSessionKey(input.groupId);
-    const { messages, summary } = await this.groupSession.getLLMMessages(sessionKey);
-    const systemPrompt = this.buildSystemPromptWithSummary({
-      baseSystemPrompt: this.buildGroupReplySystemPrompt(input),
-      sessionLabel: input.groupName,
-      summary,
-    });
+  public async chatInGroup(message: StoredGroupMessage) {
+    const sessionKey = this.buildGroupSessionKey(message.group_id);
+    const { historyJson, summary } = await this.groupSession.getHistoryJson(sessionKey);
 
     const result = await generateText({
       model: deepseekProvider("deepseek-chat"),
-      messages,
-      system: systemPrompt,
+      system: this.buildGroupReplySystemPrompt(message),
+      messages: [
+        {
+          role: "user",
+          content: this.buildHistoryUserPrompt({
+            taskInstruction:
+              "以下是最近会话历史 JSON 数组，请基于这些上下文，生成一条适合发在当前群里的自然回复。",
+            summary,
+            historyJson,
+          }),
+        },
+      ],
       // providerOptions: {
       //   Siliconflow: {
       //     enable_thinking: false,
@@ -181,14 +172,15 @@ export class LLMManager {
 
     this.groupSession.recordMessage({
       sessionId: sessionKey,
-      sessionLabel: input.groupName,
-      role: "assistant",
-      llmContent: result.text,
-      speakerName: SUBJECT_NAME,
-      timestamp: new Date(),
+      sessionLabel: getGroupDisplayName(message),
+      message: this.buildAssistantGroupMessage(message, result.text),
     });
 
     return result;
+  }
+
+  private buildPrivateSessionKey(userId: number): string {
+    return `private:${userId}`;
   }
 
   private buildGroupSessionKey(groupId: number): string {
@@ -196,43 +188,107 @@ export class LLMManager {
   }
 
   /**
-   * 将滚动摘要统一拼接到顶层 system prompt，避免 provider 因 messages 中夹带 system
-   * 消息而报错，同时让所有调用点复用同一套摘要注入规则。
+   * 组装传给 LLM 的用户提示词。
+   *
+   * 说明：
+   * - 滚动摘要与结构化历史分章节提供，避免模型把摘要误判成真实消息项；
+   * - 历史 JSON 始终只包含原始消息投影，保持结构稳定。
    */
-  private buildSystemPromptWithSummary(input: {
-    baseSystemPrompt: string;
-    sessionLabel: string;
+  private buildHistoryUserPrompt(input: {
+    taskInstruction: string;
     summary?: string;
+    historyJson: string;
   }): string {
-    if (!input.summary) {
-      return input.baseSystemPrompt;
+    const sections = [input.taskInstruction];
+
+    if (input.summary) {
+      sections.push(["最近会话摘要如下：", input.summary].join("\n\n"));
     }
 
+    sections.push(
+      ["最近会话历史 JSON 数组如下：", "```json", input.historyJson, "```"].join("\n\n"),
+    );
+
+    return sections.join("\n\n");
+  }
+
+  private buildGroupReplySystemPrompt(message: StoredGroupMessage): string {
     return [
-      input.baseSystemPrompt,
-      "## 会话历史摘要",
-      `以下是当前会话「${input.sessionLabel}」的历史摘要，仅供续接对话时参考：`,
-      input.summary,
+      getCharacterCardPrompt({
+        userName: getProtocolMessageSenderName(message),
+      }),
+      "## 当前聊天场景",
+      `你现在正在 QQ 群「${getGroupDisplayName(message)}」里说话`,
+      "- 群聊回复要更克制、更自然，像在群里顺手接一句，不要像一对一长聊。",
+      "- 你会收到最近会话历史的 JSON 数组，最后一条消息就是当前最新语境的一部分，请结合上下文自然续接。",
+      "- 如果这条消息是在直接对你说话，系统可能已经通过回复链路触发你，你不要在正文里手动重复写 @。",
     ].join("\n\n");
   }
 
   /**
-   * 群聊历史里需要显式保留发言人名字，否则模型无法区分多用户对话。
+   * 由于当前没有订阅 message_sent 事件，这里手动构造兼容 OneBot 的发送消息结构，
+   * 让会话历史仍然能保持“原始协议对象”这一套统一事实源。
    */
-  private buildGroupUserMessage(input: GroupConversationInput): string {
-    return `${input.senderName}：${input.content}`;
+  private buildAssistantPrivateMessage(
+    message: StoredPrivateMessage,
+    content: string,
+  ): AssistantSentPrivateMessage {
+    const messageId = this.getNextSyntheticMessageId();
+
+    return {
+      self_id: message.self_id,
+      user_id: message.user_id,
+      time: Math.floor(Date.now() / 1000),
+      message_id: messageId,
+      message_seq: messageId,
+      real_id: messageId,
+      message_type: "private",
+      sender: {
+        user_id: message.self_id,
+        nickname: SUBJECT_NAME,
+        card: SUBJECT_NAME,
+      },
+      raw_message: content,
+      font: message.font,
+      sub_type: message.sub_type,
+      post_type: "message_sent",
+      message_format: "array",
+      message: [{ type: "text", data: { text: content } }],
+    };
   }
 
-  private buildGroupReplySystemPrompt(input: GroupConversationInput): string {
-    return [
-      getCharacterCardPrompt({
-        userName: input.senderName,
-      }),
-      "## 当前聊天场景",
-      `你现在正在 QQ 群「${input.groupName}」里说话`,
-      "- 群聊回复要更克制、更自然，像在群里顺手接一句，不要像一对一长聊。",
-      "- 如果这条消息是在直接对你说话（例如 @ 你或 reply 你），系统已经会自动回复当前这条消息，你不要在正文里手动重复写 @。",
-    ].join("\n\n");
+  private buildAssistantGroupMessage(
+    message: StoredGroupMessage,
+    content: string,
+  ): AssistantSentGroupMessage {
+    const messageId = this.getNextSyntheticMessageId();
+
+    return {
+      self_id: message.self_id,
+      user_id: message.user_id,
+      time: Math.floor(Date.now() / 1000),
+      message_id: messageId,
+      message_seq: messageId,
+      real_id: messageId,
+      message_type: "group",
+      sender: {
+        user_id: message.self_id,
+        nickname: SUBJECT_NAME,
+        card: SUBJECT_NAME,
+      },
+      raw_message: content,
+      font: message.font,
+      sub_type: "normal",
+      post_type: "message_sent",
+      group_id: message.group_id,
+      message_format: "array",
+      message: [{ type: "text", data: { text: content } }],
+    };
+  }
+
+  private getNextSyntheticMessageId(): number {
+    this.syntheticMessageId += 1;
+    return Number(`${Date.now()}${this.syntheticMessageId}`);
   }
 }
 

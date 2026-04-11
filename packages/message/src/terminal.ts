@@ -1,6 +1,7 @@
 import * as readline from "node:readline";
 import { connectDB } from "@yuiju/utils";
 import { llmManager } from "./llm/manager";
+import type { StoredPrivateMessage } from "./utils/group-message";
 
 connectDB();
 
@@ -21,8 +22,29 @@ rl.on("line", async (input) => {
   }
 
   try {
+    const message: StoredPrivateMessage = {
+      self_id: 0,
+      user_id: 1,
+      time: Math.floor(Date.now() / 1000),
+      message_id: Date.now(),
+      message_seq: Date.now(),
+      real_id: Date.now(),
+      message_type: "private",
+      sender: {
+        user_id: 1,
+        nickname: "翊小久",
+        card: "",
+      },
+      raw_message: input.trim(),
+      font: 0,
+      sub_type: "friend",
+      post_type: "message",
+      message_format: "array",
+      message: [{ type: "text", data: { text: input.trim() } }],
+    };
+
     // 调用DeepSeek API生成回复
-    const { text } = await llmManager.chatWithLLM(input.trim(), "翊小久");
+    const { text } = await llmManager.chatWithLLM(message);
 
     const reply = (text || "").trim() || "Error：未获取到回复";
 

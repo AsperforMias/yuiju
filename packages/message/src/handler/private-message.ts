@@ -47,7 +47,6 @@ export async function privateMessageHandler(
   console.log(
     `收到来自 ${context.sender.nickname}(${context.sender.user_id}) 的消息: ${receiveMessage}`,
   );
-  const userName = context.sender.nickname || String(context.sender.user_id);
 
   try {
     if (!config.llm.deepseekApiKey.trim()) {
@@ -55,7 +54,8 @@ export async function privateMessageHandler(
       return;
     }
 
-    const { text } = await llmManager.chatWithLLM(receiveMessage, userName);
+    const { quick_action: _quickAction, ...storedMessage } = context;
+    const { text } = await llmManager.chatWithLLM(storedMessage);
 
     const reply = (text || "").trim();
     if (!reply || reply === "null") {

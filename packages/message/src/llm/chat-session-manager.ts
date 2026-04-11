@@ -1,45 +1,31 @@
-import type { MemoryServiceClient } from "@yuiju/utils";
+import { emitMemoryEpisode, isDev, processPendingMemoryEpisodes, smallModel } from "@yuiju/utils";
+import { generateText } from "ai";
 import {
-  emitMemoryEpisode,
-  getTimeWithWeekday,
-  isDev,
-  processPendingMemoryEpisodes,
-  smallModel,
-} from "@yuiju/utils";
-import { generateText, type ModelMessage } from "ai";
-import dayjs from "dayjs";
+  type HistoryJsonItem,
+  projectProtocolMessageToHistoryItem,
+  type StoredProtocolMessage,
+  segmentsToDisplayText,
+} from "@/utils/group-message";
 import { buildConversationEpisode, type UserWindowState } from "../memory/episode-builder";
-
-type Role = "user" | "assistant";
 
 export const SUBJECT_NAME = "ゆいじゅ";
 
-interface ConversationEntry {
-  role: Role;
-  content: string;
-  timeMs: number;
-}
-
-/**
- * 供上层 LLM 调用方消费的会话上下文。
- *
- * 说明：
- * - `messages` 只包含真实对话消息，避免将 system message 混入消息数组；
- * - `summary` 作为独立字段返回，由上层统一拼接进顶层 system prompt。
- */
-export interface SessionLLMContext {
-  messages: ModelMessage[];
+export interface SessionHistoryContext {
+  /**
+   * 当前会话的滚动摘要。
+   *
+   * 说明：
+   * - 摘要会单独返回给上层，由 prompt 构建器决定如何注入；
+   * - 不再把摘要伪装成 JSON 历史项，避免和真实消息结构混在一起。
+   */
   summary?: string;
+  historyJson: string;
 }
 
 export interface ChatMessageInput {
   sessionId: string;
   sessionLabel: string;
-  role: Role;
-  llmContent: string;
-  archiveContent?: string;
-  speakerName?: string;
-  timestamp: Date;
+  message: StoredProtocolMessage;
 }
 
 export interface ChatSessionManagerOptions {
@@ -49,18 +35,13 @@ export interface ChatSessionManagerOptions {
    * 静默刷新时间
    */
   windowMs?: number;
-  memoryClient?: MemoryServiceClient | null;
 }
 
 export class ChatSessionManager {
   /**
-   * 每个会话最近一段可直接发送给 LLM 的原始消息。
-   *
-   * 说明：
-   * - 这里只保存 llmContent，不掺入窗口摘要和 episode 归档信息；
-   * - 会在读取和写入时按 TTL 与最大条数双重裁剪。
+   * 每个会话最近一段原始协议消息，会在读取和写入时按 TTL 与最大条数双重裁剪。
    */
-  private conversationBySessionId = new Map<string, ConversationEntry[]>();
+  private conversationBySessionId = new Map<string, StoredProtocolMessage[]>();
 
   /**
    * 每个会话当前仍在进行中的聊天窗口。
@@ -72,7 +53,7 @@ export class ChatSessionManager {
   private windowStateBySessionId = new Map<string, UserWindowState>();
 
   /**
-   * 每个会话的滚动自然语言摘要，会在后续请求里由上层拼接进顶层 system prompt。
+   * 每个会话的滚动自然语言摘要，会在后续请求里作为独立上下文提供给 prompt。
    */
   private summaryBySessionId = new Map<string, string>();
 
@@ -81,18 +62,9 @@ export class ChatSessionManager {
    *
    * 说明：
    * - 用来串行化同一会话的摘要更新，避免连续切窗时发生覆盖；
-   * - getLLMMessages 会先等待这个任务完成，再返回最终上下文。
+   * - 读取历史 JSON 前会先等待该任务完成，保证 summary 与消息窗口一致。
    */
   private pendingSummaryBySessionId = new Map<string, Promise<void>>();
-
-  /**
-   * 会话展示名缓存。
-   *
-   * 说明：
-   * - sessionId 用于内部索引；
-   * - sessionLabel 用于摘要、归档文案和 prompt 展示。
-   */
-  private sessionLabelBySessionId = new Map<string, string>();
 
   /**
    * 单个会话最多保留多少条原始消息给 LLM。
@@ -122,41 +94,23 @@ export class ChatSessionManager {
   }
 
   recordMessage(input: ChatMessageInput) {
-    this.sessionLabelBySessionId.set(input.sessionId, input.sessionLabel);
     this.appendConversationEntry(input);
     this.appendWindowMessage(input);
   }
 
-  async getLLMMessages(sessionId: string): Promise<SessionLLMContext> {
+  async getHistoryJson(sessionId: string): Promise<SessionHistoryContext> {
     await this.pendingSummaryBySessionId.get(sessionId);
 
-    const nowMs = Date.now();
-    const cutoffMs = nowMs - this.conversationTtlMs;
-    const list = this.conversationBySessionId.get(sessionId) ?? [];
-
-    const filtered = list.filter((e) => e.timeMs >= cutoffMs);
-    const trimmed =
-      filtered.length > this.conversationLimit
-        ? filtered.slice(filtered.length - this.conversationLimit)
-        : filtered;
-
-    if (trimmed.length !== list.length) {
-      this.conversationBySessionId.set(sessionId, trimmed);
-    }
-
+    const trimmedMessages = this.getTrimmedConversation(sessionId);
     const summary = this.summaryBySessionId.get(sessionId);
-    const messages = trimmed.map((e) => {
-      if (e.role === "user") {
-        const timeText = getTimeWithWeekday(dayjs(e.timeMs));
-        return { role: e.role, content: `${e.content}\n\n[用户发送时间：${timeText}]` };
-      }
 
-      return { role: e.role, content: e.content };
-    });
+    const historyItems = trimmedMessages.map((message) =>
+      projectProtocolMessageToHistoryItem(message, SUBJECT_NAME),
+    );
 
     return {
-      messages,
       summary,
+      historyJson: JSON.stringify(historyItems, null, 2),
     };
   }
 
@@ -169,80 +123,47 @@ export class ChatSessionManager {
   }
 
   private appendConversationEntry(input: ChatMessageInput) {
-    const nowMs = Date.now();
-    const cutoffMs = nowMs - this.conversationTtlMs;
-
     const list = this.conversationBySessionId.get(input.sessionId) ?? [];
-    list.push({
-      role: input.role,
-      content: input.llmContent,
-      timeMs: input.timestamp.getTime(),
-    });
-
-    const filtered = list.filter((e) => e.timeMs >= cutoffMs);
-    const trimmed =
-      filtered.length > this.conversationLimit
-        ? filtered.slice(filtered.length - this.conversationLimit)
-        : filtered;
-
-    this.conversationBySessionId.set(input.sessionId, trimmed);
+    list.push(input.message);
+    this.conversationBySessionId.set(input.sessionId, this.trimConversation(list));
   }
 
   private appendWindowMessage(input: ChatMessageInput) {
-    const tsMs = input.timestamp.getTime();
+    const messageTimeMs = this.getMessageTimeMs(input.message);
     const state = this.windowStateBySessionId.get(input.sessionId);
-    const speakerName =
-      input.speakerName ?? (input.role === "assistant" ? SUBJECT_NAME : input.sessionLabel);
-    const archiveContent = input.archiveContent ?? input.llmContent;
 
     if (!state) {
       this.windowStateBySessionId.set(input.sessionId, {
         sessionLabel: input.sessionLabel,
-        windowStartMs: tsMs,
-        lastTsMs: tsMs,
-        messages: [
-          {
-            speaker_name: speakerName,
-            content: archiveContent,
-            timestamp: getTimeWithWeekday(dayjs(input.timestamp)),
-          },
-        ],
+        windowStartMs: messageTimeMs,
+        lastTsMs: messageTimeMs,
+        messages: [input.message],
       });
       return;
     }
 
-    const gapMs = tsMs - state.lastTsMs;
+    const gapMs = messageTimeMs - state.lastTsMs;
     if (gapMs > this.windowMs) {
       this.windowStateBySessionId.delete(input.sessionId);
-      this.finalizeWindow(input.sessionId, state);
+      void this.finalizeWindow(input.sessionId, state);
 
       this.windowStateBySessionId.set(input.sessionId, {
         sessionLabel: input.sessionLabel,
-        windowStartMs: tsMs,
-        lastTsMs: tsMs,
-        messages: [
-          {
-            speaker_name: speakerName,
-            content: archiveContent,
-            timestamp: getTimeWithWeekday(dayjs(input.timestamp)),
-          },
-        ],
+        windowStartMs: messageTimeMs,
+        lastTsMs: messageTimeMs,
+        messages: [input.message],
       });
       return;
     }
 
-    state.lastTsMs = tsMs;
-    state.messages.push({
-      speaker_name: speakerName,
-      content: archiveContent,
-      timestamp: getTimeWithWeekday(dayjs(input.timestamp)),
-    });
+    state.lastTsMs = messageTimeMs;
+    state.messages.push(input.message);
   }
 
   /**
    * 会话窗口结束后，同时推进两条链路：
    * 1. 归档为 memory episode，供长期记忆消费；
-   * 2. 更新滚动摘要，供后续 prompt 作为中期上下文。
+   * 2. 更新滚动摘要，供后续 prompt 作为中期上下文使用。
    */
   private async finalizeWindow(sessionId: string, state: UserWindowState) {
     await Promise.allSettled([
@@ -289,12 +210,7 @@ export class ChatSessionManager {
   }
 
   /**
-   * 使用小模型维护一段可直接注入 prompt 的自然语言滚动摘要。
-   *
-   * 说明：
-   * - 旧摘要与新窗口一起输入，让模型输出最新版本的压缩结果；
-   * - 只保留后续续聊真正有帮助的信息，避免把日常流水原样搬进 prompt；
-   * - 返回 "无" 时视为当前无需保留摘要。
+   * 使用小模型维护一段滚动摘要，供后续 prompt 单独注入。
    */
   private async generateSessionSummary(input: {
     sessionLabel: string;
@@ -302,13 +218,19 @@ export class ChatSessionManager {
     state: UserWindowState;
   }): Promise<string | null> {
     const transcript = input.state.messages
-      .map((message) => `[${message.timestamp}] ${message.speaker_name}：${message.content}`)
+      .map((message) => {
+        const historyItem = projectProtocolMessageToHistoryItem(message, SUBJECT_NAME);
+        return `[${historyItem.time}] ${historyItem.speaker}：${segmentsToDisplayText(
+          historyItem.content,
+          message.self_id,
+        )}`;
+      })
       .join("\n");
 
     const result = await generateText({
       model: smallModel,
       prompt: [
-        "你是聊天历史摘要器，请把“既有历史摘要”和“本轮新增对话”整合成一段新的滚动摘要，供后续聊天续接使用。",
+        "你是聊天历史摘要器，请把“既有历史摘要”和“本轮新增对话”整合成一段新的滚动摘要。",
         "要求：",
         "1. 只输出摘要正文，不要标题、不要列表、不要额外解释。",
         "2. 使用自然中文，尽量控制在 200 字以内。",
@@ -335,6 +257,7 @@ export class ChatSessionManager {
       sessionLabel: state.sessionLabel,
       state,
       isDev: this.isDev,
+      assistantName: SUBJECT_NAME,
     });
 
     try {
@@ -344,7 +267,30 @@ export class ChatSessionManager {
       });
     } catch (error) {
       console.error("Failed to write chat window episode:", error);
-      return;
     }
+  }
+
+  private getTrimmedConversation(sessionId: string): StoredProtocolMessage[] {
+    const list = this.conversationBySessionId.get(sessionId) ?? [];
+    const trimmed = this.trimConversation(list);
+
+    if (trimmed.length !== list.length) {
+      this.conversationBySessionId.set(sessionId, trimmed);
+    }
+
+    return trimmed;
+  }
+
+  private trimConversation(list: StoredProtocolMessage[]): StoredProtocolMessage[] {
+    const cutoffMs = Date.now() - this.conversationTtlMs;
+    const filtered = list.filter((message) => this.getMessageTimeMs(message) >= cutoffMs);
+
+    return filtered.length > this.conversationLimit
+      ? filtered.slice(filtered.length - this.conversationLimit)
+      : filtered;
+  }
+
+  private getMessageTimeMs(message: StoredProtocolMessage): number {
+    return message.time * 1000;
   }
 }

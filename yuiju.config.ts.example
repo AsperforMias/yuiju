@@ -3,6 +3,7 @@ import { defineYuijuConfig } from "./packages/utils/src/config/config-schema";
 const config = defineYuijuConfig({
   app: {
     publicDeployment: false,
+    timezone: "Asia/Shanghai",
   },
   database: {
     mongoUri: "mongodb://localhost:27017/yuiju?authSource=admin",

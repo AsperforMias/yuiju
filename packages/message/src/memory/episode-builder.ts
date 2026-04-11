@@ -1,6 +1,11 @@
 import type { MemoryEpisode } from "@yuiju/utils";
 import { DEFAULT_MEMORY_SUBJECT_ID, getTimeWithWeekday } from "@yuiju/utils";
 import dayjs from "dayjs";
+import {
+  type StoredProtocolMessage,
+  projectProtocolMessageToHistoryItem,
+  segmentsToDisplayText,
+} from "@/utils/group-message";
 
 export interface ChatWindowMessageItem {
   speaker_name: string;
@@ -12,7 +17,7 @@ export interface UserWindowState {
   sessionLabel: string;
   windowStartMs: number;
   lastTsMs: number;
-  messages: ChatWindowMessageItem[];
+  messages: StoredProtocolMessage[];
 }
 
 interface ConversationEpisodePayload {
@@ -28,18 +33,27 @@ interface ConversationEpisodePayload {
  * 构建对话窗口 Episode。
  *
  * 说明：
- * - summaryText 使用稳定模板，避免当前阶段引入额外 LLM 摘要依赖；
- * - payload 保留完整消息窗口，方便后续恢复服务端接线时直接复用。
+ * - 窗口内部保存的是原始协议消息，归档时再统一投影为可读文本；
+ * - payload 里仍保留稳定的展示结构，方便后续长期记忆和调试直接消费。
  */
 export function buildConversationEpisode(input: {
   sessionLabel: string;
   state: UserWindowState;
   isDev: boolean;
+  assistantName: string;
 }): MemoryEpisode<ConversationEpisodePayload> {
   const windowStart = new Date(input.state.windowStartMs);
   const windowEnd = new Date(input.state.lastTsMs);
-  const messageCount = input.state.messages.length;
-  const previewText = input.state.messages
+  const projectedMessages = input.state.messages.map((message) => {
+    const historyItem = projectProtocolMessageToHistoryItem(message, input.assistantName);
+    return {
+      speaker_name: historyItem.speaker,
+      content: segmentsToDisplayText(historyItem.content, message.self_id),
+      timestamp: historyItem.time,
+    };
+  });
+  const messageCount = projectedMessages.length;
+  const previewText = projectedMessages
     .slice(-3)
     .map((message) => `${message.speaker_name}：${message.content}`)
     .join(" | ");
@@ -66,7 +80,7 @@ export function buildConversationEpisode(input: {
       windowStart: getTimeWithWeekday(dayjs(windowStart)),
       windowEnd: getTimeWithWeekday(dayjs(windowEnd)),
       messageCount,
-      messages: input.state.messages,
+      messages: projectedMessages,
     },
   };
 }
