@@ -15,8 +15,6 @@ import {
 } from "@/utils/group-message";
 import { buildConversationEpisode, type UserWindowState } from "../memory/episode-builder";
 
-export const SUBJECT_NAME = "ゆいじゅ";
-
 export interface SessionHistoryContext {
   /**
    * 当前会话的滚动摘要。

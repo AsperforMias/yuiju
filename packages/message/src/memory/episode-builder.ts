@@ -1,5 +1,5 @@
 import type { MemoryEpisode } from "@yuiju/utils";
-import { DEFAULT_MEMORY_SUBJECT_ID, getTimeWithWeekday } from "@yuiju/utils";
+import { getTimeWithWeekday, SUBJECT_NAME } from "@yuiju/utils";
 import dayjs from "dayjs";
 import {
   getProtocolMessageSenderName,
@@ -21,7 +21,6 @@ export interface UserWindowState {
 }
 
 interface ConversationEpisodePayload {
-  subjectName: string;
   counterpartyName: string;
   windowStart: string;
   windowEnd: string;
@@ -53,7 +52,7 @@ export function buildConversationEpisode(input: {
   return {
     source: "chat",
     type: "conversation",
-    subject: DEFAULT_MEMORY_SUBJECT_ID,
+    subject: SUBJECT_NAME,
     counterparty: input.sessionLabel,
     happenedAt: windowEnd,
     summaryText: [
@@ -66,7 +65,6 @@ export function buildConversationEpisode(input: {
     extractionStatus: "pending",
     isDev: input.isDev,
     payload: {
-      subjectName: DEFAULT_MEMORY_SUBJECT_ID,
       counterpartyName: input.sessionLabel,
       windowStart: getTimeWithWeekday(dayjs(windowStart)),
       windowEnd: getTimeWithWeekday(dayjs(windowEnd)),

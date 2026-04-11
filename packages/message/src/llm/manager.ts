@@ -4,19 +4,20 @@ import {
   memorySearchTool,
   queryStateTool,
   queryWorldMapTool,
+  SUBJECT_NAME,
   smallModel,
 } from "@yuiju/utils";
 import { generateText, Output, stepCountIs } from "ai";
 import { z } from "zod";
-import { ChatSessionManager, SUBJECT_NAME } from "./chat-session-manager";
 import {
   type AssistantSentGroupMessage,
   type AssistantSentPrivateMessage,
-  type StoredGroupMessage,
-  type StoredPrivateMessage,
   getGroupDisplayName,
   getProtocolMessageSenderName,
+  type StoredGroupMessage,
+  type StoredPrivateMessage,
 } from "@/utils/group-message";
+import { ChatSessionManager } from "./chat-session-manager";
 
 export class LLMManager {
   private privateSession: ChatSessionManager;

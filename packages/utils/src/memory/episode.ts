@@ -74,8 +74,3 @@ export interface MemoryEpisode<TPayload = object> {
  * 当前阶段写入入参与领域模型保持一致，单独导出仅为后续服务端适配预留边界。
  */
 export type MemoryEpisodeWriteInput<TPayload = object> = MemoryEpisode<TPayload>;
-
-/**
- * 当前项目中统一使用的记忆主体标识。
- */
-export const DEFAULT_MEMORY_SUBJECT_ID = "ゆいじゅ";
