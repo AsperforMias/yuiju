@@ -1,10 +1,17 @@
-import { emitMemoryEpisode, isDev, processPendingMemoryEpisodes, smallModel } from "@yuiju/utils";
-import { generateText } from "ai";
 import {
+  emitMemoryEpisode,
+  getTimeWithWeekday,
+  isDev,
+  processPendingMemoryEpisodes,
+  smallModel,
+} from "@yuiju/utils";
+import { generateText } from "ai";
+import dayjs from "dayjs";
+import {
+  getProtocolMessageSenderName,
   type HistoryJsonItem,
-  projectProtocolMessageToHistoryItem,
   type StoredProtocolMessage,
-  segmentsToDisplayText,
+  segmentsTransfer,
 } from "@/utils/group-message";
 import { buildConversationEpisode, type UserWindowState } from "../memory/episode-builder";
 
@@ -104,9 +111,13 @@ export class ChatSessionManager {
     const trimmedMessages = this.getTrimmedConversation(sessionId);
     const summary = this.summaryBySessionId.get(sessionId);
 
-    const historyItems = trimmedMessages.map((message) =>
-      projectProtocolMessageToHistoryItem(message, SUBJECT_NAME),
-    );
+    const historyItems: HistoryJsonItem[] = trimmedMessages.map((message) => ({
+      type: "message",
+      role: message.post_type === "message_sent" ? "assistant" : "user",
+      speaker: getProtocolMessageSenderName(message),
+      time: getTimeWithWeekday(dayjs.unix(message.time)),
+      content: message.message,
+    }));
 
     return {
       summary,
@@ -219,11 +230,10 @@ export class ChatSessionManager {
   }): Promise<string | null> {
     const transcript = input.state.messages
       .map((message) => {
-        const historyItem = projectProtocolMessageToHistoryItem(message, SUBJECT_NAME);
-        return `[${historyItem.time}] ${historyItem.speaker}：${segmentsToDisplayText(
-          historyItem.content,
-          message.self_id,
-        )}`;
+        const speaker = getProtocolMessageSenderName(message);
+        const time = getTimeWithWeekday(dayjs.unix(message.time));
+        const content = segmentsTransfer(message.message, message.self_id);
+        return `[${time}] ${speaker}：${content}`;
       })
       .join("\n");
 
@@ -257,7 +267,6 @@ export class ChatSessionManager {
       sessionLabel: state.sessionLabel,
       state,
       isDev: this.isDev,
-      assistantName: SUBJECT_NAME,
     });
 
     try {

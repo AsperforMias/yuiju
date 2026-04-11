@@ -6,8 +6,7 @@ import {
   getGroupDisplayName,
   getProtocolMessageSenderName,
   isGroupMessageDirectedToBot,
-  projectProtocolMessageToHistoryItem,
-  segmentsToDisplayText,
+  segmentsTransfer,
 } from "@/utils/group-message";
 import { getReplyDelayMs } from "@/utils/message";
 
@@ -36,18 +35,17 @@ export async function groupMessageHandler(
     return;
   }
 
-  const { quick_action: _quickAction, ...storedMessage } = context;
-  const historyItem = projectProtocolMessageToHistoryItem(storedMessage, "ゆいじゅ");
-  if (!historyItem.content.length) {
+  const { quick_action: _quickAction, ...storedContext } = context;
+  if (!storedContext.message.length) {
     return;
   }
-  const displayContent = segmentsToDisplayText(historyItem.content, storedMessage.self_id);
+  const displayContent = segmentsTransfer(storedContext.message, storedContext.self_id);
 
-  llmManager.recordGroupMessage(storedMessage);
+  llmManager.recordGroupMessage(storedContext);
 
-  const groupName = getGroupDisplayName(storedMessage);
-  const senderName = getProtocolMessageSenderName(storedMessage);
-  const isDirectedToBot = isGroupMessageDirectedToBot(storedMessage);
+  const groupName = getGroupDisplayName(storedContext);
+  const senderName = getProtocolMessageSenderName(storedContext);
+  const isDirectedToBot = isGroupMessageDirectedToBot(storedContext);
 
   console.log(
     `收到群 ${groupName}(${context.group_id}) 中 ${senderName}(${context.sender.user_id}) 的消息: ${displayContent}`,
@@ -61,13 +59,13 @@ export async function groupMessageHandler(
   }
 
   try {
-    const shouldReply = isDirectedToBot ? true : await shouldReplyToGroupMessage(storedMessage);
+    const shouldReply = isDirectedToBot ? true : await shouldReplyToGroupMessage(storedContext);
 
     if (!shouldReply) {
       return;
     }
 
-    const { text } = await llmManager.chatInGroup(storedMessage);
+    const { text } = await llmManager.chatInGroup(storedContext);
 
     const reply = (text || "").trim();
     if (!reply || reply === "null") {

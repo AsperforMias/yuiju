@@ -1,5 +1,3 @@
-import { getTimeWithWeekday } from "@yuiju/utils";
-import dayjs from "dayjs";
 import type { AllHandlers, Receive } from "node-napcat-ts";
 
 type MessageSegment = Receive[keyof Receive];
@@ -79,65 +77,33 @@ export function isGroupMessageDirectedToBot(message: StoredGroupMessage): boolea
   });
 }
 
-/**
- * 将协议消息统一投影为可直接喂给 LLM 的瘦身历史项。
- *
- * 说明：
- * - 会保留角色、说话人、时间与正文四类关键信息；
- * - 正文部分直接保留原始协议 segments，不在这一层额外发明消息结构；
- * - 统一使用 JSON-friendly 结构，便于所有 LLM 场景复用同一份历史输入。
- */
-export function projectProtocolMessageToHistoryItem(
-  message: StoredProtocolMessage,
-  assistantName: string,
-): HistoryMessageItem {
-  return {
-    type: "message",
-    role: message.post_type === "message_sent" ? "assistant" : "user",
-    speaker:
-      message.post_type === "message_sent" ? assistantName : getSenderDisplayName(message.sender),
-    time: getTimeWithWeekday(dayjs.unix(message.time)),
-    content: message.message,
-  };
-}
+export function segmentsTransfer(segments: MessageSegment[], selfId: number) {
+  return segments.map((segment) => {
+    switch (segment.type) {
+      case "text":
+        return segment;
+      case "at":
+        if (segment.data.qq === "all") {
+          return "[@全体成员]";
+        }
 
-/**
- * 仅在摘要、归档、日志等“必须是纯文本”的消费场景，把原始协议 segments 转回展示文本。
- */
-export function segmentsToDisplayText(segments: MessageSegment[], selfId: number): string {
-  return segments
-    .map((segment) => {
-      switch (segment.type) {
-        case "text":
-          return segment.data.text;
-        case "at":
-          if (segment.data.qq === "all") {
-            return "[@全体成员]";
-          }
+        if (segment.data.qq === String(selfId)) {
+          return "[提及悠酱]";
+        }
 
-          if (segment.data.qq === String(selfId)) {
-            return "[提及悠酱]";
-          }
-
-          return `[@QQ:${segment.data.qq}]`;
-        case "reply":
-          return "[回复一条消息]";
-        case "image":
-          return "[图片]";
-        case "face":
-          return "[表情]";
-        case "record":
-          return "[语音]";
-        case "video":
-          return "[视频]";
-        case "file":
-          return "[文件]";
-        default:
-          return "[未知消息]";
-      }
-    })
-    .join("")
-    .trim();
+        return `[@QQ:${segment.data.qq}]`;
+      case "reply":
+        return segment;
+      case "image":
+      case "face":
+      case "record":
+      case "video":
+      case "file":
+        return segment;
+      default:
+        return segment;
+    }
+  });
 }
 
 /**

@@ -2,9 +2,9 @@ import type { MemoryEpisode } from "@yuiju/utils";
 import { DEFAULT_MEMORY_SUBJECT_ID, getTimeWithWeekday } from "@yuiju/utils";
 import dayjs from "dayjs";
 import {
+  getProtocolMessageSenderName,
   type StoredProtocolMessage,
-  projectProtocolMessageToHistoryItem,
-  segmentsToDisplayText,
+  segmentsTransfer,
 } from "@/utils/group-message";
 
 export interface ChatWindowMessageItem {
@@ -26,7 +26,7 @@ interface ConversationEpisodePayload {
   windowStart: string;
   windowEnd: string;
   messageCount: number;
-  messages: ChatWindowMessageItem[];
+  messages: any[];
 }
 
 /**
@@ -40,23 +40,15 @@ export function buildConversationEpisode(input: {
   sessionLabel: string;
   state: UserWindowState;
   isDev: boolean;
-  assistantName: string;
 }): MemoryEpisode<ConversationEpisodePayload> {
   const windowStart = new Date(input.state.windowStartMs);
   const windowEnd = new Date(input.state.lastTsMs);
-  const projectedMessages = input.state.messages.map((message) => {
-    const historyItem = projectProtocolMessageToHistoryItem(message, input.assistantName);
-    return {
-      speaker_name: historyItem.speaker,
-      content: segmentsToDisplayText(historyItem.content, message.self_id),
-      timestamp: historyItem.time,
-    };
-  });
+  const projectedMessages = input.state.messages.map((message) => ({
+    speaker_name: getProtocolMessageSenderName(message),
+    content: segmentsTransfer(message.message, message.self_id),
+    timestamp: getTimeWithWeekday(dayjs.unix(message.time)),
+  }));
   const messageCount = projectedMessages.length;
-  const previewText = projectedMessages
-    .slice(-3)
-    .map((message) => `${message.speaker_name}：${message.content}`)
-    .join(" | ");
 
   return {
     source: "chat",
@@ -65,10 +57,9 @@ export function buildConversationEpisode(input: {
     counterparty: input.sessionLabel,
     happenedAt: windowEnd,
     summaryText: [
-      `悠酱与 ${input.sessionLabel} 完成了一段对话窗口归档`,
+      `${input.sessionLabel} 完成了一段对话窗口归档`,
       `时间范围：${getTimeWithWeekday(dayjs(windowStart))} 至 ${getTimeWithWeekday(dayjs(windowEnd))}`,
       `消息数量：${messageCount}`,
-      previewText ? `最近内容：${previewText}` : undefined,
     ]
       .filter(Boolean)
       .join("；"),
