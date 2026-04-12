@@ -90,6 +90,7 @@ export const MemoryEpisodeModel =
 
 export interface GetRecentMemoryEpisodesOptions {
   limit?: number;
+  skip?: number;
   types?: MemoryEpisodeType[];
   subject?: string;
   counterparty?: string;
@@ -98,6 +99,7 @@ export interface GetRecentMemoryEpisodesOptions {
   happenedAfter?: Date;
   happenedBefore?: Date;
   sortDirection?: "asc" | "desc";
+  sortField?: "happenedAt" | "createdAt";
 }
 
 export interface GetPendingMemoryEpisodesOptions {
@@ -174,8 +176,35 @@ export async function getRecentMemoryEpisodes(
   options: GetRecentMemoryEpisodesOptions = {},
 ): Promise<IMemoryEpisode[]> {
   await connectDB();
+  const filter = buildRecentMemoryEpisodesFilter(options);
 
+  const sortDirection = options.sortDirection === "asc" ? 1 : -1;
+  const primarySortField = options.sortField ?? "happenedAt";
+
+  return await MemoryEpisodeModel.find(filter)
+    .sort(
+      primarySortField === "createdAt"
+        ? { createdAt: sortDirection, happenedAt: sortDirection }
+        : { happenedAt: sortDirection, createdAt: sortDirection },
+    )
+    .skip(options.skip ?? 0)
+    .limit(options.limit ?? 10)
+    .exec();
+}
+
+export async function countRecentMemoryEpisodes(
+  options: GetRecentMemoryEpisodesOptions = {},
+): Promise<number> {
+  await connectDB();
+
+  return await MemoryEpisodeModel.countDocuments(buildRecentMemoryEpisodesFilter(options)).exec();
+}
+
+function buildRecentMemoryEpisodesFilter(
+  options: GetRecentMemoryEpisodesOptions,
+): Record<string, unknown> {
   const filter: Record<string, unknown> = {};
+
   if (options.types?.length) {
     filter.type = { $in: options.types };
   }
@@ -205,10 +234,5 @@ export async function getRecentMemoryEpisodes(
     }
   }
 
-  const sortDirection = options.sortDirection === "asc" ? 1 : -1;
-
-  return await MemoryEpisodeModel.find(filter)
-    .sort({ happenedAt: sortDirection, createdAt: sortDirection })
-    .limit(options.limit ?? 10)
-    .exec();
+  return filter;
 }

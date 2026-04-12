@@ -159,7 +159,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const systemPrompt = getCharacterCardPrompt({ userName });
+  const systemPrompt = getCharacterCardPrompt();
 
   const result = await streamText({
     model: deepseekProvider("deepseek-chat"),
