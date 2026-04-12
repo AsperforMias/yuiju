@@ -156,16 +156,29 @@ export function getReplyDelayMs(text: string): number {
  * - `@self` 明确视为直接对话；
  * - `reply` 段视作直接回复链路，避免漏掉最常见的引用回复场景。
  */
-export function isGroupMessageDirectedToBot(
+export async function isGroupMessageDirectedToBot(
   message: RawGroupMessage | StoredGroupMessage,
-): boolean {
-  return message.message.some((segment) => {
-    if (segment.type === "at") {
-      return segment.data.qq === String(message.self_id);
-    }
+  napcat: NCWebsocket,
+) {
+  try {
+    for (const segment of message.message) {
+      if (segment.type === "at") {
+        return segment.data.qq === String(message.self_id);
+      }
+      if (segment.type === "reply") {
+        const replyMessage = await napcat.get_msg({
+          message_id: Number(segment.data.id),
+        });
 
-    return segment.type === "reply";
-  });
+        return replyMessage?.sender?.user_id === message.self_id;
+      }
+    }
+  } catch (error) {
+    logger.error("isGroupMessageDirectedToBot", error);
+    return false;
+  }
+
+  return false;
 }
 
 /**

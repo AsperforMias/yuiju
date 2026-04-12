@@ -40,7 +40,7 @@ export async function groupMessageHandler(
   const storedMessage = await createStoredGroupMessage(storedContext, napcat);
   const groupName = getGroupDisplayName(storedMessage);
 
-  const isDirectedToBot = isGroupMessageDirectedToBot(storedMessage);
+  const isDirectedToBot = await isGroupMessageDirectedToBot(storedMessage, napcat);
 
   logger.info("[message.receive.group] 收到群消息", {
     groupName,

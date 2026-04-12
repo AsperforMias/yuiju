@@ -186,7 +186,7 @@ export class BaseChatSessionManager<
    * - 达到条数阈值时立即封口刷新，避免活跃会话里的旧消息长期脱离摘要。
    */
   private appendSummaryChunkMessage(input: ChatMessageInput<TMessage>) {
-    const messageTimeMs = this.getMessageTimeMs(input.message);
+    const messageTimeMs = input.message.time * 1000;
     const currentState = this.summaryChunkBySessionId.get(input.sessionId);
 
     if (!currentState) {
@@ -227,7 +227,7 @@ export class BaseChatSessionManager<
    * - 摘要刷新不会影响 episode 的窗口边界。
    */
   private appendEpisodeMessage(input: ChatMessageInput<TMessage>) {
-    const messageTimeMs = this.getMessageTimeMs(input.message);
+    const messageTimeMs = input.message.time * 1000;
     const currentState = this.episodeStateBySessionId.get(input.sessionId);
 
     if (!currentState) {
@@ -405,15 +405,11 @@ export class BaseChatSessionManager<
 
   private trimConversation(list: TMessage[]): TMessage[] {
     const cutoffMs = Date.now() - this.conversationTtlMs;
-    const filtered = list.filter((message) => this.getMessageTimeMs(message) >= cutoffMs);
+    const filtered = list.filter((message) => message.time * 1000 >= cutoffMs);
 
     return filtered.length > this.conversationLimit
       ? filtered.slice(filtered.length - this.conversationLimit)
       : filtered;
-  }
-
-  private getMessageTimeMs(message: TMessage): number {
-    return message.time * 1000;
   }
 }
 
