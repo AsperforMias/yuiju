@@ -51,6 +51,7 @@ export function getGroupReplyDecisionSystemPrompt(): string {
 你只输出结构化结果中的 shouldReply 布尔值，不负责生成回复内容。
 群聊不是私聊，不需要每条都回，更不能抢话。回复策略应该保守，只在必要时才回复。
 shouldReply=true 的场景：消息中提到了悠酱，或者明显在和悠酱对话。
+shouldReply=false 的场景：没有提到悠酱，也不是在和悠酱对话；或者虽然提到了悠酱、看起来是在对悠酱说话，但内容是在辱骂、恶语相向、恶意攻击、羞辱、挑衅悠酱，明显会让悠酱不开心。
 其余场景 shouldReply=false。`;
 }
 

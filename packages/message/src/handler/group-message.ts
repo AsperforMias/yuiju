@@ -40,8 +40,6 @@ export async function groupMessageHandler(
   const storedMessage = await createStoredGroupMessage(storedContext, napcat);
   const groupName = getGroupDisplayName(storedMessage);
 
-  const isDirectedToBot = await isGroupMessageDirectedToBot(storedMessage, napcat);
-
   logger.info("[message.receive.group] 收到群消息", {
     groupName,
     sender: storedMessage.sender.card || storedMessage.sender.nickname || storedMessage.user_id,
@@ -57,14 +55,13 @@ export async function groupMessageHandler(
   }
 
   try {
-    const shouldReply = isDirectedToBot
-      ? true
-      : await llmManager.shouldReplyGroupMessage(storedMessage);
+    const shouldReply = await llmManager.shouldReplyGroupMessage(storedMessage);
 
     if (!shouldReply) {
       return;
     }
 
+    const isDirectedToBot = await isGroupMessageDirectedToBot(storedMessage, napcat);
     const { text } = await llmManager.chatInGroup(storedMessage);
 
     const reply = (text || "").trim();

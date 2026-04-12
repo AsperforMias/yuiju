@@ -82,7 +82,8 @@ export class LLMManager {
    *
    * 说明：
    * - 这里只返回 shouldReply，不承担具体回复生成；
-   * - 直接对悠酱说的话（例如 @ 悠酱）不会走这个流程，而是由 handler 直接触发回复模型。
+   * - 无论是否直接对悠酱说话（例如 @ 悠酱），都统一走这个流程判断是否回复；
+   * - handler 只会在确定需要回复后，再判断是否应附带引用回复。
    */
   public async shouldReplyGroupMessage(message: StoredGroupMessage): Promise<boolean> {
     const { historyJson, summary } = await this.groupSession.getHistoryJson(
@@ -91,11 +92,11 @@ export class LLMManager {
 
     const { output } = await generateText({
       model: smallModel,
-      // providerOptions: {
-      //   Siliconflow: {
-      //     enable_thinking: false,
-      //   },
-      // },
+      providerOptions: {
+        Siliconflow: {
+          enable_thinking: false,
+        },
+      },
       system: getGroupReplyDecisionSystemPrompt(),
       messages: [
         {
