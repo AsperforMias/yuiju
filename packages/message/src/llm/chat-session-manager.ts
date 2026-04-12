@@ -1,4 +1,5 @@
 import {
+  buildMessageSummaryPrompt,
   emitMemoryEpisode,
   getTimeWithWeekday,
   isDev,
@@ -337,19 +338,11 @@ export class BaseChatSessionManager<
 
     const result = await generateText({
       model: smallModel,
-      prompt: [
-        "你是聊天历史摘要器，请把“既有历史摘要”和“本轮新增对话”整合成一段新的滚动摘要。",
-        "要求：",
-        "1. 只输出摘要正文，不要标题、不要列表、不要额外解释。",
-        "2. 使用自然中文，尽量控制在 200 字以内。",
-        "3. 优先保留稳定事实、最近持续话题、明确情绪变化、待跟进事项。",
-        "4. 不要编造，不要把无关寒暄写进去。",
-        "5. 如果目前没有值得保留的上下文，只输出“无”。",
-        `会话：${input.sessionLabel}`,
-        `既有历史摘要：${input.previousSummary ?? "无"}`,
-        "本轮新增对话：",
+      prompt: buildMessageSummaryPrompt({
+        sessionLabel: input.sessionLabel,
+        previousSummary: input.previousSummary,
         transcript,
-      ].join("\n"),
+      }),
     });
 
     const summaryText = result.text.trim();

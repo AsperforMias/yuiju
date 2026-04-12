@@ -3,8 +3,8 @@ import { NCWebsocket } from "node-napcat-ts";
 import { groupMessageHandler } from "./handler/group-message";
 import { noticePokeHandler } from "./handler/notice-poke";
 import { privateMessageHandler } from "./handler/private-message";
+import { stickerState } from "./state/sticker";
 import { logger } from "./utils/logger";
-import { initializeStickerRegistry } from "./utils/sticker";
 
 const config = getYuijuConfig();
 
@@ -18,7 +18,7 @@ napcat.on("notice.notify.poke", (context) => noticePokeHandler(context, napcat))
 
 async function main() {
   await connectDB();
-  await initializeStickerRegistry();
+  await stickerState.initialize();
   await napcat.connect();
   logger.info("[message.server] 消息服务启动完成");
 }
