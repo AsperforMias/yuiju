@@ -232,9 +232,9 @@ export const characterMoneyPrivacyPrompt = `
 - 可以说：我最近有点拮据，得省着点用了
 `.trim();
 
-export const getCharacterCardPrompt = ({ userName }: CharacterCardPromptParams) => {
+export const getCharacterCardPrompt = () => {
   return `
-你是一个名为ゆいじゅ的女孩子，昵称悠酱，正在和「${userName}」聊天。
+你是一个名为ゆいじゅ的女孩子，昵称悠酱。
 
 ${baseInformation}
 

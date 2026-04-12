@@ -4,6 +4,7 @@ import { type AllHandlers, type NCWebsocket, Structs } from "node-napcat-ts";
 import { llmManager } from "@/llm/manager";
 import {
   createStoredGroupMessage,
+  createStoredGroupMessageFromFetched,
   getGroupDisplayName,
   getProtocolMessageSenderName,
   getReplyDelayMs,
@@ -42,11 +43,10 @@ export async function groupMessageHandler(
   }
   const storedMessage = await createStoredGroupMessage(storedContext, napcat);
   const displayContent = JSON.stringify(storedMessage.message);
-
-  llmManager.recordGroupMessage(storedMessage);
-
   const groupName = getGroupDisplayName(storedMessage);
   const senderName = getProtocolMessageSenderName(storedMessage);
+
+  llmManager.recordGroupMessage(storedMessage, groupName);
   const isDirectedToBot = isGroupMessageDirectedToBot(storedMessage);
 
   console.log(
@@ -77,25 +77,61 @@ export async function groupMessageHandler(
 
     console.log(`回复群 ${groupName}(${context.group_id}) 的消息: ${reply}`);
 
-    if (isDirectedToBot) {
-      await context.quick_action([Structs.text(reply)]);
-    } else {
-      const replyList = reply.split("\n").filter(Boolean);
-      for (const [index, item] of replyList.entries()) {
-        await napcat.send_group_msg({
-          group_id: context.group_id,
-          message: [Structs.text(item)],
-        });
+    const replyList = reply.split("\n").filter(Boolean);
+    for (const [index, item] of replyList.entries()) {
+      await sendAndRecordGroupMessage({
+        napcat,
+        groupId: context.group_id,
+        sourceMessageId: context.message_id,
+        text: item,
+        sessionLabel: groupName,
+        shouldReplyToSourceMessage: isDirectedToBot && index === 0,
+      });
 
-        const nextReply = replyList[index + 1];
-        if (nextReply) {
-          await setTimeout(getReplyDelayMs(nextReply));
-        }
+      const nextReply = replyList[index + 1];
+      if (nextReply) {
+        await setTimeout(getReplyDelayMs(nextReply));
       }
     }
   } catch (error) {
     console.log(error);
   }
+}
+
+/**
+ * 使用 Napcat 发送群消息，并将回读到的真实消息写回会话历史。
+ *
+ * 说明：
+ * - 只有在消息本身直接对悠酱说话，且当前是本轮回复的首条消息时，才使用 reply 段引用触发消息；
+ * - 普通群消息触发的回复保持自然发言，不额外挂 reply；
+ * - 发送成功后立刻 `get_msg` 回读，确保 session 中记录的是 Napcat 实际落地的消息对象。
+ */
+async function sendAndRecordGroupMessage(input: {
+  napcat: NCWebsocket;
+  groupId: number;
+  sourceMessageId: number;
+  text: string;
+  sessionLabel: string;
+  shouldReplyToSourceMessage: boolean;
+}) {
+  const messageSegments = input.shouldReplyToSourceMessage
+    ? [Structs.reply(input.sourceMessageId), Structs.text(input.text)]
+    : [Structs.text(input.text)];
+
+  const sendResult = await input.napcat.send_group_msg({
+    group_id: input.groupId,
+    message: messageSegments,
+  });
+  const sentMessage = await input.napcat.get_msg({
+    message_id: sendResult.message_id,
+  });
+
+  if (sentMessage.message_type !== "group") {
+    throw new Error(`Expected group message from get_msg, got ${sentMessage.message_type}`);
+  }
+
+  const storedSentMessage = await createStoredGroupMessageFromFetched(sentMessage, input.napcat);
+  llmManager.recordGroupMessage(storedSentMessage, input.sessionLabel);
 }
 
 /**

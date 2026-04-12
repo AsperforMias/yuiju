@@ -1,0 +1,457 @@
+import {
+  emitMemoryEpisode,
+  getTimeWithWeekday,
+  isDev,
+  processPendingMemoryEpisodes,
+  smallModel,
+} from "@yuiju/utils";
+import { generateText } from "ai";
+import dayjs from "dayjs";
+import {
+  getProtocolMessageSenderName,
+  type HistoryJsonItem,
+  projectHistoryMessageContent,
+  type StoredGroupMessage,
+  type StoredPrivateMessage,
+  type StoredProtocolMessage,
+} from "@/utils/message";
+import { buildConversationEpisode } from "../memory/episode-builder";
+
+export interface SessionHistoryContext {
+  /**
+   * 当前会话的滚动摘要。
+   *
+   * 说明：
+   * - 摘要会单独返回给上层，由 prompt 构建器决定如何注入；
+   * - 不再把摘要伪装成 JSON 历史项，避免和真实消息结构混在一起。
+   */
+  summary?: string;
+  historyJson: string;
+}
+
+export interface ChatMessageInput<TMessage> {
+  sessionId: string;
+  sessionLabel: string;
+  message: TMessage;
+}
+
+export interface ChatSessionManagerOptions {
+  conversationLimit: number;
+  conversationTtlMs: number;
+  /**
+   * 滚动摘要块累计达到该消息数后立即刷新。
+   */
+  summaryFlushMessageCount: number;
+  /**
+   * 滚动摘要块静默多久后，在下一条消息到来时先封口刷新旧块。
+   */
+  summaryFlushIdleMs: number;
+  /**
+   * 自然对话段静默多久后视为 episode 结束。
+   */
+  episodeIdleMs: number;
+}
+
+/**
+ * LLMManager 依赖的会话管理抽象契约。
+ *
+ * 说明：
+ * - 这里只定义对外能力，不暴露内部摘要/窗口实现细节；
+ * - 群聊和私聊在上层仍保留独立入口，但可复用底层通用实现。
+ */
+export abstract class AbstractChatSessionManager<TMessage> {
+  abstract recordMessage(input: ChatMessageInput<TMessage>): void;
+
+  abstract getHistoryJson(sessionId: string): Promise<SessionHistoryContext>;
+
+  abstract flushUserWindow(sessionId: string): Promise<void>;
+}
+
+/**
+ * 自上次摘要刷新后累计的增量消息块。
+ *
+ * 说明：
+ * - 只承载“下一次要压进滚动摘要”的新增消息；
+ * - 达到条数阈值或静默阈值后会被封口并刷新，不参与 episode 切段。
+ */
+export interface RollingSummaryChunkState<TMessage> {
+  sessionLabel: string;
+  chunkStartMs: number;
+  lastTsMs: number;
+  messages: TMessage[];
+}
+
+/**
+ * 当前正在进行中的自然对话段。
+ *
+ * 说明：
+ * - 只用于 memory episode 归档；
+ * - 只按较长静默时间切窗，不受摘要刷新节奏影响。
+ */
+export interface EpisodeWindowState<TMessage> {
+  sessionLabel: string;
+  windowStartMs: number;
+  lastTsMs: number;
+  messages: TMessage[];
+}
+
+interface BaseChatSessionManagerInput<TMessage extends StoredProtocolMessage> {
+  options: ChatSessionManagerOptions;
+  sceneLabel: string;
+}
+
+/**
+ * 群聊/私聊共享的会话核心实现。
+ *
+ * 说明：
+ * - 最近原始消息、滚动摘要块、episode 窗口分开维护，避免三个职责共用一个阈值；
+ * - 上层仍通过 Group/Private 两个薄包装类接入，保留业务语义边界。
+ */
+export class BaseChatSessionManager<
+  TMessage extends StoredProtocolMessage,
+> extends AbstractChatSessionManager<TMessage> {
+  private conversationBySessionId = new Map<string, TMessage[]>();
+  private summaryChunkBySessionId = new Map<string, RollingSummaryChunkState<TMessage>>();
+  private episodeStateBySessionId = new Map<string, EpisodeWindowState<TMessage>>();
+  private summaryBySessionId = new Map<string, string>();
+  private pendingSummaryBySessionId = new Map<string, Promise<void>>();
+  private conversationLimit: number;
+  private conversationTtlMs: number;
+  private summaryFlushMessageCount: number;
+  private summaryFlushIdleMs: number;
+  private episodeIdleMs: number;
+  private isDev: boolean;
+  private sceneLabel: string;
+
+  constructor(input: BaseChatSessionManagerInput<TMessage>) {
+    super();
+    const { options, sceneLabel } = input;
+
+    this.conversationLimit = options.conversationLimit;
+    this.conversationTtlMs = options.conversationTtlMs;
+    this.summaryFlushMessageCount = options.summaryFlushMessageCount;
+    this.summaryFlushIdleMs = options.summaryFlushIdleMs;
+    this.episodeIdleMs = options.episodeIdleMs;
+    this.sceneLabel = sceneLabel;
+    this.isDev = isDev();
+  }
+
+  recordMessage(input: ChatMessageInput<TMessage>) {
+    this.appendConversationEntry(input);
+    this.appendSummaryChunkMessage(input);
+    this.appendEpisodeMessage(input);
+  }
+
+  async getHistoryJson(sessionId: string): Promise<SessionHistoryContext> {
+    await this.pendingSummaryBySessionId.get(sessionId);
+
+    const trimmedMessages = this.getTrimmedConversation(sessionId);
+    const summary = this.summaryBySessionId.get(sessionId);
+    const historyItems = this.buildHistoryItems(trimmedMessages);
+
+    return {
+      summary,
+      historyJson: JSON.stringify(historyItems, null, 2),
+    };
+  }
+
+  async flushUserWindow(sessionId: string) {
+    const summaryChunk = this.summaryChunkBySessionId.get(sessionId);
+    if (summaryChunk) {
+      this.summaryChunkBySessionId.delete(sessionId);
+      await this.enqueueSummaryRefresh(sessionId, summaryChunk);
+    }
+
+    const episodeState = this.episodeStateBySessionId.get(sessionId);
+    if (!episodeState) {
+      return;
+    }
+
+    this.episodeStateBySessionId.delete(sessionId);
+    await this.finalizeEpisodeWindow(episodeState);
+  }
+
+  private appendConversationEntry(input: ChatMessageInput<TMessage>) {
+    const list = this.conversationBySessionId.get(input.sessionId) ?? [];
+    list.push(input.message);
+    this.conversationBySessionId.set(input.sessionId, this.trimConversation(list));
+  }
+
+  /**
+   * 维护摘要增量块。
+   *
+   * 说明：
+   * - 静默超过阈值时，旧块会先异步压进滚动摘要，再开启新块；
+   * - 达到条数阈值时立即封口刷新，避免活跃会话里的旧消息长期脱离摘要。
+   */
+  private appendSummaryChunkMessage(input: ChatMessageInput<TMessage>) {
+    const messageTimeMs = this.getMessageTimeMs(input.message);
+    const currentState = this.summaryChunkBySessionId.get(input.sessionId);
+
+    if (!currentState) {
+      this.summaryChunkBySessionId.set(
+        input.sessionId,
+        this.createSummaryChunkState(input, messageTimeMs),
+      );
+      return;
+    }
+
+    const gapMs = messageTimeMs - currentState.lastTsMs;
+    if (gapMs > this.summaryFlushIdleMs) {
+      this.summaryChunkBySessionId.delete(input.sessionId);
+      void this.enqueueSummaryRefresh(input.sessionId, currentState);
+      this.summaryChunkBySessionId.set(
+        input.sessionId,
+        this.createSummaryChunkState(input, messageTimeMs),
+      );
+      return;
+    }
+
+    currentState.lastTsMs = messageTimeMs;
+    currentState.messages.push(input.message);
+
+    if (currentState.messages.length < this.summaryFlushMessageCount) {
+      return;
+    }
+
+    this.summaryChunkBySessionId.delete(input.sessionId);
+    void this.enqueueSummaryRefresh(input.sessionId, currentState);
+  }
+
+  /**
+   * 维护 memory episode 的自然对话段。
+   *
+   * 说明：
+   * - 只按较长静默时间切窗；
+   * - 摘要刷新不会影响 episode 的窗口边界。
+   */
+  private appendEpisodeMessage(input: ChatMessageInput<TMessage>) {
+    const messageTimeMs = this.getMessageTimeMs(input.message);
+    const currentState = this.episodeStateBySessionId.get(input.sessionId);
+
+    if (!currentState) {
+      this.episodeStateBySessionId.set(
+        input.sessionId,
+        this.createEpisodeWindowState(input, messageTimeMs),
+      );
+      return;
+    }
+
+    const gapMs = messageTimeMs - currentState.lastTsMs;
+    if (gapMs > this.episodeIdleMs) {
+      this.episodeStateBySessionId.delete(input.sessionId);
+      void this.finalizeEpisodeWindow(currentState);
+      this.episodeStateBySessionId.set(
+        input.sessionId,
+        this.createEpisodeWindowState(input, messageTimeMs),
+      );
+      return;
+    }
+
+    currentState.lastTsMs = messageTimeMs;
+    currentState.messages.push(input.message);
+  }
+
+  private createSummaryChunkState(
+    input: ChatMessageInput<TMessage>,
+    messageTimeMs: number,
+  ): RollingSummaryChunkState<TMessage> {
+    return {
+      sessionLabel: input.sessionLabel,
+      chunkStartMs: messageTimeMs,
+      lastTsMs: messageTimeMs,
+      messages: [input.message],
+    };
+  }
+
+  private createEpisodeWindowState(
+    input: ChatMessageInput<TMessage>,
+    messageTimeMs: number,
+  ): EpisodeWindowState<TMessage> {
+    return {
+      sessionLabel: input.sessionLabel,
+      windowStartMs: messageTimeMs,
+      lastTsMs: messageTimeMs,
+      messages: [input.message],
+    };
+  }
+
+  private async finalizeEpisodeWindow(state: EpisodeWindowState<TMessage>) {
+    try {
+      await this.writeChatWindowEpisode({
+        sessionLabel: state.sessionLabel,
+        state,
+        isDev: this.isDev,
+      });
+    } catch (error) {
+      console.error(`Failed to write ${this.sceneLabel} chat window episode:`, error);
+    }
+  }
+
+  private enqueueSummaryRefresh(
+    sessionId: string,
+    state: RollingSummaryChunkState<TMessage>,
+  ): Promise<void> {
+    const previousTask = this.pendingSummaryBySessionId.get(sessionId) ?? Promise.resolve();
+
+    const task = previousTask
+      .catch(() => {})
+      .then(async () => {
+        try {
+          const previousSummary = this.summaryBySessionId.get(sessionId);
+          const nextSummary = await this.generateSessionSummary({
+            sessionLabel: state.sessionLabel,
+            previousSummary,
+            messages: state.messages,
+          });
+
+          if (!nextSummary) {
+            this.summaryBySessionId.delete(sessionId);
+            return;
+          }
+
+          this.summaryBySessionId.set(sessionId, nextSummary);
+        } catch (error) {
+          console.error(`Failed to update ${this.sceneLabel} chat session summary:`, error);
+        }
+      })
+      .finally(() => {
+        if (this.pendingSummaryBySessionId.get(sessionId) === task) {
+          this.pendingSummaryBySessionId.delete(sessionId);
+        }
+      });
+
+    this.pendingSummaryBySessionId.set(sessionId, task);
+    return task;
+  }
+
+  /**
+   * 群聊与私聊都复用同一份摘要格式化逻辑，避免 prompt 结构分叉。
+   */
+  private async generateSessionSummary(input: {
+    sessionLabel: string;
+    previousSummary?: string;
+    messages: TMessage[];
+  }): Promise<string | null> {
+    const transcript = JSON.stringify(this.buildHistoryItems(input.messages), null, 2);
+
+    const result = await generateText({
+      model: smallModel,
+      prompt: [
+        "你是聊天历史摘要器，请把“既有历史摘要”和“本轮新增对话”整合成一段新的滚动摘要。",
+        "要求：",
+        "1. 只输出摘要正文，不要标题、不要列表、不要额外解释。",
+        "2. 使用自然中文，尽量控制在 200 字以内。",
+        "3. 优先保留稳定事实、最近持续话题、明确情绪变化、待跟进事项。",
+        "4. 不要编造，不要把无关寒暄写进去。",
+        "5. 如果目前没有值得保留的上下文，只输出“无”。",
+        `会话：${input.sessionLabel}`,
+        `既有历史摘要：${input.previousSummary ?? "无"}`,
+        "本轮新增对话：",
+        transcript,
+      ].join("\n"),
+    });
+
+    const summaryText = result.text.trim();
+    if (!summaryText || summaryText === "无") {
+      return null;
+    }
+
+    return summaryText;
+  }
+
+  /**
+   * 将内部 episode 窗口投影为 memory episode。
+   *
+   * 说明：
+   * - episode payload 继续保留统一展示结构；
+   * - 摘要刷新和 episode 归档分离后，这里只消费自然对话段状态。
+   */
+  private async writeChatWindowEpisode(input: {
+    sessionLabel: string;
+    state: EpisodeWindowState<TMessage>;
+    isDev: boolean;
+  }) {
+    const episode = buildConversationEpisode({
+      sessionLabel: input.sessionLabel,
+      state: input.state,
+      isDev: input.isDev,
+    });
+
+    await emitMemoryEpisode(episode);
+    processPendingMemoryEpisodes({ limit: 1, isDev: input.isDev }).catch((error) => {
+      console.error("Failed to process pending memory episodes:", error);
+    });
+  }
+
+  /**
+   * 构建供摘要与 history JSON 复用的结构化历史项。
+   *
+   * 说明：
+   * - 这里只做消息投影，不混入 trim、summary 合并等会话控制逻辑；
+   * - 摘要与 prompt 使用同一投影，避免两边结构漂移。
+   */
+  private buildHistoryItems(messages: TMessage[]): HistoryJsonItem[] {
+    return messages.map((message) => ({
+      speaker: getProtocolMessageSenderName(message),
+      time: getTimeWithWeekday(dayjs.unix(message.time)),
+      content: projectHistoryMessageContent(message.message),
+    }));
+  }
+
+  private getTrimmedConversation(sessionId: string): TMessage[] {
+    const list = this.conversationBySessionId.get(sessionId) ?? [];
+    const trimmed = this.trimConversation(list);
+
+    if (trimmed.length !== list.length) {
+      this.conversationBySessionId.set(sessionId, trimmed);
+    }
+
+    return trimmed;
+  }
+
+  private trimConversation(list: TMessage[]): TMessage[] {
+    const cutoffMs = Date.now() - this.conversationTtlMs;
+    const filtered = list.filter((message) => this.getMessageTimeMs(message) >= cutoffMs);
+
+    return filtered.length > this.conversationLimit
+      ? filtered.slice(filtered.length - this.conversationLimit)
+      : filtered;
+  }
+
+  private getMessageTimeMs(message: TMessage): number {
+    return message.time * 1000;
+  }
+}
+
+/**
+ * 群聊会话管理器。
+ *
+ * 说明：
+ * - 作为群聊场景的轻量适配层，复用通用会话内核；
+ * - 保留独立类名，避免上层群聊语义被通用实现抹平。
+ */
+export class GroupChatSessionManager extends BaseChatSessionManager<StoredGroupMessage> {
+  constructor(options: ChatSessionManagerOptions) {
+    super({
+      options,
+      sceneLabel: "group",
+    });
+  }
+}
+
+/**
+ * 私聊会话管理器。
+ *
+ * 说明：
+ * - 作为私聊场景的轻量适配层，复用通用会话内核；
+ * - 保留独立类名，便于后续私聊策略单独分叉。
+ */
+export class PrivateChatSessionManager extends BaseChatSessionManager<StoredPrivateMessage> {
+  constructor(options: ChatSessionManagerOptions) {
+    super({
+      options,
+      sceneLabel: "private",
+    });
+  }
+}

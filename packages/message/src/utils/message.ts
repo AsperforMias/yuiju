@@ -8,6 +8,9 @@ type NonEnhancedMessageSegment = Exclude<MessageSegment, AtMessageSegment | Repl
 
 export type RawGroupMessage = Omit<AllHandlers["message.group"], "quick_action">;
 export type RawPrivateMessage = Omit<AllHandlers["message.private"], "quick_action">;
+type FetchedProtocolMessage = Awaited<ReturnType<NCWebsocket["get_msg"]>>;
+type FetchedGroupMessage = Extract<FetchedProtocolMessage, { message_type: "group" }>;
+type FetchedPrivateMessage = Extract<FetchedProtocolMessage, { message_type: "private" }>;
 
 export interface ResolvedReplyMessage {
   messageId: number;
@@ -46,42 +49,7 @@ export type StoredPrivateMessage = Omit<RawPrivateMessage, "message" | "post_typ
   message: EnhancedMessageSegment[];
 };
 
-interface AssistantSentMessageBase {
-  self_id: number;
-  user_id: number;
-  time: number;
-  message_id: number;
-  message_seq: number;
-  real_id: number;
-  raw_message: string;
-  font: number;
-  sender: {
-    user_id: number;
-    nickname: string;
-    card: string;
-    role?: "owner" | "admin" | "member";
-  };
-  post_type: "message_sent";
-  message_format: "array";
-  message: EnhancedMessageSegment[];
-}
-
-export interface AssistantSentPrivateMessage extends AssistantSentMessageBase {
-  message_type: "private";
-  sub_type: "friend" | "group";
-}
-
-export interface AssistantSentGroupMessage extends AssistantSentMessageBase {
-  message_type: "group";
-  sub_type: "normal";
-  group_id: number;
-}
-
-export type StoredProtocolMessage =
-  | StoredPrivateMessage
-  | StoredGroupMessage
-  | AssistantSentPrivateMessage
-  | AssistantSentGroupMessage;
+export type StoredProtocolMessage = StoredPrivateMessage | StoredGroupMessage;
 
 export interface HistoryReplySegment {
   type: "reply";
@@ -136,7 +104,7 @@ interface PrivateSegmentsTransferInput extends BaseSegmentsTransferInput {
 
 type SegmentsTransferInput = GroupSegmentsTransferInput | PrivateSegmentsTransferInput;
 
-type ReplyMessage = Awaited<ReturnType<NCWebsocket["get_msg"]>>;
+type ReplyMessage = FetchedProtocolMessage;
 
 /**
  * 根据“下一条即将发送”的文本长度估算等待间隔，让消息节奏更接近真人组织下一句回复。
@@ -230,10 +198,57 @@ export async function createStoredGroupMessage(
 }
 
 /**
+ * 将 Napcat `get_msg` 取回的群消息转换为 session 中保存的增强消息。
+ *
+ * 说明：
+ * - 主要用于发送成功后回读机器人自己的真实消息；
+ * - 保留 Napcat 实际返回的 `message_id`、`post_type` 等字段，避免手工构造漂移。
+ */
+export async function createStoredGroupMessageFromFetched(
+  message: FetchedGroupMessage,
+  napcat: NCWebsocket,
+): Promise<StoredGroupMessage> {
+  return {
+    ...message,
+    message: await segmentsTransfer({
+      napcat,
+      segments: message.message,
+      selfId: message.self_id,
+      scene: "group",
+      groupId: message.group_id,
+      resolveReply: true,
+    }),
+  };
+}
+
+/**
  * 将私聊原始消息转换为 session 中保存的增强消息。
  */
 export async function createStoredPrivateMessage(
   message: RawPrivateMessage,
+  napcat: NCWebsocket,
+): Promise<StoredPrivateMessage> {
+  return {
+    ...message,
+    message: await segmentsTransfer({
+      napcat,
+      segments: message.message,
+      selfId: message.self_id,
+      scene: "private",
+      resolveReply: true,
+    }),
+  };
+}
+
+/**
+ * 将 Napcat `get_msg` 取回的私聊消息转换为 session 中保存的增强消息。
+ *
+ * 说明：
+ * - 主要用于发送成功后回读机器人自己的真实消息；
+ * - 和收到用户私聊时使用同一套消息增强逻辑，保证历史上下文结构一致。
+ */
+export async function createStoredPrivateMessageFromFetched(
+  message: FetchedPrivateMessage,
   napcat: NCWebsocket,
 ): Promise<StoredPrivateMessage> {
   return {
@@ -266,11 +281,7 @@ export function getGroupDisplayName(message: RawGroupMessage | StoredGroupMessag
  * 获取协议消息发送者展示名，优先群名片，其次昵称，最后回退到 user_id。
  */
 export function getProtocolMessageSenderName(message: StoredProtocolMessage): string {
-  if (message.post_type === "message_sent") {
-    return message.sender.card || message.sender.nickname || String(message.sender.user_id);
-  }
-
-  return message.sender.card || message.sender.nickname || String(message.sender.user_id);
+  return message?.sender?.card || message?.sender?.nickname || String(message?.sender?.user_id);
 }
 
 /**

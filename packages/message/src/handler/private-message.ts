@@ -3,7 +3,12 @@ import { setTimeout } from "node:timers/promises";
 import { getYuijuConfig } from "@yuiju/utils";
 import { type AllHandlers, type NCWebsocket, Structs } from "node-napcat-ts";
 import { llmManager } from "@/llm/manager";
-import { createStoredPrivateMessage, getReplyDelayMs } from "@/utils/message";
+import {
+  createStoredPrivateMessage,
+  createStoredPrivateMessageFromFetched,
+  getProtocolMessageSenderName,
+  getReplyDelayMs,
+} from "@/utils/message";
 import { closeGroupMessage, openGroupMessage } from "./group-message";
 
 const config = getYuijuConfig();
@@ -23,7 +28,7 @@ function groupMessageAction(action: string | null) {
 
 export async function privateMessageHandler(
   context: AllHandlers["message.private"],
-  _napcat: NCWebsocket,
+  napcat: NCWebsocket,
 ) {
   let receiveMessage: string | null = null;
   for (const item of context.message) {
@@ -49,13 +54,10 @@ export async function privateMessageHandler(
   );
 
   try {
-    if (!config.llm.deepseekApiKey.trim()) {
-      await context.quick_action([Structs.text("DeepSeek 未配置，稍后再试呢~")]);
-      return;
-    }
-
     const { quick_action: _quickAction, ...rawMessage } = context;
-    const storedMessage = await createStoredPrivateMessage(rawMessage, _napcat);
+    const storedMessage = await createStoredPrivateMessage(rawMessage, napcat);
+    const sessionLabel = getProtocolMessageSenderName(storedMessage);
+    llmManager.recordPrivateMessage(storedMessage, sessionLabel);
     const { text } = await llmManager.chatWithLLM(storedMessage);
 
     const reply = (text || "").trim();
@@ -67,7 +69,13 @@ export async function privateMessageHandler(
 
     const replyList = reply.split("\n").filter(Boolean);
     for (const [index, item] of replyList.entries()) {
-      await context.quick_action([Structs.text(item)]);
+      await sendAndRecordPrivateMessage({
+        napcat,
+        userId: context.user_id,
+        sourceMessageId: context.message_id,
+        text: item,
+        sessionLabel,
+      });
 
       const nextReply = replyList[index + 1];
       if (nextReply) {
@@ -76,6 +84,36 @@ export async function privateMessageHandler(
     }
   } catch (error) {
     console.log(error);
-    await context.quick_action([Structs.text("小久刚刚摔了一跤，重试下呀~")]);
   }
+}
+
+/**
+ * 使用 Napcat 发送私聊消息，并将回读到的真实消息写回会话历史。
+ *
+ * 说明：
+ * - 私聊不再依赖 `quick_action`，统一走真实发送接口；
+ * - 只有首条回复消息会引用当前触发消息，后续分段保持自然发言；
+ * - 发送后立即 `get_msg` 回读，避免继续手工构造机器人的历史消息对象。
+ */
+async function sendAndRecordPrivateMessage(input: {
+  napcat: NCWebsocket;
+  userId: number;
+  sourceMessageId: number;
+  text: string;
+  sessionLabel: string;
+}) {
+  const sendResult = await input.napcat.send_private_msg({
+    user_id: input.userId,
+    message: [Structs.text(input.text)],
+  });
+  const sentMessage = await input.napcat.get_msg({
+    message_id: sendResult.message_id,
+  });
+
+  if (sentMessage.message_type !== "private") {
+    throw new Error(`Expected private message from get_msg, got ${sentMessage.message_type}`);
+  }
+
+  const storedSentMessage = await createStoredPrivateMessageFromFetched(sentMessage, input.napcat);
+  llmManager.recordPrivateMessage(storedSentMessage, input.sessionLabel);
 }
