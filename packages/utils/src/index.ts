@@ -3,6 +3,7 @@ export * from "./constants";
 export * from "./db";
 export * from "./env";
 export * from "./llm";
+export * from "./logger";
 export * from "./memory";
 export * from "./prompt";
 export * from "./redis";

@@ -9,12 +9,14 @@ import {
 } from "@yuiju/utils";
 import { generateText, Output, stepCountIs } from "ai";
 import { z } from "zod";
+import { logger } from "@/utils/logger";
 import {
   getGroupDisplayName,
   getProtocolMessageSenderName,
   type StoredGroupMessage,
   type StoredPrivateMessage,
 } from "@/utils/message";
+import { buildStickerPromptSection } from "@/utils/sticker";
 import {
   type AbstractChatSessionManager,
   GroupChatSessionManager,
@@ -55,9 +57,10 @@ export class LLMManager {
   public async chatWithLLM(message: StoredPrivateMessage) {
     const sessionId = this.buildPrivateSessionKey(message.user_id);
     const { historyJson, summary } = await this.privateSession.getHistoryJson(sessionId);
+    const systemPrompt = [getCharacterCardPrompt(), buildStickerPromptSection()].join("\n\n");
     const result = await generateText({
       model: deepseekProvider("deepseek-chat"),
-      system: getCharacterCardPrompt(),
+      system: systemPrompt,
       messages: [
         {
           role: "user",
@@ -78,6 +81,11 @@ export class LLMManager {
         queryWorldMap: queryWorldMapTool,
       },
       stopWhen: stepCountIs(20),
+    });
+
+    logger.info("[message.llm.private] LLM 返回私聊回复", {
+      sessionLabel: getProtocolMessageSenderName(message),
+      text: result.text,
     });
 
     return result;
@@ -147,6 +155,8 @@ export class LLMManager {
       }),
     });
 
+    logger.info(`[shouldReplyGroupMessage] ${output.shouldReply ? "回复" : "不回复"}`);
+
     return output.shouldReply;
   }
 
@@ -159,6 +169,7 @@ export class LLMManager {
 
     const systemPrompt = [
       getCharacterCardPrompt(),
+      buildStickerPromptSection(),
       "## 当前聊天场景",
       `你现在正在 QQ 群「${getGroupDisplayName(message)}」里说话`,
       `- speaker 为${SUBJECT_NAME}、悠酱，是你之前的发言。`,
@@ -187,6 +198,11 @@ export class LLMManager {
         queryWorldMap: queryWorldMapTool,
       },
       stopWhen: stepCountIs(20),
+    });
+
+    logger.info("[message.llm.group] LLM 返回群聊回复", {
+      groupName: getGroupDisplayName(message),
+      text: result.text,
     });
 
     return result;
