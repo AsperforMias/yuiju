@@ -1,10 +1,18 @@
-import { SUBJECT_NAME } from "@yuiju/utils";
+import { qwen3Model, SUBJECT_NAME } from "@yuiju/utils";
+import { generateText } from "ai";
 import type { AllHandlers, NCWebsocket, Receive } from "node-napcat-ts";
+import { imageCacheState } from "@/state/image-cache";
+import { stickerState } from "@/state/sticker";
+import { logger } from "@/utils/logger";
 
 type MessageSegment = Receive[keyof Receive];
 type AtMessageSegment = Extract<MessageSegment, { type: "at" }>;
+type ImageMessageSegment = Extract<MessageSegment, { type: "image" }>;
 type ReplyMessageSegment = Extract<MessageSegment, { type: "reply" }>;
-type NonEnhancedMessageSegment = Exclude<MessageSegment, AtMessageSegment | ReplyMessageSegment>;
+type NonEnhancedMessageSegment = Exclude<
+  MessageSegment,
+  AtMessageSegment | ReplyMessageSegment | ImageMessageSegment
+>;
 
 export type RawGroupMessage = Omit<AllHandlers["message.group"], "quick_action">;
 export type RawPrivateMessage = Omit<AllHandlers["message.private"], "quick_action">;
@@ -34,8 +42,15 @@ export interface EnhancedReplySegment extends Omit<ReplyMessageSegment, "data"> 
   };
 }
 
+export interface EnhancedImageSegment extends Omit<ImageMessageSegment, "data"> {
+  data: ImageMessageSegment["data"] & {
+    description?: string;
+  };
+}
+
 export type EnhancedMessageSegment =
   | NonEnhancedMessageSegment
+  | EnhancedImageSegment
   | EnhancedAtSegment
   | EnhancedReplySegment;
 
@@ -66,8 +81,16 @@ export interface HistoryAtSegment {
   };
 }
 
+export interface HistoryImageSegment {
+  type: "image";
+  data: {
+    description?: string;
+  };
+}
+
 export type HistoryMessageSegment =
-  | Exclude<EnhancedMessageSegment, EnhancedReplySegment | EnhancedAtSegment>
+  | Exclude<EnhancedMessageSegment, EnhancedReplySegment | EnhancedAtSegment | EnhancedImageSegment>
+  | HistoryImageSegment
   | HistoryAtSegment
   | HistoryReplySegment;
 
@@ -160,7 +183,9 @@ export async function segmentsTransfer(
     input.segments.map(async (segment) => {
       switch (segment.type) {
         case "text":
+          return segment;
         case "image":
+          return resolveImageSegment(segment);
         case "face":
         case "record":
         case "video":
@@ -305,6 +330,15 @@ export function projectHistoryMessageContent(
       };
     }
 
+    if (segment.type === "image") {
+      return {
+        type: "image",
+        data: {
+          description: segment.data.description,
+        },
+      };
+    }
+
     if (segment.type !== "reply") {
       return segment;
     }
@@ -320,6 +354,31 @@ export function projectHistoryMessageContent(
       },
     };
   });
+}
+
+async function resolveImageSegment(segment: ImageMessageSegment): Promise<EnhancedImageSegment> {
+  const stickerDescription = getStickerDescription(segment);
+  if (stickerDescription) {
+    return buildEnhancedImageSegment(segment, stickerDescription);
+  }
+
+  const cachedDescription = imageCacheState.get(segment.data.file);
+  if (cachedDescription) {
+    return buildEnhancedImageSegment(segment, cachedDescription);
+  }
+
+  const generatedDescription = await generateImageDescription(segment);
+  if (generatedDescription) {
+    imageCacheState.set(segment.data.file, generatedDescription);
+    return buildEnhancedImageSegment(segment, generatedDescription);
+  }
+
+  const fallbackDescription = segment.data.summary?.trim();
+  if (fallbackDescription) {
+    return buildEnhancedImageSegment(segment, fallbackDescription);
+  }
+
+  return buildEnhancedImageSegment(segment);
 }
 
 async function resolveAtSegment(
@@ -361,6 +420,92 @@ async function resolveAtSegment(
       ...segment.data,
       displayName,
       isSelf: false,
+    },
+  };
+}
+
+function getStickerDescription(segment: ImageMessageSegment): string | null {
+  const stickerKey = segment.data.summary?.trim();
+  if (!stickerKey) {
+    return null;
+  }
+
+  const sticker = stickerState.getByKey(stickerKey);
+  return sticker?.description || null;
+}
+
+async function generateImageDescription(segment: ImageMessageSegment): Promise<string | null> {
+  const imageUrl = segment.data.url?.trim();
+  if (!imageUrl) {
+    return null;
+  }
+
+  const summary = segment.data.summary?.trim();
+  const summaryText = summary || "空";
+
+  try {
+    const result = await generateText({
+      model: qwen3Model,
+      providerOptions: {
+        Siliconflow: {
+          enable_thinking: false,
+        },
+      },
+      system:
+        "你是聊天消息图片描述器。请只根据图片内容输出一小段简洁、客观、自然的中文描述，方便后续聊天理解上下文，不要输出解释、身份猜测或额外寒暄。",
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: [
+                "请描述这张图片里最重要的可见内容，控制在 200 字以内。",
+                `这个图片的 summary: ${summaryText}。`,
+                "这个字段有语义，不是无意义元数据。",
+                "如果 summary 是 [动画表情]，说明这更像 QQ 动画表情或表情包消息；如果 summary 为空，通常是普通图片。",
+                "请把 summary 当作辅助线索，与图片内容一起判断，但不要机械复述字段名。",
+              ].join("\n"),
+            },
+            {
+              type: "image",
+              image: imageUrl,
+            },
+          ],
+        },
+      ],
+    });
+
+    const description = result.text.trim();
+    return description || null;
+  } catch (error) {
+    logger.warn("[message.image] 图片描述生成失败，降级为 summary", {
+      file: segment.data.file,
+      summary: segment.data.summary,
+      error,
+    });
+    return null;
+  }
+}
+
+function buildEnhancedImageSegment(
+  segment: ImageMessageSegment,
+  description?: string,
+): EnhancedImageSegment {
+  if (!description) {
+    return {
+      ...segment,
+      data: {
+        ...segment.data,
+      },
+    };
+  }
+
+  return {
+    ...segment,
+    data: {
+      ...segment.data,
+      description,
     },
   };
 }
@@ -500,6 +645,17 @@ function projectReplyContentSegments(segments: EnhancedMessageSegment[]): Histor
           type: "at",
           data: {
             displayName: segment.data.displayName,
+          },
+        },
+      ];
+    }
+
+    if (segment.type === "image") {
+      return [
+        {
+          type: "image",
+          data: {
+            description: segment.data.description,
           },
         },
       ];

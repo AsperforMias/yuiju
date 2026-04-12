@@ -13,6 +13,9 @@ const napcat = new NCWebsocket(config.message.napcat);
 napcat.on("message.private", (context) => privateMessageHandler(context, napcat));
 
 napcat.on("message.group", (context) => groupMessageHandler(context, napcat));
+// napcat.on("message.group", (context) => {
+//   console.log(context.message);
+// });
 
 napcat.on("notice.notify.poke", (context) => noticePokeHandler(context, napcat));
 

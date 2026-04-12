@@ -1,5 +1,5 @@
 import { readFile } from "node:fs/promises";
-import { basename, extname, resolve } from "node:path";
+import { resolve } from "node:path";
 import { getYuijuConfig, getYuijuProjectRoot, type YuijuStickerConfig } from "@yuiju/utils";
 import { type SendMessageSegment, Structs } from "node-napcat-ts";
 import { logger } from "@/utils/logger";
@@ -146,12 +146,7 @@ export class StickerState {
         });
         messageSegments.push(Structs.text(fullMatch));
       } else {
-        messageSegments.push(
-          Structs.image(
-            sticker.fileBuffer,
-            this.getStickerFileNameWithoutExtension(sticker.absoluteUri),
-          ),
-        );
+        messageSegments.push(Structs.image(sticker.fileBuffer, sticker.key));
       }
 
       lastIndex = startIndex + fullMatch.length;
@@ -207,12 +202,6 @@ export class StickerState {
       });
       return null;
     }
-  }
-
-  private getStickerFileNameWithoutExtension(absoluteUri: string): string {
-    const fileName = basename(absoluteUri);
-    const extension = extname(fileName);
-    return extension ? fileName.slice(0, -extension.length) : fileName;
   }
 }
 

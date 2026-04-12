@@ -1,13 +1,11 @@
 import {
   buildMessageHistoryUserPrompt,
-  deepseekProvider,
   getCharacterCardPrompt,
   getGroupReplyDecisionSystemPrompt,
   memorySearchTool,
   minimaxModel,
   queryStateTool,
   queryWorldMapTool,
-  SUBJECT_NAME,
   smallModel,
 } from "@yuiju/utils";
 import { generateText, Output, stepCountIs } from "ai";
@@ -55,44 +53,6 @@ export class LLMManager {
     this.groupSession = new GroupChatSessionManager({
       ...groupSessionOptions,
     });
-  }
-
-  public async chatWithLLM(message: StoredPrivateMessage) {
-    const sessionId = this.buildPrivateSessionKey(message.user_id);
-    const { historyJson, summary } = await this.privateSession.getHistoryJson(sessionId);
-    const systemPrompt = [getCharacterCardPrompt(), stickerState.buildPromptSection()].join("\n\n");
-    const result = await generateText({
-      // model: deepseekProvider("deepseek-chat"),
-      model: minimaxModel,
-      system: systemPrompt,
-      messages: [
-        {
-          role: "user",
-          content: buildMessageHistoryUserPrompt({
-            summary,
-            historyJson,
-          }),
-        },
-      ],
-      // providerOptions: {
-      //   Siliconflow: {
-      //     enable_thinking: false,
-      //   },
-      // },
-      tools: {
-        memorySearch: memorySearchTool,
-        queryStateTool: queryStateTool,
-        queryWorldMap: queryWorldMapTool,
-      },
-      stopWhen: stepCountIs(20),
-    });
-
-    logger.info("[message.llm.private] LLM 返回私聊回复", {
-      sessionLabel: getProtocolMessageSenderName(message),
-      text: result.text,
-    });
-
-    return result;
   }
 
   /**
@@ -158,6 +118,14 @@ export class LLMManager {
     return output.shouldReply;
   }
 
+  private buildPrivateSessionKey(userId: number): string {
+    return `private:${userId}`;
+  }
+
+  private buildGroupSessionKey(groupId: number): string {
+    return `group:${groupId}`;
+  }
+
   /**
    * 使用主回复模型为群聊生成自然语言回复。
    */
@@ -169,12 +137,11 @@ export class LLMManager {
       getCharacterCardPrompt(),
       stickerState.buildPromptSection(),
       "## 当前聊天场景",
-      `你现在正在 QQ 群「${getGroupDisplayName(message)}」里说话`,
-      `- speaker 为${SUBJECT_NAME}、悠酱，是你之前的发言。`,
+      `你现在正在 QQ 群「${getGroupDisplayName(message)}」`,
     ].join("\n\n");
 
     const result = await generateText({
-      model: deepseekProvider("deepseek-chat"),
+      model: minimaxModel,
       system: systemPrompt,
       messages: [
         {
@@ -206,12 +173,42 @@ export class LLMManager {
     return result;
   }
 
-  private buildPrivateSessionKey(userId: number): string {
-    return `private:${userId}`;
-  }
+  public async chatWithLLM(message: StoredPrivateMessage) {
+    const sessionId = this.buildPrivateSessionKey(message.user_id);
+    const { historyJson, summary } = await this.privateSession.getHistoryJson(sessionId);
+    const systemPrompt = [getCharacterCardPrompt(), stickerState.buildPromptSection()].join("\n\n");
 
-  private buildGroupSessionKey(groupId: number): string {
-    return `group:${groupId}`;
+    const result = await generateText({
+      model: minimaxModel,
+      system: systemPrompt,
+      messages: [
+        {
+          role: "user",
+          content: buildMessageHistoryUserPrompt({
+            summary,
+            historyJson,
+          }),
+        },
+      ],
+      // providerOptions: {
+      //   Siliconflow: {
+      //     enable_thinking: false,
+      //   },
+      // },
+      tools: {
+        memorySearch: memorySearchTool,
+        queryStateTool: queryStateTool,
+        queryWorldMap: queryWorldMapTool,
+      },
+      stopWhen: stepCountIs(20),
+    });
+
+    logger.info("[message.llm.private] LLM 返回私聊回复", {
+      sessionLabel: getProtocolMessageSenderName(message),
+      text: result.text,
+    });
+
+    return result;
   }
 }
 
