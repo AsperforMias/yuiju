@@ -48,20 +48,23 @@ export async function groupMessageHandler(
 
   llmManager.recordGroupMessage(storedMessage, groupName);
 
-  // TODO: 临时逻辑，后续需要抽离
+  // 睡觉时，不能发送消息
   const characterStateData = await initCharacterStateData();
   if (characterStateData.action === ActionId.Sleep) {
     return;
   }
 
   try {
-    const shouldReply = await llmManager.shouldReplyGroupMessage(storedMessage);
+    const messageCheckResult = await isGroupMessageDirectedToBot(storedMessage, napcat);
+    const shouldReply = await llmManager.shouldReplyGroupMessage(
+      storedMessage,
+      messageCheckResult.type,
+    );
 
     if (!shouldReply) {
       return;
     }
 
-    const isDirectedToBot = await isGroupMessageDirectedToBot(storedMessage, napcat);
     const { text } = await llmManager.chatInGroup(storedMessage);
 
     const reply = (text || "").trim();
@@ -75,7 +78,7 @@ export async function groupMessageHandler(
       sourceMessageId: context.message_id,
       reply,
       sessionLabel: groupName,
-      shouldReplyToSourceMessage: isDirectedToBot,
+      shouldReplyToSourceMessage: messageCheckResult.isDriectedToBot,
     });
   } catch (error) {
     logger.error("[message.reply.group] 处理群消息失败", error);

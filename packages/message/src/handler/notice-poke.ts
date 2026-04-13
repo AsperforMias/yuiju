@@ -1,3 +1,4 @@
+import { ActionId, initCharacterStateData } from "@yuiju/utils";
 import type { AllHandlers, NCWebsocket } from "node-napcat-ts";
 
 /**
@@ -12,7 +13,19 @@ export async function noticePokeHandler(
   context: AllHandlers["notice.notify.poke"],
   napcat: NCWebsocket,
 ) {
+  // 过滤掉发送人是自己的消息
   if (context.user_id === context.self_id) {
+    return;
+  }
+
+  // 过滤掉目标用户不是自己的消息
+  if (context.target_id !== context.self_id) {
+    return;
+  }
+
+  // 睡觉时，不能发送消息
+  const characterStateData = await initCharacterStateData();
+  if (characterStateData.action === ActionId.Sleep) {
     return;
   }
 

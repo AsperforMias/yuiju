@@ -1,8 +1,10 @@
 import { SUBJECT_NAME } from "../constants";
+import { baseInformation, characterPersonalityPrompt } from "./character-card";
 
 export interface MessageHistoryUserPromptInput {
   summary?: string;
   historyJson: string;
+  latestMessageDirectedType?: "at" | "reply";
 }
 
 export interface MessageSummaryPromptInput {
@@ -19,21 +21,25 @@ export interface MessageSummaryPromptInput {
  * - 历史 JSON 只承载消息投影，不混入额外控制信息。
  */
 export function buildMessageHistoryUserPrompt(input: MessageHistoryUserPromptInput): string {
-  if (input.summary) {
-    return `
-## 最近会话摘要
-${input.summary}
+  let latestMessageDirectedDescription = "null";
 
-## 历史会话消息
-
-speaker 为${SUBJECT_NAME}、悠酱，是你之前的发言。
-\`\`\`json
-${input.historyJson}
-\`\`\`
-`;
+  switch (input.latestMessageDirectedType) {
+    case "at":
+      latestMessageDirectedDescription = "这条最新消息显式 @ 了悠酱。";
+      break;
+    case "reply":
+      latestMessageDirectedDescription = "这条最新消息使用了 reply 引用回复。";
+      break;
   }
 
   return `
+## 最近会话摘要
+${input.summary || "null"}
+
+## 最新消息补充上下文
+
+${latestMessageDirectedDescription}
+
 ## 历史会话消息
 
 speaker 为${SUBJECT_NAME}、悠酱，是你之前的发言。
@@ -47,12 +53,29 @@ ${input.historyJson}
  * 构建群聊是否回复的裁决系统提示词。
  */
 export function getGroupReplyDecisionSystemPrompt(): string {
-  return `你是群聊回复裁决器，唯一任务是判断悠酱现在是否应该回复最新一条普通群消息。
+  return `
+# 任务
+你是群聊回复裁决器，唯一任务是判断悠酱现在是否应该回复最新一条普通群消息。
 你只输出结构化结果中的 shouldReply 布尔值，不负责生成回复内容。
-群聊不是私聊，不需要每条都回，更不能抢话。回复策略应该保守，只在必要时才回复。
-shouldReply=true 的场景：消息中提到了悠酱，或者明显在和悠酱对话。
-shouldReply=false 的场景：没有提到悠酱，也不是在和悠酱对话；或者虽然提到了悠酱、看起来是在对悠酱说话，但内容是在辱骂、恶语相向、恶意攻击、羞辱、挑衅悠酱，明显会让悠酱不开心。
-其余场景 shouldReply=false。`;
+群聊不需要每条都回，更不能抢话。回复策略应该保守，只在必要时才回复。
+
+## shouldReply=true 的场景
+- 消息中提到了悠酱
+- 明显在和悠酱对话
+- 在欺负翊小久，悠酱想要保护
+
+## shouldReply=false 的场景
+- 没有提到悠酱，也不是在和悠酱对话
+- 提到了悠酱、看起来是在对悠酱说话，但内容是在辱骂、恶语相向、恶意攻击、羞辱、挑衅悠酱，明显会让悠酱不开心。
+- 感觉对方的一句话还没有说完
+
+其余场景 shouldReply=false。
+
+# 角色人设信息
+${baseInformation}
+
+${characterPersonalityPrompt}
+`;
 }
 
 /**

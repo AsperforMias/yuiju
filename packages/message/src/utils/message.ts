@@ -159,26 +159,37 @@ export function getReplyDelayMs(text: string): number {
 export async function isGroupMessageDirectedToBot(
   message: RawGroupMessage | StoredGroupMessage,
   napcat: NCWebsocket,
-) {
+): Promise<{
+  type?: "at" | "reply";
+  isDriectedToBot: boolean;
+}> {
   try {
     for (const segment of message.message) {
       if (segment.type === "at") {
-        return segment.data.qq === String(message.self_id);
+        return {
+          type: "at",
+          isDriectedToBot: segment.data.qq === String(message.self_id),
+        };
       }
       if (segment.type === "reply") {
         const replyMessage = await napcat.get_msg({
           message_id: Number(segment.data.id),
         });
 
-        return replyMessage?.sender?.user_id === message.self_id;
+        return {
+          type: "reply",
+          isDriectedToBot: replyMessage?.sender?.user_id === message.self_id,
+        };
       }
     }
   } catch (error) {
     logger.error("isGroupMessageDirectedToBot", error);
-    return false;
   }
 
-  return false;
+  return {
+    type: undefined,
+    isDriectedToBot: false,
+  };
 }
 
 /**

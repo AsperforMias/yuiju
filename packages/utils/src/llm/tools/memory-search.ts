@@ -101,7 +101,7 @@ export const memorySearchTool: Tool = {
       timeSort: input.memoryType === "episode" ? (input.timeSort ?? "desc") : undefined,
       topK: input.topK,
     });
-    console.log(11, input, result);
+    console.log("[工具调用]", input, result);
     return result;
   },
 };

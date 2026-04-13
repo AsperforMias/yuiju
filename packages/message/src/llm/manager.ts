@@ -6,7 +6,7 @@ import {
   minimaxModel,
   queryStateTool,
   queryWorldMapTool,
-  smallModel,
+  siliconflow,
 } from "@yuiju/utils";
 import { generateText, Output, stepCountIs } from "ai";
 import { z } from "zod";
@@ -85,18 +85,22 @@ export class LLMManager {
    * - 无论是否直接对悠酱说话（例如 @ 悠酱），都统一走这个流程判断是否回复；
    * - handler 只会在确定需要回复后，再判断是否应附带引用回复。
    */
-  public async shouldReplyGroupMessage(message: StoredGroupMessage): Promise<boolean> {
+  public async shouldReplyGroupMessage(
+    message: StoredGroupMessage,
+    directedType?: "at" | "reply",
+  ): Promise<boolean> {
     const { historyJson, summary } = await this.groupSession.getHistoryJson(
       this.buildGroupSessionKey(message.group_id),
+      10,
     );
 
     const { output } = await generateText({
-      model: smallModel,
-      providerOptions: {
-        Siliconflow: {
-          enable_thinking: false,
-        },
-      },
+      model: minimaxModel,
+      // providerOptions: {
+      //   Siliconflow: {
+      //     enable_thinking: false,
+      //   },
+      // },
       system: getGroupReplyDecisionSystemPrompt(),
       messages: [
         {
@@ -104,12 +108,13 @@ export class LLMManager {
           content: buildMessageHistoryUserPrompt({
             summary,
             historyJson,
+            latestMessageDirectedType: directedType,
           }),
         },
       ],
       output: Output.object({
         schema: z.object({
-          shouldReply: z.boolean().describe("是否应该回复这条普通群消息"),
+          shouldReply: z.boolean().describe("是否应该回复这条群消息"),
         }),
       }),
     });
@@ -142,7 +147,12 @@ export class LLMManager {
     ].join("\n\n");
 
     const result = await generateText({
-      model: minimaxModel,
+      model: siliconflow("Pro/moonshotai/Kimi-K2.5"),
+      providerOptions: {
+        Siliconflow: {
+          enable_thinking: false,
+        },
+      },
       system: systemPrompt,
       messages: [
         {
@@ -153,11 +163,6 @@ export class LLMManager {
           }),
         },
       ],
-      // providerOptions: {
-      //   Siliconflow: {
-      //     enable_thinking: false,
-      //   },
-      // },
       tools: {
         memorySearch: memorySearchTool,
         queryStateTool: queryStateTool,
@@ -180,7 +185,12 @@ export class LLMManager {
     const systemPrompt = [getCharacterCardPrompt(), stickerState.buildPromptSection()].join("\n\n");
 
     const result = await generateText({
-      model: minimaxModel,
+      model: siliconflow("Pro/moonshotai/Kimi-K2.5"),
+      providerOptions: {
+        Siliconflow: {
+          enable_thinking: false,
+        },
+      },
       system: systemPrompt,
       messages: [
         {
@@ -191,11 +201,6 @@ export class LLMManager {
           }),
         },
       ],
-      // providerOptions: {
-      //   Siliconflow: {
-      //     enable_thinking: false,
-      //   },
-      // },
       tools: {
         memorySearch: memorySearchTool,
         queryStateTool: queryStateTool,

@@ -63,7 +63,7 @@ export interface ChatSessionManagerOptions {
 export abstract class AbstractChatSessionManager<TMessage> {
   abstract recordMessage(input: ChatMessageInput<TMessage>): void;
 
-  abstract getHistoryJson(sessionId: string): Promise<SessionHistoryContext>;
+  abstract getHistoryJson(sessionId: string, limit?: number): Promise<SessionHistoryContext>;
 
   abstract flushUserWindow(sessionId: string): Promise<void>;
 }
@@ -143,12 +143,20 @@ export class BaseChatSessionManager<
     this.appendEpisodeMessage(input);
   }
 
-  async getHistoryJson(sessionId: string): Promise<SessionHistoryContext> {
+  async getHistoryJson(sessionId: string, limit?: number): Promise<SessionHistoryContext> {
     await this.pendingSummaryBySessionId.get(sessionId);
 
-    const trimmedMessages = this.getTrimmedConversation(sessionId);
+    const list = this.conversationBySessionId.get(sessionId) ?? [];
+    const trimmedMessages = this.trimConversation(list);
+    if (trimmedMessages.length !== list.length) {
+      this.conversationBySessionId.set(sessionId, trimmedMessages);
+    }
+
     const summary = this.summaryBySessionId.get(sessionId);
-    const historyItems = this.buildHistoryItems(trimmedMessages);
+    const promptMessages = limit
+      ? trimmedMessages.slice(Math.max(trimmedMessages.length - limit, 0))
+      : trimmedMessages;
+    const historyItems = this.buildHistoryItems(promptMessages);
 
     return {
       summary,
@@ -390,17 +398,6 @@ export class BaseChatSessionManager<
       time: getTimeWithWeekday(dayjs.unix(message.time)),
       content: projectHistoryMessageContent(message.message),
     }));
-  }
-
-  private getTrimmedConversation(sessionId: string): TMessage[] {
-    const list = this.conversationBySessionId.get(sessionId) ?? [];
-    const trimmed = this.trimConversation(list);
-
-    if (trimmed.length !== list.length) {
-      this.conversationBySessionId.set(sessionId, trimmed);
-    }
-
-    return trimmed;
   }
 
   private trimConversation(list: TMessage[]): TMessage[] {
