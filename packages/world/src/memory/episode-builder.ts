@@ -255,28 +255,53 @@ function buildPlanLifecycleSummaryText(
   actionText: string,
 ): string {
   const prefix = `悠酱${actionText}${scopeText}`;
+  const planReason = change.after?.reason ?? change.before?.reason;
 
   switch (change.changeType) {
     case "created":
-      return [prefix, `新计划：${stringifyPlanValue(change.after?.title)}`].join("；");
+      return [
+        prefix,
+        `新计划：${stringifyPlanValue(change.after?.title)}`,
+        planReason && `原因：${planReason}`,
+      ]
+        .filter((item): item is string => Boolean(item))
+        .join("；");
     case "updated":
       return [
         prefix,
         `原计划：${stringifyPlanValue(change.before?.title)}`,
         `新计划：${stringifyPlanValue(change.after?.title)}`,
-      ].join("；");
+        planReason && `原因：${planReason}`,
+      ]
+        .filter((item): item is string => Boolean(item))
+        .join("；");
     case "completed":
-      return [prefix, `计划：${stringifyPlanValue(change.before?.title)}`, "结果：已完成"].join(
-        "；",
-      );
+      return [
+        prefix,
+        `计划：${stringifyPlanValue(change.before?.title)}`,
+        "结果：已完成",
+        planReason && `原因：${planReason}`,
+      ]
+        .filter((item): item is string => Boolean(item))
+        .join("；");
     case "abandoned":
-      return [prefix, `计划：${stringifyPlanValue(change.before?.title)}`, "结果：已放弃"].join(
-        "；",
-      );
+      return [
+        prefix,
+        `计划：${stringifyPlanValue(change.before?.title)}`,
+        "结果：已放弃",
+        planReason && `原因：${planReason}`,
+      ]
+        .filter((item): item is string => Boolean(item))
+        .join("；");
     case "superseded":
-      return [prefix, `计划：${stringifyPlanValue(change.before?.title)}`, "结果：已被替代"].join(
-        "；",
-      );
+      return [
+        prefix,
+        `计划：${stringifyPlanValue(change.before?.title)}`,
+        "结果：已被替代",
+        planReason && `原因：${planReason}`,
+      ]
+        .filter((item): item is string => Boolean(item))
+        .join("；");
     default:
       return prefix;
   }

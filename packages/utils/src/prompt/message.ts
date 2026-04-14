@@ -66,7 +66,7 @@ export function getGroupReplyDecisionSystemPrompt(): string {
 
 ## shouldReply=false 的场景
 - 没有提到悠酱，也不是在和悠酱对话
-- 提到了悠酱、看起来是在对悠酱说话，但内容是在辱骂、恶语相向、恶意攻击、羞辱、挑衅悠酱，明显会让悠酱不开心。
+- 在辱骂悠酱，悠酱之前提过不想聊了
 - 感觉对方的一句话还没有说完
 
 其余场景 shouldReply=false。

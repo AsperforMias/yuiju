@@ -1,10 +1,3 @@
-import {
-  chooseActionPrompt,
-  chooseCafeCoffeePrompt,
-  chooseFoodPrompt,
-  chooseShopProductPrompt,
-  chooseShrinePrayerPrompt,
-} from "@yuiju/utils";
 import type {
   ActionAgentDecision,
   ActionContext,
@@ -14,9 +7,14 @@ import type {
   PlanState,
 } from "@yuiju/utils";
 import {
+  chooseActionPrompt,
+  chooseCafeCoffeePrompt,
+  chooseFoodPrompt,
+  chooseShopProductPrompt,
+  chooseShrinePrayerPrompt,
+  queryWorldMapTool,
   strongModel,
   memorySearchTool as unifiedMemorySearchTool,
-  queryWorldMapTool,
 } from "@yuiju/utils";
 import { generateText, Output, stepCountIs } from "ai";
 import dayjs from "dayjs";
@@ -95,6 +93,10 @@ export async function chooseActionAgent(
               .string()
               .optional()
               .describe("如果需要修改长期计划，在此输出新的计划内容"),
+            planUpdateReason: z
+              .string()
+              .optional()
+              .describe("如果本次更新了计划，在此说明为什么要更新计划"),
           }),
         }),
         prompt: systemPrompt,

@@ -60,6 +60,8 @@ const planUpdateGuidelinePrompt = `
 - 只有在确实需要变更计划时，才输出 \`updateLongTermPlan\` 或 \`updateShortTermPlan\`。
 - 如果只是从短期计划中的某一步切换到下一步，且原计划仍然成立，可以不输出计划更新字段。
 - 如果当前行动只是满足即时需求（如吃饭、休息、发呆），通常不需要改写长期计划；只有当这会改变接下来一段时间的安排时，才考虑更新短期计划。
+- 只要输出了 \`updateLongTermPlan\` 或 \`updateShortTermPlan\`，就必须同时输出 \`planUpdateReason\`。
+- \`planUpdateReason\` 要直接说明触发这次计划调整的原因，例如当前状态变化、外部事件、已有计划失效，或接下来安排发生了明显变化；不要只写空泛目标。
 `.trim();
 
 /**

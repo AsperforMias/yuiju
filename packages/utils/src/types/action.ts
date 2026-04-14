@@ -110,6 +110,7 @@ export interface ActionAgentDecision {
   durationMinute?: number;
   updateShortTermPlan?: string[];
   updateLongTermPlan?: string;
+  planUpdateReason?: string;
 }
 
 export abstract class ActionMetadata {
