@@ -6,7 +6,7 @@ import {
 } from "../db";
 import type { MemoryEpisode, MemoryEpisodeWriteInput } from "./episode";
 import { llmMemoryAdmissionClassifier, type MemoryAdmissionClassifier } from "./memory-classifier";
-import { getMemoryServiceClientFromEnv, type MemoryServiceClient } from "./memory-service-client";
+import type { MemoryServiceClient } from "./memory-service-client";
 
 export interface EpisodeProcessorDependencies {
   classifier?: MemoryAdmissionClassifier;
@@ -48,7 +48,6 @@ export async function processMemoryEpisode(
   dependencies: EpisodeProcessorDependencies = {},
 ): Promise<void> {
   const classifier = dependencies.classifier ?? llmMemoryAdmissionClassifier;
-  const memoryClient = dependencies.memoryClient ?? getMemoryServiceClientFromEnv();
   const episodeId = episode.id;
 
   if (!episodeId) {
@@ -73,12 +72,8 @@ export async function processMemoryEpisode(
       return;
     }
 
-    const writtenIds = memoryClient
-      ? await memoryClient.writeEpisode({
-          is_dev: episode.isDev,
-          episode: toDomainEpisode(episode),
-        })
-      : [];
+    // 临时停用 Graphiti 写入：episode 仍然完成分类与状态回写，但不再下发到旧记忆图谱。
+    const writtenIds: string[] = [];
 
     await updateMemoryEpisodeExtraction(episodeId, {
       extractionStatus: "done",
