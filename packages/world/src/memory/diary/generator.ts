@@ -1,10 +1,10 @@
 import {
   buildDiarySystemPrompt,
   DEFAULT_DIARY_SUBJECT,
-  DEFAULT_MEMORY_SUBJECT_ID,
   deepseekProvider,
   getRecentMemoryEpisodes,
   type IMemoryEpisode,
+  SUBJECT_NAME,
   strongModel,
   upsertMemoryDiary,
 } from "@yuiju/utils";
@@ -262,7 +262,7 @@ export async function generateDiaryForDate(input: GenerateDiaryForDateInput): Pr
   const subject = input.subject ?? DEFAULT_DIARY_SUBJECT;
   const episodes = await loadEpisodesForDiary({
     diaryDate: input.diaryDate,
-    subject: DEFAULT_MEMORY_SUBJECT_ID,
+    subject: SUBJECT_NAME,
     isDev: input.isDev,
   });
 

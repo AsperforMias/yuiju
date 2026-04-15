@@ -1,9 +1,9 @@
 import dayjs from "dayjs";
+import { SUBJECT_NAME } from "../constants";
 import { getMemoryDiaries, getRecentMemoryEpisodes } from "../db";
 import { isDev } from "../env";
 import { formatProjectTime, parseProjectTime } from "../time";
 import { DEFAULT_DIARY_SUBJECT } from "./diary";
-import { DEFAULT_MEMORY_SUBJECT_ID } from "./episode";
 import { getMemoryServiceClientFromEnv, type MemorySearchItem } from "./memory-service-client";
 
 export type MemoryQueryType = "episode" | "diary" | "fact";
@@ -153,9 +153,6 @@ function resolveDiaryTimeFilter(input: NormalizedMemorySearchInput): {
 }
 
 function getPlanIdFromPayload(payload: Record<string, unknown> | undefined): string | null {
-  if (typeof payload?.relatedPlanId === "string") {
-    return payload.relatedPlanId;
-  }
   if (typeof payload?.planId === "string") {
     return payload.planId;
   }
@@ -235,7 +232,7 @@ export async function searchEpisodes(input: MemorySearchInput): Promise<MemorySe
 
   const docs = await getRecentMemoryEpisodes({
     limit: normalized.topK,
-    subject: DEFAULT_MEMORY_SUBJECT_ID,
+    subject: SUBJECT_NAME,
     isDev: isDev(),
     sortDirection: normalized.timeSort,
     ...timeRangeFilter,

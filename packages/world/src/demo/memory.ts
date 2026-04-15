@@ -1,8 +1,8 @@
 import {
-  DEFAULT_MEMORY_SUBJECT_ID,
   type MemoryEpisode,
   MemoryServiceClient,
   memorySearchTool,
+  SUBJECT_NAME,
   strongModel,
 } from "@yuiju/utils";
 import { generateText, stepCountIs } from "ai";
@@ -50,7 +50,7 @@ function createConversationEpisode(input: {
   return {
     source: "chat",
     type: "conversation",
-    subject: DEFAULT_MEMORY_SUBJECT_ID,
+    subject: SUBJECT_NAME,
     counterparty: input.counterpartyName,
     happenedAt: input.happenedAt,
     summaryText: [
@@ -92,7 +92,7 @@ function createBehaviorEpisode(input: {
   return {
     source: "world_tick",
     type: "behavior",
-    subject: DEFAULT_MEMORY_SUBJECT_ID,
+    subject: SUBJECT_NAME,
     happenedAt: input.happenedAt,
     summaryText: [
       `【${DEMO_TAG} / ${input.caseId}】ゆいじゅ执行了行为「${input.action}」`,

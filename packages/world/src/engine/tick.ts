@@ -5,6 +5,7 @@ import {
   emitMemoryEpisode,
   getRecentMemoryEpisodes,
   isDev,
+  type PlanChange,
   processPendingMemoryEpisodes,
   type RunningActionState,
   SUBJECT_NAME,
@@ -40,6 +41,15 @@ export interface TickReturn {
   nextTickInMinutes: number;
   completionEvent?: string;
   runningAction?: Omit<RunningActionState, "waitUntil">;
+}
+
+function isValidPlanProposal(decision: ActionAgentDecision): boolean {
+  const proposal = decision.planProposal;
+  if (!proposal) {
+    return false;
+  }
+
+  return Boolean(proposal.longTermPlanTitle || proposal.shortTermPlanTitles?.length);
 }
 
 export async function tick(params: TickParams): Promise<TickReturn> {
@@ -84,30 +94,17 @@ export async function tick(params: TickParams): Promise<TickReturn> {
 
   if (actionMetadata && selectedAction) {
     const actionStartedAt = new Date();
-    const planProposal: {
-      longTermPlanTitle?: string;
-      shortTermPlanTitles?: string[];
-      reason?: string;
-    } = {};
-    if ("updateLongTermPlan" in selectedAction) {
-      planProposal.longTermPlanTitle = selectedAction.updateLongTermPlan;
-    }
-    if ("updateShortTermPlan" in selectedAction) {
-      planProposal.shortTermPlanTitles = selectedAction.updateShortTermPlan;
-    }
-    if (
-      (selectedAction.updateLongTermPlan !== undefined ||
-        selectedAction.updateShortTermPlan !== undefined) &&
-      selectedAction.planUpdateReason
-    ) {
-      planProposal.reason = selectedAction.planUpdateReason;
+    let planChanges: PlanChange[] = [];
+
+    if (selectedAction.planProposal && isValidPlanProposal(selectedAction)) {
+      const planApplyResult = await planManager.applyProposal(selectedAction.planProposal);
+      planChanges = planApplyResult.changes;
+    } else if (selectedAction.planProposal) {
+      logger.warn("[tick] ignore empty planProposal from chooseActionAgent", selectedAction);
     }
 
-    const planApplyResult = await planManager.applyProposal(planProposal);
-
-    // 根据 planApplyResult.changes 构建变更 episode
     const planEpisodes = buildPlanUpdateEpisodes({
-      changes: planApplyResult.changes,
+      changes: planChanges,
       happenedAt: new Date(),
       isDev: isDev(),
     });
@@ -138,7 +135,6 @@ export async function tick(params: TickParams): Promise<TickReturn> {
       selectedAction,
       executionResult: executionResult ?? undefined,
       durationMinutes: durationMin,
-      relatedPlanId: planApplyResult.relatedPlanId,
       happenedAt: new Date(),
       isDev: isDev(),
     });

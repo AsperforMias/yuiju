@@ -35,7 +35,6 @@ function buildEpisodePayloadContext(episode: MemoryEpisode): unknown {
       executionResult: payload.executionResult,
       durationMinutes: payload.durationMinutes,
       location: payload.location,
-      relatedPlanId: payload.relatedPlanId,
     };
   }
 

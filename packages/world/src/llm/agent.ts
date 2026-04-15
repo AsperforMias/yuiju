@@ -85,18 +85,20 @@ export async function chooseActionAgent(
               .number()
               .optional()
               .describe("Action持续多少分钟，只有特殊的Action需要给出持续时间"),
-            updateShortTermPlan: z
-              .array(z.string())
+            planProposal: z
+              .object({
+                shortTermPlanTitles: z
+                  .array(z.string())
+                  .optional()
+                  .describe("如果需要修改短期计划，在此输出新的短期计划内容"),
+                longTermPlanTitle: z
+                  .string()
+                  .optional()
+                  .describe("如果需要修改长期计划，在此输出新的长期计划内容"),
+                reason: z.string().describe("如果本次更新了计划，在此说明为什么要更新计划"),
+              })
               .optional()
-              .describe("如果需要修改短期计划，在此输出新的计划内容"),
-            updateLongTermPlan: z
-              .string()
-              .optional()
-              .describe("如果需要修改长期计划，在此输出新的计划内容"),
-            planUpdateReason: z
-              .string()
-              .optional()
-              .describe("如果本次更新了计划，在此说明为什么要更新计划"),
+              .describe("只有确实需要调整计划时才输出；至少应包含一个计划标题字段"),
           }),
         }),
         prompt: systemPrompt,

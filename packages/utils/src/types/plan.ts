@@ -7,11 +7,6 @@
 export type PlanScope = "longTerm" | "shortTerm";
 
 /**
- * 计划状态。
- */
-export type PlanStatus = "active" | "completed" | "abandoned" | "superseded";
-
-/**
  * 计划来源。
  *
  * - llm: 由 LLM 在 tick 决策阶段提出；
@@ -25,15 +20,12 @@ export type PlanSource = "llm" | "system" | "user";
  *
  * 说明：
  * - id 由业务侧按标题与范围生成稳定标识；
- * - parentPlanId 用于表达短期计划挂靠到长期计划的引用关系；
  * - reason / source / expiresAt 为后续生命周期治理与记忆提炼保留稳定字段。
  */
 export interface PlanItem {
   id: string;
   title: string;
   scope: PlanScope;
-  status: PlanStatus;
-  parentPlanId?: string;
   reason?: string;
   source: PlanSource;
   expiresAt?: string;
@@ -45,8 +37,6 @@ export interface PlanItem {
  * Redis 中保存的当前计划真相源。
  */
 export interface PlanState {
-  longTermPlanId?: string;
-  shortTermPlanIds: string[];
   longTermPlan?: PlanItem;
   shortTermPlans: PlanItem[];
   updatedAt: string;
@@ -58,7 +48,7 @@ export interface PlanState {
 export interface PlanProposal {
   longTermPlanTitle?: string;
   shortTermPlanTitles?: string[];
-  reason?: string;
+  reason: string;
   source?: PlanSource;
   expiresAt?: string;
 }
@@ -90,5 +80,4 @@ export interface PlanChange {
 export interface PlanApplyResult {
   state: PlanState;
   changes: PlanChange[];
-  relatedPlanId?: string;
 }

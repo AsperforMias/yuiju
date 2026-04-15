@@ -1,11 +1,11 @@
 import {
-  DEFAULT_MEMORY_SUBJECT_ID,
   emitMemoryEpisode,
   getRedis,
   initCharacterStateData,
   isDev,
   processPendingMemoryEpisodes,
   REDIS_KEY_CHARACTER_STATE,
+  SUBJECT_NAME,
 } from "@yuiju/utils";
 import { Hono } from "hono";
 import { rejectPublicRequest } from "./public-guard";
@@ -137,7 +137,7 @@ stateRoute.post("/allowance", async (context) => {
     await emitMemoryEpisode({
       source: "system",
       type: "system",
-      subject: DEFAULT_MEMORY_SUBJECT_ID,
+      subject: SUBJECT_NAME,
       happenedAt: new Date(),
       summaryText: reason ? `${descriptionBase}；原因：${reason}` : descriptionBase,
       extractionStatus: "pending",

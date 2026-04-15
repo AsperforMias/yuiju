@@ -13,7 +13,6 @@ export interface BuildBehaviorEpisodeInput {
   selectedAction: ActionAgentDecision;
   executionResult?: string;
   durationMinutes: number;
-  relatedPlanId?: string;
   happenedAt: Date;
   isDev: boolean;
 }
@@ -31,8 +30,6 @@ interface PlanLifecycleEpisodePayload {
   before?: {
     id: string;
     title: string;
-    status: string;
-    parentPlanId?: string;
     reason?: string;
     source?: string;
     expiresAt?: string;
@@ -40,8 +37,6 @@ interface PlanLifecycleEpisodePayload {
   after?: {
     id: string;
     title: string;
-    status: string;
-    parentPlanId?: string;
     reason?: string;
     source?: string;
     expiresAt?: string;
@@ -54,7 +49,6 @@ interface BehaviorEpisodePayload {
   reason: string;
   executionResult?: string;
   durationMinutes: number;
-  relatedPlanId?: string;
   location: ActionContext["characterState"]["location"];
   characterStateSnapshot: ReturnType<ActionContext["characterState"]["log"]>;
 }
@@ -100,7 +94,6 @@ export function buildBehaviorEpisode(
       reason: input.selectedAction.reason,
       executionResult: input.executionResult,
       durationMinutes: input.durationMinutes,
-      relatedPlanId: input.relatedPlanId,
       location: input.context.characterState.location,
       characterStateSnapshot: input.context.characterState.log(),
     },
@@ -200,8 +193,6 @@ function createPlanLifecycleEpisode(input: {
         ? {
             id: change.before.id,
             title: change.before.title,
-            status: change.before.status,
-            parentPlanId: change.before.parentPlanId,
             reason: change.before.reason,
             source: change.before.source,
             expiresAt: change.before.expiresAt,
@@ -211,8 +202,6 @@ function createPlanLifecycleEpisode(input: {
         ? {
             id: change.after.id,
             title: change.after.title,
-            status: change.after.status,
-            parentPlanId: change.after.parentPlanId,
             reason: change.after.reason,
             source: change.after.source,
             expiresAt: change.after.expiresAt,

@@ -1,10 +1,10 @@
 import {
   countRecentMemoryEpisodes,
-  DEFAULT_MEMORY_SUBJECT_ID,
   getRecentMemoryEpisodes,
   isDev,
+  SUBJECT_NAME,
 } from "@yuiju/utils";
-import { mapEpisodeToActivityItem, type ActivityItem } from "./activity-view";
+import { type ActivityItem, mapEpisodeToActivityItem } from "./activity-view";
 
 const DEFAULT_PAGE = 1;
 const DEFAULT_PAGE_SIZE = 10;
@@ -62,7 +62,7 @@ export async function queryActivityEvents(
   try {
     const queryOptions = {
       types: [...ACTIVITY_TYPES],
-      subject: DEFAULT_MEMORY_SUBJECT_ID,
+      subject: SUBJECT_NAME,
       isDev: isDev(),
       sortField: "createdAt" as const,
     };
