@@ -24,9 +24,44 @@ import {
   PrivateChatSessionManager,
 } from "./chat-session-manager";
 
+type ActiveGroupChatTask = {
+  controller: AbortController;
+  /**
+   * 直接复用触发本次回复生成的群消息 `message_id`，用于识别“当前群里最新的一次回复生成请求”。
+   *
+   * 说明：
+   * - 仅依赖 abort() 不足以完全避免竞态，旧请求可能在被取消前后恰好返回；
+   * - 因此在生成完成和真正发送回复前，都要再次校验 requestId 是否仍然是该群最新值；
+   * - 只要 requestId 已经过期，就把这次结果视为失效，禁止继续发送消息。
+   */
+  requestId: number;
+};
+
+export type GroupChatResult =
+  | {
+      status: "completed";
+      requestId: number;
+      text: string;
+    }
+  | {
+      status: "cancelled";
+    };
+
 export class LLMManager {
   private privateSession: AbstractChatSessionManager<StoredPrivateMessage>;
   private groupSession: AbstractChatSessionManager<StoredGroupMessage>;
+  /**
+   * 记录每个群当前正在执行的回复生成任务，用于在同群新消息到来时取消旧请求。
+   */
+  private activeGroupChatTaskByGroupId = new Map<number, ActiveGroupChatTask>();
+  /**
+   * 记录每个群当前“最新那条触发回复的消息 id”。
+   *
+   * 说明：
+   * - 这里保存的是最新请求对应的 `message_id`，不是独立生成的序号；
+   * - 生成完成后和发送回复前都会再次比对它，避免旧请求在竞态下误发消息。
+   */
+  private latestGroupChatRequestIdByGroupId = new Map<number, number>();
 
   constructor() {
     /**
@@ -135,8 +170,28 @@ export class LLMManager {
   /**
    * 使用主回复模型为群聊生成自然语言回复。
    */
-  public async chatInGroup(message: StoredGroupMessage) {
-    const sessionKey = this.buildGroupSessionKey(message.group_id);
+  public async chatInGroup(message: StoredGroupMessage): Promise<GroupChatResult> {
+    const groupId = message.group_id;
+    const sessionKey = this.buildGroupSessionKey(groupId);
+    const requestId = message.message_id;
+    const previousTask = this.activeGroupChatTaskByGroupId.get(groupId);
+    if (previousTask) {
+      logger.info("[message.llm.group] 新消息到来，取消同群上一条回复生成", {
+        groupId,
+        groupName: getGroupDisplayName(message),
+        previousRequestId: previousTask.requestId,
+        nextRequestId: requestId,
+      });
+      previousTask.controller.abort("replaced by newer group chat request");
+    }
+
+    const controller = new AbortController();
+    this.latestGroupChatRequestIdByGroupId.set(groupId, requestId);
+    this.activeGroupChatTaskByGroupId.set(groupId, {
+      controller,
+      requestId,
+    });
+
     const { historyJson, summary } = await this.groupSession.getHistoryJson(sessionKey);
 
     const systemPrompt = [
@@ -146,37 +201,62 @@ export class LLMManager {
       `你现在正在 QQ 群「${getGroupDisplayName(message)}」`,
     ].join("\n\n");
 
-    const result = await generateText({
-      model: siliconflow("Pro/moonshotai/Kimi-K2.5"),
-      providerOptions: {
-        Siliconflow: {
-          enable_thinking: false,
+    try {
+      const result = await generateText({
+        model: siliconflow("Pro/moonshotai/Kimi-K2.5"),
+        providerOptions: {
+          Siliconflow: {
+            enable_thinking: false,
+          },
         },
-      },
-      system: systemPrompt,
-      messages: [
-        {
-          role: "user",
-          content: buildMessageHistoryUserPrompt({
-            summary,
-            historyJson,
-          }),
+        system: systemPrompt,
+        messages: [
+          {
+            role: "user",
+            content: buildMessageHistoryUserPrompt({
+              summary,
+              historyJson,
+            }),
+          },
+        ],
+        tools: {
+          memorySearch: memorySearchTool,
+          queryStateTool: queryStateTool,
+          queryWorldMap: queryWorldMapTool,
         },
-      ],
-      tools: {
-        memorySearch: memorySearchTool,
-        queryStateTool: queryStateTool,
-        queryWorldMap: queryWorldMapTool,
-      },
-      stopWhen: stepCountIs(20),
-    });
+        stopWhen: stepCountIs(20),
+        abortSignal: controller.signal,
+      });
 
-    logger.info("[message.llm.group] LLM 返回群聊回复", {
-      groupName: getGroupDisplayName(message),
-      text: result.text,
-    });
+      if (!this.isLatestGroupChatRequest(groupId, requestId)) {
+        return { status: "cancelled" };
+      }
 
-    return result;
+      logger.info("[message.llm.group] LLM 返回群聊回复", {
+        groupName: getGroupDisplayName(message),
+        text: result.text,
+      });
+
+      return {
+        status: "completed",
+        requestId,
+        text: result.text,
+      };
+    } catch (error) {
+      if (controller.signal.aborted) {
+        return { status: "cancelled" };
+      }
+      throw error;
+    } finally {
+      const activeTask = this.activeGroupChatTaskByGroupId.get(groupId);
+      if (activeTask?.requestId === requestId) {
+        this.activeGroupChatTaskByGroupId.delete(groupId);
+      }
+    }
+  }
+
+  public isLatestGroupChatRequest(groupId: number, requestId: number): boolean {
+    return this.latestGroupChatRequestIdByGroupId.get(groupId) === requestId;
   }
 
   public async chatWithLLM(message: StoredPrivateMessage) {

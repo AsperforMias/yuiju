@@ -65,9 +65,26 @@ export async function groupMessageHandler(
       return;
     }
 
-    const { text } = await llmManager.chatInGroup(storedMessage);
+    const groupChatResult = await llmManager.chatInGroup(storedMessage);
+    if (groupChatResult.status === "cancelled") {
+      logger.info("[message.reply.group] 群聊回复生成已取消，不发送消息", {
+        groupId: context.group_id,
+        groupName,
+        requestId: storedMessage.message_id,
+      });
+      return;
+    }
 
-    const reply = (text || "").trim();
+    if (!llmManager.isLatestGroupChatRequest(context.group_id, groupChatResult.requestId)) {
+      logger.info("[message.reply.group] 群聊回复结果已过期，不发送消息", {
+        groupId: context.group_id,
+        groupName,
+        requestId: groupChatResult.requestId,
+      });
+      return;
+    }
+
+    const reply = (groupChatResult.text || "").trim();
     if (!reply || reply === "null") {
       return;
     }

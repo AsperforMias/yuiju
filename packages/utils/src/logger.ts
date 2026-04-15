@@ -114,16 +114,6 @@ export function createYuijuLogger(options: CreateYuijuLoggerOptions = {}) {
         level: logLevel,
         format: buildFileFormat(),
       }),
-      new DailyRotateFile({
-        dirname: logDir,
-        filename: "error-%DATE%.log",
-        datePattern: "YYYY-MM-DD",
-        maxSize: process.env.LOG_MAX_SIZE || "20m",
-        maxFiles: process.env.LOG_MAX_FILES || "14d",
-        zippedArchive: true,
-        level: "error",
-        format: buildFileFormat(),
-      }),
     ],
     exitOnError: false,
   });
