@@ -6,7 +6,7 @@ import type {
   PlanChange,
   WeatherSnapshot,
 } from "@yuiju/utils";
-import { ActionId, DEFAULT_MEMORY_SUBJECT_ID } from "@yuiju/utils";
+import { ActionId, SUBJECT_NAME } from "@yuiju/utils";
 
 export interface BuildBehaviorEpisodeInput {
   context: ActionContext;
@@ -90,7 +90,7 @@ export function buildBehaviorEpisode(
   return {
     source: "world_tick",
     type: "behavior",
-    subject: DEFAULT_MEMORY_SUBJECT_ID,
+    subject: SUBJECT_NAME,
     happenedAt: input.happenedAt,
     summaryText,
     extractionStatus: "pending",
@@ -153,7 +153,7 @@ export function buildWeatherChangedEpisode(input: {
   return {
     source: "system",
     type: "weather_changed",
-    subject: DEFAULT_MEMORY_SUBJECT_ID,
+    subject: SUBJECT_NAME,
     happenedAt: new Date(input.after.periodStartAt),
     summaryText: [
       "天气发生变化",
@@ -187,7 +187,7 @@ function createPlanLifecycleEpisode(input: {
   return {
     source: "world_tick",
     type: episodeType,
-    subject: DEFAULT_MEMORY_SUBJECT_ID,
+    subject: SUBJECT_NAME,
     happenedAt: input.happenedAt,
     summaryText: buildPlanLifecycleSummaryText(change, scopeText, actionText),
     extractionStatus: "pending",

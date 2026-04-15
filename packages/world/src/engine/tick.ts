@@ -2,12 +2,12 @@ import {
   type ActionAgentDecision,
   type ActionContext,
   ActionId,
-  DEFAULT_MEMORY_SUBJECT_ID,
   emitMemoryEpisode,
   getRecentMemoryEpisodes,
   isDev,
   processPendingMemoryEpisodes,
   type RunningActionState,
+  SUBJECT_NAME,
 } from "@yuiju/utils";
 import { getActionList } from "@/action";
 import { getActionById } from "@/action/utils";
@@ -69,7 +69,7 @@ export async function tick(params: TickParams): Promise<TickReturn> {
   const recentBehaviors = await getRecentMemoryEpisodes({
     limit: 10,
     types: ["behavior"],
-    subject: DEFAULT_MEMORY_SUBJECT_ID,
+    subject: SUBJECT_NAME,
     isDev: isDev(),
     onlyDate: new Date(),
   });
@@ -115,7 +115,7 @@ export async function tick(params: TickParams): Promise<TickReturn> {
     for (const planEpisode of planEpisodes) {
       try {
         await emitMemoryEpisode(planEpisode);
-        logger.debug("[tick] built plan_update episode", planEpisode);
+        logger.info("[tick] built plan_update episode", planEpisode);
         processPendingMemoryEpisodes({ limit: 1, isDev: isDev() }).catch((error) => {
           logger.error("[tick] process pending memory episodes failed", error);
         });

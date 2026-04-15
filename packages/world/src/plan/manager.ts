@@ -9,11 +9,6 @@ import type {
 } from "@yuiju/utils";
 import { initPlanStateData, savePlanStateData } from "@yuiju/utils";
 
-function normalizePlanTitle(title?: string): string | undefined {
-  const normalized = title?.trim();
-  return normalized ? normalized : undefined;
-}
-
 function createStablePlanId(scope: PlanScope, title: string): string {
   const raw = `${scope}:${title}`;
   let hash = 0;
@@ -209,7 +204,7 @@ export class PlanManager {
     const previousLongTermPlan = clonePlanItem(currentState.longTermPlan);
 
     if (longTermPlanExplicitlyProvided) {
-      const nextLongTermTitle = normalizePlanTitle(proposal.longTermPlanTitle);
+      const nextLongTermTitle = proposal.longTermPlanTitle;
 
       if (!nextLongTermTitle && previousLongTermPlan) {
         changes.push({
@@ -293,9 +288,9 @@ export class PlanManager {
     }
 
     if (shortTermPlansExplicitlyProvided) {
-      const nextShortTermTitles = (proposal.shortTermPlanTitles ?? [])
-        .map((title) => normalizePlanTitle(title))
-        .filter((title): title is string => Boolean(title));
+      const nextShortTermTitles = (proposal.shortTermPlanTitles ?? []).filter(
+        (title): title is string => Boolean(title),
+      );
 
       const previousShortTermPlans = currentState.shortTermPlans.map((plan) => ({ ...plan }));
       const previousByTitle = new Map(previousShortTermPlans.map((plan) => [plan.title, plan]));
