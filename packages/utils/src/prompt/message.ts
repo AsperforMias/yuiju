@@ -42,7 +42,9 @@ ${latestMessageDirectedDescription}
 
 ## 历史会话消息
 
+消息按时间从旧到新排列，第一项是最早消息，最后一项是最新消息。
 speaker 为${SUBJECT_NAME}、悠酱，是你之前的发言。
+
 \`\`\`json
 ${input.historyJson}
 \`\`\`

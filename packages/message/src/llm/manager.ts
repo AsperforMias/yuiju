@@ -203,7 +203,7 @@ export class LLMManager {
 
     try {
       const result = await generateText({
-        model: siliconflow("Pro/moonshotai/Kimi-K2.5"),
+        model: minimaxModel,
         providerOptions: {
           Siliconflow: {
             enable_thinking: false,
