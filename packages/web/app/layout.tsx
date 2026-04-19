@@ -19,7 +19,7 @@ export default function RootLayout({
 
   return (
     <html lang="zh-CN">
-      <body className="antialiased">
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <Navbar showActivity={showInternalPages} showDiary={showInternalPages} />
         <div>{children}</div>
         <Toaster />

@@ -64,3 +64,14 @@ pnpm run start:python
   - 除 MongoDB 外，还依赖 NapCat WebSocket 可用与 `message.napcat` 配置正确。
 - `web` 部分接口不可用：
   - 依赖数据库数据的接口（如 activity/diary）在 Mongo 异常时会失败。
+
+## 5. 日志观测（可选）
+
+如果你要做服务日志检索与可视化，可以额外启动 Loki/Grafana：
+
+```bash
+pnpm run obs:up
+pnpm run obs:ps
+```
+
+详细说明见：`docs/observability-loki-grafana.md`

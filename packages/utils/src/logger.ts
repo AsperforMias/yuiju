@@ -1,5 +1,6 @@
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { inspect } from "node:util";
 import winston from "winston";
 import DailyRotateFile from "winston-daily-rotate-file";
 
@@ -45,13 +46,26 @@ const textFormat = winston.format.printf((info: winston.Logform.TransformableInf
       return "";
     }
     if (value instanceof Error) {
-      return value.stack || value.message || String(value);
+      return JSON.stringify({
+        name: value.name,
+        message: value.message,
+        stack: value.stack || value.message,
+      });
     }
     if (typeof value === "object" && value !== null) {
       return JSON.stringify(value);
     }
 
-    return String(value);
+    const serialized = JSON.stringify(value);
+    if (typeof serialized === "string") {
+      return serialized;
+    }
+
+    return inspect(value, {
+      depth: 4,
+      compact: true,
+      breakLength: Number.POSITIVE_INFINITY,
+    });
   };
 
   const message = stringify(info.message);
